@@ -36,7 +36,7 @@ async function handleLogin() {
     // Redirect to Mastodon OAuth page
     const params = new URLSearchParams({
       client_id: appData.client_id,
-      redirect_uri: import.meta.env.VITE_REDIRECT_URI,
+      redirect_uri: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
       response_type: 'code',
       scope: 'read:accounts read:statuses write:media write:statuses',
     });

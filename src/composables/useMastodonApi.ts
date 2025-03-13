@@ -33,9 +33,9 @@ export function useMastodonApi() {
       const normalizedUrl = normalizeUrl(instanceUrl);
       const response = await axios.post(`${normalizedUrl}/api/v1/apps`, {
         client_name: 'Toots Scheduler',
-        redirect_uris: import.meta.env.VITE_REDIRECT_URI,
+        redirect_uris: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
         scopes: 'read:accounts read:statuses write:media write:statuses',
-        website: window.location.origin || undefined
+        website: window.location.origin + import.meta.env.BASE_URL
       }, {
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +65,7 @@ export function useMastodonApi() {
         code,
         client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri: import.meta.env.VITE_REDIRECT_URI,
+        redirect_uri: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
         scope: 'read:accounts read:statuses write:media write:statuses'
       }, {
         headers: {
