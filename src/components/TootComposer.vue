@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { useAuthStore } from '../stores/auth';
-import { format } from 'date-fns';
+import { format, addMinutes, isBefore } from 'date-fns';
 import type { ScheduledToot } from '../types/mastodon';
 import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore } from '../stores/scheduledToots';
@@ -38,11 +38,20 @@ onMounted(async () => {
 
 const minDateTime = computed(() => {
   const now = new Date();
-  return format(now, "yyyy-MM-dd'T'HH:mm");
+  const minDate = addMinutes(now, 5); // Minimum 5 minutes in the future
+  return format(minDate, "yyyy-MM-dd'T'HH:mm");
 });
 
 const characterCount = computed(() => content.value.length);
 const remainingCharacters = computed(() => 500 - characterCount.value - HASHTAG.length - 1);
+
+// Add validation for the selected date/time
+const isValidScheduledTime = computed(() => {
+  if (!scheduledDate.value || !scheduledTime.value) return false;
+  const selectedDateTime = new Date(`${scheduledDate.value}T${scheduledTime.value}`);
+  const minTime = addMinutes(new Date(), 5);
+  return !isBefore(selectedDateTime, minTime);
+});
 
 // Common languages used in Mastodon
 const languages = [
@@ -67,8 +76,14 @@ async function handleSubmit() {
     error.value = '';
     isSubmitting.value = true;
 
-    // Prepare the scheduled datetime
-    const scheduledAt = new Date(`${scheduledDate.value}T${scheduledTime.value}`).toISOString();
+    // Validate scheduled time
+    const scheduledDateTime = new Date(`${scheduledDate.value}T${scheduledTime.value}`);
+    const minTime = addMinutes(new Date(), 5);
+    
+    if (isBefore(scheduledDateTime, minTime)) {
+      error.value = 'Please schedule the toot at least 5 minutes in the future.';
+      return;
+    }
 
     // Create the toot with hashtag
     const tootContent = content.value.trim() + ' ' + HASHTAG;
@@ -76,7 +91,7 @@ async function handleSubmit() {
     // Create the toot
     const toot: ScheduledToot = {
       status: tootContent,
-      scheduled_at: scheduledAt,
+      scheduled_at: scheduledDateTime.toISOString(),
       visibility: visibility.value,
       language: language.value,
       sensitive: isSensitive.value,
@@ -178,6 +193,9 @@ async function handleSubmit() {
             v-model="scheduledTime"
             required
           />
+          <small v-if="!isValidScheduledTime && (scheduledDate && scheduledTime)" class="time-warning">
+            Must be at least 5 minutes in the future
+          </small>
         </div>
 
         <div class="form-group">
@@ -204,7 +222,7 @@ async function handleSubmit() {
 
       <button
         type="submit"
-        :disabled="isSubmitting || !content.trim()"
+        :disabled="isSubmitting || !content.trim() || !isValidScheduledTime"
       >
         {{ isSubmitting ? 'Scheduling...' : 'Schedule Toot' }}
       </button>
@@ -421,5 +439,12 @@ input[type="text"]:disabled {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   border: 1px solid #ddd;
+}
+
+.time-warning {
+  display: block;
+  color: #ff4136;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
 }
 </style> 
