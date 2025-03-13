@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { useAuthStore } from '../stores/auth';
-import { addMinutes, format } from 'date-fns';
+import { format } from 'date-fns';
 import type { ScheduledToot } from '../types/mastodon';
 import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore } from '../stores/scheduledToots';
@@ -17,6 +17,7 @@ const language = ref('en');
 const error = ref('');
 const isSensitive = ref(false);
 const spoilerText = ref('');
+const HASHTAG = '#TootScheduler';
 
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
@@ -37,12 +38,11 @@ onMounted(async () => {
 
 const minDateTime = computed(() => {
   const now = new Date();
-  const minDate = addMinutes(now, 5);
-  return format(minDate, "yyyy-MM-dd'T'HH:mm");
+  return format(now, "yyyy-MM-dd'T'HH:mm");
 });
 
 const characterCount = computed(() => content.value.length);
-const remainingCharacters = computed(() => 500 - characterCount.value);
+const remainingCharacters = computed(() => 500 - characterCount.value - HASHTAG.length - 1);
 
 // Common languages used in Mastodon
 const languages = [
@@ -70,9 +70,12 @@ async function handleSubmit() {
     // Prepare the scheduled datetime
     const scheduledAt = new Date(`${scheduledDate.value}T${scheduledTime.value}`).toISOString();
 
+    // Create the toot with hashtag
+    const tootContent = content.value.trim() + ' ' + HASHTAG;
+
     // Create the toot
     const toot: ScheduledToot = {
-      status: content.value,
+      status: tootContent,
       scheduled_at: scheduledAt,
       visibility: visibility.value,
       language: language.value,
@@ -142,12 +145,16 @@ async function handleSubmit() {
       <div class="content-area">
         <textarea
           v-model="content"
-          placeholder="What's on your mind?"
-          :maxlength="500"
+          :placeholder="'What\'s on your mind?'"
           required
+          :maxlength="500 - HASHTAG.length - 1"
+          rows="4"
         ></textarea>
-        <div class="character-count">
-          {{ remainingCharacters }} characters remaining
+        <div class="textarea-footer">
+          <span class="hashtag">{{ HASHTAG }}</span>
+          <span class="character-count" :class="{ 'near-limit': remainingCharacters < 50 }">
+            {{ remainingCharacters }}
+          </span>
         </div>
       </div>
 
@@ -158,7 +165,7 @@ async function handleSubmit() {
             id="scheduled-date"
             type="date"
             v-model="scheduledDate"
-            :min="format(new Date(), 'yyyy-MM-dd')"
+            :min="minDateTime.split('T')[0]"
             required
           />
         </div>
@@ -169,7 +176,6 @@ async function handleSubmit() {
             id="scheduled-time"
             type="time"
             v-model="scheduledTime"
-            :min="minDateTime"
             required
           />
         </div>
@@ -198,7 +204,7 @@ async function handleSubmit() {
 
       <button
         type="submit"
-        :disabled="isSubmitting || !content || !scheduledDate || !scheduledTime"
+        :disabled="isSubmitting || !content.trim()"
       >
         {{ isSubmitting ? 'Scheduling...' : 'Schedule Toot' }}
       </button>
@@ -216,22 +222,40 @@ async function handleSubmit() {
 }
 
 .content-area {
+  position: relative;
   margin-bottom: 1rem;
 }
 
 textarea {
   width: 100%;
-  min-height: 150px;
   padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  border: 1px solid #ccc;
+  margin-bottom: 0;
+  resize: vertical;
+  border: 1px solid #ddd;
   border-radius: 4px;
   font-family: inherit;
 }
 
+.textarea-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.hashtag {
+  color: #2b90d9;
+  font-size: 0.875rem;
+}
+
 .character-count {
   color: #666;
-  font-size: 0.9rem;
+}
+
+.character-count.near-limit {
+  color: #ff4136;
 }
 
 .controls-bar {
