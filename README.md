@@ -1,5 +1,7 @@
 # Toots Scheduler 📅 ⏰
 
+[![Deploy to GitHub Pages](https://github.com/regulardesigner/toots-scheduler/actions/workflows/deploy.yml/badge.svg)](https://github.com/regulardesigner/toots-scheduler/actions/workflows/deploy.yml)
+
 A modern Vue.js application that allows you to schedule Mastodon posts (toots) for later publication. Built with Vue 3, TypeScript, and Vite.
 
 ## Features
