@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
 import { useAuthStore } from './stores/auth';
+import { useSessionTimeout } from './composables/useSessionTimeout';
 
 const auth = useAuthStore();
+
+// Initialize session timeout
+useSessionTimeout();
 
 async function handleLogout(): Promise<void> {
   await auth.logout();
