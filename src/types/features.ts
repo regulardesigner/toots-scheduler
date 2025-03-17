@@ -2,7 +2,6 @@ export interface Feature {
   id: string;
   title: string;
   description: string;
-  elementId: string;
 }
 
 export interface FeatureGroup {

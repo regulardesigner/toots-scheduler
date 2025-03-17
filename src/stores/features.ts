@@ -14,13 +14,11 @@ export const useFeaturesStore = defineStore('features', () => {
           id: 'multi-account-support',
           title: '🤘 Multi-Account Support',
           description: 'You can now schedule toots for multiple accounts!',
-          elementId: 'multi-account-button',
         },
         {
           id: 'edit-scheduled-toots',
           title: '🖊️ Edit Scheduled Toots',
           description: 'Made a typo? You can now edit your scheduled toots!',
-          elementId: 'edit-button',
         },
       ],
     },
@@ -32,13 +30,11 @@ export const useFeaturesStore = defineStore('features', () => {
           id: 'schedule-posts',
           title: '🕒 Schedule Posts',
           description: 'You can now schedule your posts to be published at a specific time!',
-          elementId: 'schedule-button',
         },
         {
           id: 'delete-scheduled-toots',
           title: '🗑️ Delete Scheduled Toots',
           description: 'You can now delete your scheduled toots!',
-          elementId: 'delete-button',
         },
       ],
     },
@@ -81,18 +77,12 @@ export const useFeaturesStore = defineStore('features', () => {
     saveState();
   }
 
-  // Check if a specific feature is new
-  function isFeatureNew(featureId: string): boolean {
-    return !userState.value.seenFeatures.includes(featureId);
-  }
-
   // Initialize store
   loadState();
 
   return {
     features,
     newFeatures,
-    isFeatureNew,
     markFeaturesAsSeen,
   };
 }); 

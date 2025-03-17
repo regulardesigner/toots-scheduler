@@ -28,12 +28,12 @@ function handleWhatsNewClose() {
   <div class="app">
     <header>
       <h1>Toots Scheduler</h1>
-      <nav v-if="auth.accessToken">
+      <nav v-if="auth.accessToken" class="is-highlighted">
         <button 
           v-if="newFeatures.length > 0"
           @click="showWhatsNew = true"
           class="whats-new-button"
-        >
+      >
           What's New
         </button>
         <button @click="handleLogout">Logout</button>
