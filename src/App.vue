@@ -34,7 +34,7 @@ function handleWhatsNewClose() {
           @click="showWhatsNew = true"
           class="whats-new-button"
         >
-        📣 What's New
+          What's New
         </button>
         <button @click="handleLogout">Logout</button>
       </nav>
@@ -103,9 +103,11 @@ button {
 .whats-new-button {
   background-color: #4CAF50;
   color: white;
-  border: none;
+  border: 1px solid #4CAF50;
   margin-right: 0.5rem;
   border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
   transition: background-color 0.2s;
 }
 

@@ -18,7 +18,7 @@ function handleClose() {
 <template>
   <div class="whats-new-modal">
     <div class="whats-new-content">
-      <h2>What's New</h2>
+      <h2>What's new since your last visit!</h2>
       <div v-if="newFeatures.length === 0" class="no-new-features">
         No new features to show.
       </div>
@@ -126,7 +126,7 @@ h2 {
 .close-button {
   background-color: #4CAF50;
   color: white;
-  border: 1px solid #207223;
+  border: 1px solid #4CAF50;
   border-radius: 4px;
   cursor: pointer;
   font-size: 1rem;
