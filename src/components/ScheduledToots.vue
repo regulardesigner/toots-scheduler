@@ -24,6 +24,14 @@ async function handleDelete(id: string) {
   }
 }
 
+function handleEdit(id: string) {
+  console.log('handleEdit', id);
+  const toot = store.toots.find(t => t.id === id);
+  if (toot) {
+    store.setEditingToot(toot);
+  }
+}
+
 onMounted(() => {
   store.fetchScheduledToots();
 });
@@ -64,6 +72,7 @@ onMounted(() => {
             :language="toot.params?.language"
             :is-loading="store.isLoading"
             :on-delete="handleDelete"
+            :on-edit="handleEdit"
           />
         </TransitionGroup>
       </div>

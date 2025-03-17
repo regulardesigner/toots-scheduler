@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { useAuthStore } from '../stores/auth';
-import { format, addMinutes, isBefore } from 'date-fns';
+import { format, addMinutes, isBefore, parseISO } from 'date-fns';
 import type { ScheduledToot } from '../types/mastodon';
 import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore } from '../stores/scheduledToots';
@@ -21,6 +21,42 @@ const HASHTAG = '#TootScheduler';
 
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
+
+// Watch for editing toot changes
+watch(() => store.editingToot, (newToot) => {
+  if (newToot) {
+    // Remove the hashtag from the content if it exists
+    content.value = (newToot.params?.text || '').replace(` ${HASHTAG}`, '');
+    
+    // Parse the scheduled date and time
+    if (newToot.scheduled_at) {
+      const date = parseISO(newToot.scheduled_at);
+      scheduledDate.value = format(date, 'yyyy-MM-dd');
+      scheduledTime.value = format(date, 'HH:mm');
+    }
+    
+    visibility.value = newToot.params?.visibility as ScheduledToot['visibility'] || 'public';
+    language.value = newToot.language || 'en';
+    isSensitive.value = newToot.params?.sensitive || false;
+    spoilerText.value = newToot.spoiler_text || '';
+  }
+}, { immediate: true });
+
+function resetForm() {
+  content.value = '';
+  scheduledDate.value = '';
+  scheduledTime.value = '';
+  error.value = '';
+  isSensitive.value = false;
+  spoilerText.value = '';
+  visibility.value = 'public';
+  language.value = 'en';
+}
+
+function handleCancelEdit() {
+  store.setEditingToot(null);
+  resetForm();
+}
 
 onMounted(async () => {
   console.log('Initial auth account:', auth.account);
@@ -88,27 +124,35 @@ async function handleSubmit() {
     // Create the toot with hashtag
     const tootContent = content.value.trim() + ' ' + HASHTAG;
 
-    // Create the toot
-    const toot: ScheduledToot = {
-      status: tootContent,
-      scheduled_at: scheduledDateTime.toISOString(),
-      visibility: visibility.value,
-      language: language.value,
-      sensitive: isSensitive.value,
-      spoiler_text: isSensitive.value ? spoilerText.value : undefined,
-    };
+    if (store.editingToot) {
+      // Create a new ScheduledToot object for updating
+      const updatedToot: ScheduledToot = {
+        status: tootContent,
+        scheduled_at: scheduledDateTime.toISOString(),
+        visibility: visibility.value,
+        language: language.value,
+        sensitive: isSensitive.value,
+        spoiler_text: isSensitive.value ? spoilerText.value : undefined,
+      };
+      
+      await store.updateToot(store.editingToot.id, updatedToot);
+    } else {
+      // Create the toot
+      const toot: ScheduledToot = {
+        status: tootContent,
+        scheduled_at: scheduledDateTime.toISOString(),
+        visibility: visibility.value,
+        language: language.value,
+        sensitive: isSensitive.value,
+        spoiler_text: isSensitive.value ? spoilerText.value : undefined,
+      };
 
-    await api.scheduleToot(toot);
+      await api.scheduleToot(toot);
+    }
     
-    // Reset form
-    content.value = '';
-    scheduledDate.value = '';
-    scheduledTime.value = '';
-    error.value = '';
-    isSensitive.value = false;
-    spoilerText.value = '';
-    
-    // Refresh scheduled toots count
+    // Reset form and refresh toots
+    resetForm();
+    store.setEditingToot(null);
     await store.fetchScheduledToots();
     
   } catch (err) {
@@ -220,12 +264,26 @@ async function handleSubmit() {
 
       <p v-if="error" class="error">{{ error }}</p>
 
-      <button
-        type="submit"
-        :disabled="isSubmitting || !content.trim() || !isValidScheduledTime"
-      >
-        {{ isSubmitting ? 'Scheduling...' : 'Schedule Toot' }}
-      </button>
+      <div class="form-actions">
+        <button
+          v-if="store.editingToot"
+          type="button"
+          class="cancel-button"
+          @click="handleCancelEdit"
+        >
+          Cancel Edit
+        </button>
+        <button
+          type="submit"
+          :class="{ 'edit-mode': store.editingToot }"
+          :disabled="isSubmitting || !content.trim() || !isValidScheduledTime"
+        >
+          {{ isSubmitting 
+            ? (store.editingToot ? 'Updating...' : 'Scheduling...') 
+            : (store.editingToot ? 'Update Toot' : 'Schedule Toot') 
+          }}
+        </button>
+      </div>
     </form>
     
     <ScheduledToots />
@@ -445,5 +503,40 @@ input[type="text"]:disabled {
   color: #ff4136;
   font-size: 0.75rem;
   margin-top: 0.25rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.cancel-button {
+  background-color: #95a5a6;
+  color: white;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background-color: #7f8c8d;
+}
+
+button.edit-mode {
+  background-color: #2b90d9;
+  color: white;
+}
+
+button.edit-mode:hover:not(:disabled) {
+  background-color: #2577b1;
+}
+
+@media (max-width: 768px) {
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .cancel-button,
+  button[type="submit"] {
+    width: 100%;
+  }
 }
 </style> 
