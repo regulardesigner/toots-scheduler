@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { useFeaturesStore } from '@/stores/features';
+import { useFeaturesStore } from '../stores/features';
 import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
 
 const featuresStore = useFeaturesStore();
 const { newFeatures } = storeToRefs(featuresStore);
+
+const isFirstVisit = computed(() => {
+  return !localStorage.getItem('masto-publish-later-features');
+});
 
 const emit = defineEmits<{
   (e: 'close'): void;
@@ -18,7 +23,7 @@ function handleClose() {
 <template>
   <div class="whats-new-modal">
     <div class="whats-new-content">
-      <h2>What's new since your last visit!</h2>
+      <h2>{{ isFirstVisit ? "What's new" : "What's new since your last visit!" }}</h2>
       <div v-if="newFeatures.length === 0" class="no-new-features">
         No new features to show.
       </div>
@@ -74,7 +79,7 @@ h2 {
 }
 
 .features-list {
-  margin: 0.5rem 0;
+  margin: 0.5rem 0 1.5rem;
 }
 
 .feature-group {
