@@ -26,8 +26,8 @@ function handleWhatsNewClose() {
 
 <template>
   <div class="app">
-    <header>
-      <h1>Toots Scheduler</h1>
+    <header class="header">
+      <h1 class="header-title">Toots Scheduler</h1>
       <nav v-if="auth.accessToken" class="is-highlighted">
         <button 
           v-if="newFeatures.length > 0"
@@ -73,12 +73,16 @@ body {
   flex-direction: column;
 }
 
-header {
+.header {
+  position: fixed;
+  width: 100%;
   padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #ddd;
+  background-color: #fff;
+  z-index: 10;
 }
 
 main {
@@ -98,6 +102,11 @@ footer {
 button {
   padding: 0.5rem 1rem;
   cursor: pointer;
+}
+
+.header-title {
+  font-size: 1.2rem;
+  font-weight: bold;
 }
 
 .whats-new-button {

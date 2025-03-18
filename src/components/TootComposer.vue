@@ -235,8 +235,7 @@ async function handleSubmit() {
 <style scoped>
 .toot-composer {
   max-width: 600px;
-  margin: 2rem auto;
-  padding: 1rem;
+  margin: 3.4rem auto 0;
 }
 
 .content-area {
