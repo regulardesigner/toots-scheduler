@@ -7,13 +7,18 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
-      version: '0.6.8',
+      version: '0.6.9',
       date: '2024-03-19',
       features: [
         {
           id: 'edit-scheduled-toots',
           title: '🔄 Edit scheduled toots',
           description: 'Made a typo? No problem! Now you can edit your scheduled toots!',
+        },
+        {
+          id: 'edit-mode-scroll-to-textarea',
+          title: '🚡 Edit mode scroll to textarea',
+          description: 'When you click on the Edit button, we "scroll" you straight to the textarea!',
         },
       ],
     },

@@ -28,6 +28,15 @@ function handleEdit(id: string) {
   const toot = store.toots.find(t => t.id === id);
   if (toot) {
     store.setEditingToot(toot);
+
+    
+    // Scroll to textarea after a short delay to ensure the content is rendered
+    setTimeout(() => {
+      document.querySelector('.content-area textarea')?.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 100);
   }
 }
 
