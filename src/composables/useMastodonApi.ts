@@ -100,16 +100,19 @@ export function useMastodonApi() {
       // Format the request payload according to Mastodon API specs
       const payload = {
         status: toot.status,
-        media_ids: toot.media_ids,
         scheduled_at: toot.scheduled_at,
-        visibility: toot.visibility,
-        sensitive: toot.sensitive,
-        spoiler_text: toot.spoiler_text,
-        language: toot.language,
+        media_ids: toot.media_ids || [],
+        visibility: toot.visibility || 'public',
+        sensitive: toot.sensitive || false,
+        spoiler_text: toot.spoiler_text || '',
+        language: toot.language || null,
+        // Add idempotency key to prevent duplicate posts
+        idempotency: Date.now().toString(),
       };
 
       console.log('Scheduling toot with payload:', payload);
 
+      // Use the statuses endpoint with scheduled_at parameter
       const response = await api.post(`${auth.instance}/api/v1/statuses`, payload);
       return response.data;
     } catch (error) {
@@ -147,9 +150,13 @@ export function useMastodonApi() {
     }
   }
 
-  async function deleteScheduledToot(id: string) {
-    if (!auth.instance) throw new Error('No instance URL set');
-    await api.delete(`${auth.instance}/api/v1/scheduled_statuses/${id}`);
+  async function deleteScheduledToot(id: string): Promise<void> {
+    try {
+      await api.delete(`${auth.instance}/api/v1/scheduled_statuses/${id}`);
+    } catch (err) {
+      console.error('Error deleting scheduled toot:', err);
+      throw new Error('Failed to delete scheduled toot');
+    }
   }
 
   return {

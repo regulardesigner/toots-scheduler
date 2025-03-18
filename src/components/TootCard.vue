@@ -9,6 +9,7 @@ interface Props {
   language?: string;
   isLoading?: boolean;
   onDelete: (id: string) => Promise<void>;
+  onEdit: (id: string) => void;
 }
 
 const props = defineProps<Props>();
@@ -52,13 +53,22 @@ function getLanguageName(code: string | undefined): string {
         <span class="meta-label">Scheduled for:</span>
         {{ formatDateTime(props.scheduledAt) }}
       </div>
-      <button 
-        class="delete-button" 
-        @click="props.onDelete(props.id)"
-        :disabled="props.isLoading"
-      >
-        {{ props.isLoading ? 'Deleting...' : 'Delete' }}
-      </button>
+      <div class="actions">
+        <button 
+          class="edit-button" 
+          @click="props.onEdit(props.id)"
+          :disabled="props.isLoading"
+        >
+          {{ props.isLoading ? 'Editing...' : 'Edit' }}
+        </button>
+        <button 
+          class="delete-button" 
+          @click="props.onDelete(props.id)"
+          :disabled="props.isLoading"
+        >
+          {{ props.isLoading ? 'Deleting...' : 'Delete' }}
+        </button>
+      </div>
     </div>
 
     <div class="toot-content">{{ props.text }}</div>
@@ -116,6 +126,31 @@ function getLanguageName(code: string | undefined): string {
   margin-top: 0.5rem;
 }
 
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.edit-button {
+  padding: 0.5rem 1rem;
+  background-color: #2b90d9;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.edit-button:hover:not(:disabled) {
+  background-color: #2577b1;
+}
+
+.edit-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .delete-button {
   padding: 0.5rem 1rem;
   background-color: #e74c3c;
@@ -142,6 +177,13 @@ function getLanguageName(code: string | undefined): string {
     align-items: stretch;
   }
   
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  
+  .edit-button,
   .delete-button {
     width: 100%;
   }
