@@ -157,7 +157,7 @@ async function handleSubmit() {
         </div>
       </div>
 
-      <div class="content-area">
+      <div class="content-area" id="schedule-button">
         <textarea
           v-model="content"
           :placeholder="'What\'s on your mind?'"

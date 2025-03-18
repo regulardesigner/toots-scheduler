@@ -2,8 +2,15 @@
 import { RouterView } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import { useSessionTimeout } from './composables/useSessionTimeout';
+import { useFeaturesStore } from './stores/features';
+import { storeToRefs } from 'pinia';
+import WhatsNew from './components/WhatsNew.vue';
+import { ref } from 'vue';
 
 const auth = useAuthStore();
+const featuresStore = useFeaturesStore();
+const { newFeatures } = storeToRefs(featuresStore);
+const showWhatsNew = ref(false);
 
 // Initialize session timeout
 useSessionTimeout();
@@ -11,13 +18,24 @@ useSessionTimeout();
 async function handleLogout(): Promise<void> {
   await auth.logout();
 }
+
+function handleWhatsNewClose() {
+  showWhatsNew.value = false;
+}
 </script>
 
 <template>
   <div class="app">
     <header>
       <h1>Toots Scheduler</h1>
-      <nav v-if="auth.accessToken">
+      <nav v-if="auth.accessToken" class="is-highlighted">
+        <button 
+          v-if="newFeatures.length > 0"
+          @click="showWhatsNew = true"
+          class="whats-new-button"
+      >
+          What's New
+        </button>
         <button @click="handleLogout">Logout</button>
       </nav>
     </header>
@@ -29,6 +47,11 @@ async function handleLogout(): Promise<void> {
     <footer>
       <p>&copy; {{ new Date().getFullYear() }} Toots Scheduler</p>
     </footer>
+
+    <WhatsNew
+      v-if="showWhatsNew"
+      @close="handleWhatsNewClose"
+    />
   </div>
 </template>
 
@@ -75,5 +98,20 @@ footer {
 button {
   padding: 0.5rem 1rem;
   cursor: pointer;
+}
+
+.whats-new-button {
+  background-color: #4CAF50;
+  color: white;
+  border: 1px solid #4CAF50;
+  margin-right: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.whats-new-button:hover {
+  background-color: #45a049;
 }
 </style>
