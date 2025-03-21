@@ -43,8 +43,8 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('mastodon_client_id');
     localStorage.removeItem('mastodon_client_secret');
 
-    // Redirect to login page
-    await router.push({ name: 'login' });
+    // Redirect to home page (landing page)
+    await router.push({ name: 'home' });
   }
 
   // Initialize from localStorage

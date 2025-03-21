@@ -1,7 +1,13 @@
+@import './assets/styles/fonts.css';
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Nunito Sans", sans-serif;
   line-height: 1.5;
   font-weight: 400;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);

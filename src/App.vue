@@ -27,7 +27,7 @@ function handleWhatsNewClose() {
 <template>
   <div class="app">
     <header class="header">
-      <h1 class="header-title">Toots Scheduler</h1>
+      <h1 class="header-title winky-sans-900">Toots Scheduler</h1>
       <nav v-if="auth.accessToken" class="is-highlighted">
         <button 
           v-if="newFeatures.length > 0"
@@ -56,15 +56,29 @@ function handleWhatsNewClose() {
 </template>
 
 <style>
+@import './assets/styles/fonts.css';
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-body {
-  font-family: -apple-system, system-ui, sans-serif;
+:root {
+  font-family: "Nunito Sans", sans-serif;
   line-height: 1.5;
+  font-weight: 400;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+
+  color-scheme: light dark;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app {
@@ -106,7 +120,6 @@ button {
 
 .header-title {
   font-size: 1.2rem;
-  font-weight: bold;
 }
 
 .whats-new-button {

@@ -1,0 +1,234 @@
+/* Nunito Sans */
+@font-face {
+  font-family: "Nunito Sans";
+  src: url('../fonts/Nunito_Sans/NunitoSans-VariableFont_YTLC,opsz,wdth,wght.ttf') format('truetype-variations');
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Nunito Sans";
+  src: url('../fonts/Nunito_Sans/NunitoSans-Italic-VariableFont_YTLC,opsz,wdth,wght.ttf') format('truetype-variations');
+  font-weight: 200 1000;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Winky Sans */
+@font-face {
+  font-family: "Winky Sans";
+  src: url('../fonts/Winky_Sans/WinkySans-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Winky Sans";
+  src: url('../fonts/Winky_Sans/WinkySans-Italic-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 300 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Nunito Sans utility classes */
+.nunito-sans {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+}
+
+.nunito-sans-regular {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.nunito-sans-medium {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.nunito-sans-bold {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.nunito-sans-italic {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.nunito-sans-200 {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 200;
+  font-style: normal;
+}
+
+.nunito-sans-300 {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.nunito-sans-400 {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.nunito-sans-500 {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.nunito-sans-600 {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.nunito-sans-700 {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.nunito-sans-800 {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.nunito-sans-900 {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 900;
+  font-style: normal;
+}
+
+.nunito-sans-1000 {
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings:
+    "wdth" 100,
+    "YTLC" 500;
+  font-weight: 1000;
+  font-style: normal;
+}
+
+/* Winky Sans utility classes */
+.winky-sans {
+  font-family: "Winky Sans", sans-serif;
+  font-optical-sizing: auto;
+}
+
+.winky-sans-300 {
+  font-family: "Winky Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.winky-sans-400 {
+  font-family: "Winky Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.winky-sans-500 {
+  font-family: "Winky Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.winky-sans-600 {
+  font-family: "Winky Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.winky-sans-700 {
+  font-family: "Winky Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.winky-sans-800 {
+  font-family: "Winky Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.winky-sans-900 {
+  font-family: "Winky Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 900;
+  font-style: normal;
+}
+
+.winky-sans-italic {
+  font-family: "Winky Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: italic;
+}

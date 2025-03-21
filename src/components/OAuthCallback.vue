@@ -32,8 +32,8 @@ onMounted(async () => {
     const accountData = await api.verifyCredentials();
     auth.setAccount(accountData);
 
-    // Redirect to home
-    router.push({ name: 'home' });
+    // Redirect to composer
+    router.push({ name: 'composer' });
   } catch (err) {
     console.error('OAuth callback error:', err);
     error.value = err instanceof Error ? err.message : 'Authentication failed. Please try again.';
