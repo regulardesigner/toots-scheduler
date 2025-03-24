@@ -28,7 +28,7 @@ function handleWhatsNewClose() {
   <div class="app">
     <header class="header">
       <h1 class="header-title winky-sans-900">Toots Scheduler</h1>
-      <nav v-if="auth.accessToken" class="is-highlighted">
+      <nav v-if="auth.accessToken" class="nav-buttons">
         <button 
           v-if="newFeatures.length > 0"
           @click="showWhatsNew = true"
@@ -36,13 +36,11 @@ function handleWhatsNewClose() {
       >
           What's New
         </button>
-        <button @click="handleLogout">Logout</button>
+        <button class="logout-button" @click="handleLogout">Logout</button>
       </nav>
     </header>
 
-    <main>
-      <RouterView />
-    </main>
+    <RouterView />
 
     <footer>
       <p>&copy; {{ new Date().getFullYear() }} Toots Scheduler</p>
@@ -99,6 +97,11 @@ function handleWhatsNewClose() {
   z-index: 10;
 }
 
+.nav-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
 main {
   flex: 1;
   padding: 2rem 1rem;
@@ -122,18 +125,23 @@ button {
   font-size: 1.2rem;
 }
 
-.whats-new-button {
-  background-color: #4CAF50;
-  color: white;
-  border: 1px solid #4CAF50;
-  margin-right: 0.5rem;
-  border-radius: 4px;
+.whats-new-button, .logout-button {
+  background-color: #333;
+  border: none;
+  color: #fff;
+  padding: 0.8rem 2rem;
+  border-radius: 3rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s ease;
 }
 
-.whats-new-button:hover {
-  background-color: #45a049;
+.whats-new-button:hover, .logout-button:hover {
+  font-weight: 700;
+  background-color: #444;
 }
+
 </style>

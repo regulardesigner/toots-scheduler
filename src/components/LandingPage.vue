@@ -15,13 +15,14 @@ function handleCloseLoginForm() {
 
 <template>
   <div class="landing-hero">
-    <h1 class="landing-title winky-sans-900">The #1 scheduling toot service of all time!</h1>
+    <h1 class="landing-title winky-sans-900">The first scheduling toot <br>service of all time!</h1>
 
     <button class="landing-button" @click="handleGetStarted">Get started</button>
     <p class="landing-subtitle">An instance account is required.</p>
   </div>
 
-  <div class="landing-how-it-works">
+  <main>
+  <div class="landing-how-it-works">  
     <h2 class="winky-sans-700">How to schedule a toot?</h2>
     <div class="landing-how-it-works-steps">
       <p class="step-one">Sign in to your instance account</p>
@@ -29,13 +30,17 @@ function handleCloseLoginForm() {
       <p class="step-three">Relax, your toot posts automatically</p>
     </div>
   </div>
-
+  
   <section class="frequently-asked-questions">
     <h2 class="winky-sans-700">Frequently Asked Questions</h2>
     <div>
       <details open>
         <summary class="winky-sans-700">Why use this service?</summary>
         <p>It's easy to use and it's good looking.</p>
+      </details>
+      <details>
+        <summary class="winky-sans-700">Is it free?</summary>
+        <p>Yes, it's completely free. No hidden fees. Virtual hugs appreciated!</p>
       </details>
       <details>
         <summary class="winky-sans-700">Is it totally secure?</summary>
@@ -46,12 +51,8 @@ function handleCloseLoginForm() {
         <p>It's easy. Just login with your instance account and start scheduling your toots today!</p>
       </details>
       <details>
-        <summary class="winky-sans-700">#1 scheduling toot service, really?</summary>
+        <summary class="winky-sans-700">First scheduling toot service, really?</summary>
         <p>Yep, sort of. I'm all into this fake it till you make it thing.</p>
-      </details>
-      <details>
-        <summary class="winky-sans-700">Is it free?</summary>
-        <p>Yes, it's completely free. No hidden fees. Virtual hugs appreciated!</p>
       </details>
     </div>
   </section>
@@ -63,6 +64,7 @@ function handleCloseLoginForm() {
       <LoginForm />
     </div>
   </div>
+</main>
 </template>
 
 <style>
@@ -72,9 +74,9 @@ function handleCloseLoginForm() {
   justify-content: center;
   align-items: center;
   min-height: 25vh;
-  background: radial-gradient(closest-side, antiquewhite 0%, white 100%);
+  background: radial-gradient(closest-side, antiquewhite 10%, white 100%);
   width: 100%;
-  padding: 8rem 0;
+  padding: 10rem 0 2rem;
 }
 
 .landing-title {
@@ -113,7 +115,7 @@ function handleCloseLoginForm() {
 }
 
 .landing-how-it-works {
-  margin: 3.4rem 0 7rem 0;
+  margin-bottom:7rem;
   display: flex;
   flex-direction: column;
   align-items: center;

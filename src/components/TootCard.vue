@@ -50,8 +50,9 @@ function getLanguageName(code: string | undefined): string {
   <div class="toot-card">
     <div class="toot-header">
       <div class="meta-row">
-        <span class="meta-label">Scheduled for:</span>
-        {{ formatDateTime(props.scheduledAt) }}
+        <span class="meta-label">Scheduled for:
+          {{ formatDateTime(props.scheduledAt) }}
+        </span>
       </div>
       <div class="actions">
         <button 
@@ -123,6 +124,7 @@ function getLanguageName(code: string | undefined): string {
   color: #666;
   font-size: 0.8rem;
   text-transform: capitalize;
+  font-weight: 700;
   margin-top: 0.5rem;
 }
 
@@ -133,7 +135,7 @@ function getLanguageName(code: string | undefined): string {
 
 .edit-button {
   padding: 0.5rem 1rem;
-  background-color: #2b90d9;
+  background-color: #333;
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -143,7 +145,7 @@ function getLanguageName(code: string | undefined): string {
 }
 
 .edit-button:hover:not(:disabled) {
-  background-color: #2577b1;
+  background-color: #666;
 }
 
 .edit-button:disabled {
@@ -153,7 +155,7 @@ function getLanguageName(code: string | undefined): string {
 
 .delete-button {
   padding: 0.5rem 1rem;
-  background-color: #e74c3c;
+  background-color: #333;
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -163,7 +165,7 @@ function getLanguageName(code: string | undefined): string {
 }
 
 .delete-button:hover:not(:disabled) {
-  background-color: #c0392b;
+  background-color: #666;
 }
 
 .delete-button:disabled {
