@@ -169,10 +169,10 @@ async function handleSubmit() {
     <form @submit.prevent="handleSubmit">
       <div class="user-info" v-if="auth.account">
         <div class="user-details">
-          <img :src="auth.account.avatar" :alt="auth.account.display_name" class="user-avatar" />
+          <img :src="auth.account?.avatar" :alt="auth.account?.display_name" class="user-avatar" />
           <div>
-            <div class="user-name">{{ auth.account.display_name }}</div>
-            <div class="user-handle">@{{ auth.account.acct }}</div>
+            <div class="user-name">{{ auth.account?.display_name }}</div>
+            <div class="user-handle">@{{ auth.account?.acct }}</div>
           </div>
         </div>
         <div class="scheduled-count">
@@ -188,7 +188,7 @@ async function handleSubmit() {
               v-model="isSensitive"
               id="sensitive-toggle"
             />
-            Content warning
+            Add content warning
           </label>
           <div class="warning-input-wrapper" v-show="isSensitive">
             <input
@@ -293,7 +293,9 @@ async function handleSubmit() {
 <style scoped>
 .toot-composer {
   max-width: 600px;
-  margin: 3.4rem auto 0;
+  width: 100%;
+  margin: 3.4rem auto 2rem;
+  padding: 0 0.5rem;
 }
 
 .content-area {
@@ -303,11 +305,14 @@ async function handleSubmit() {
 
 textarea {
   width: 100%;
+  min-height: 20rem;
   padding: 0.5rem;
+  font-size: 1.2rem;
   margin-bottom: 0;
+  font-weight: 600;
   resize: vertical;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid #999;
+  border-radius: 0.5rem;
   font-family: inherit;
 }
 
@@ -330,6 +335,7 @@ textarea {
 }
 
 .character-count.near-limit {
+  font-weight: 700;
   color: #ff4136;
 }
 
@@ -339,7 +345,7 @@ textarea {
   margin-bottom: 1.5rem;
   padding: 1rem;
   background-color: #f8f8f8;
-  border-radius: 4px;
+  border-radius: 0.5rem;
 }
 
 .form-group {
@@ -349,6 +355,7 @@ textarea {
 
 .form-group label {
   display: block;
+  font-weight: 700;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
   color: #666;
@@ -357,7 +364,7 @@ textarea {
 input, select {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid #ccc;
+  border: 1px solid #333;
   border-radius: 4px;
   font-size: 0.9rem;
   background-color: white;
@@ -369,14 +376,15 @@ button {
   background-color: #e0e0e0;
   color: #333;
   border: none;
-  border-radius: 4px;
+  border-radius: 3rem;
   font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 button:hover:not(:disabled) {
-  background-color: #d0d0d0;
+  background-color: #333;
+  color: white;
 }
 
 button:disabled {
@@ -406,8 +414,8 @@ button:disabled {
 .content-warning {
   margin-bottom: 1rem;
   padding: 1rem;
-  background-color: #f8f8f8;
-  border-radius: 4px;
+  background-color: antiquewhite;
+  border-radius: 0.5rem;
 }
 
 .content-warning .form-group {
@@ -419,10 +427,9 @@ button:disabled {
 .warning-label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   cursor: pointer;
-  color: #666;
-  font-size: 0.9rem;
+  color: #333;
+  font-size: 1rem;
   font-weight: 500;
   margin-bottom: 0 !important;
 }
@@ -450,18 +457,24 @@ input[type="text"]:disabled {
   cursor: not-allowed;
 }
 
+input#scheduled-date, input#scheduled-time, input#visibility, input#language {
+  height: 2.2rem;
+}
+
 .user-info {
+  margin-top: 3rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
   padding: 1rem;
-  background-color: #f8f8f8;
-  border-radius: 4px;
+  background-color: #333;
+  border-radius: 0.5rem;
 }
 
 .user-details {
   display: flex;
+  color: white;
   align-items: center;
   gap: 1rem;
 }
@@ -475,27 +488,26 @@ input[type="text"]:disabled {
 .user-avatar {
   width: 48px;
   height: 48px;
-  border-radius: 4px;
+  border-radius: 2.2rem;
   object-fit: cover;
 }
 
 .user-name {
-  font-weight: 500;
-  color: #333;
+  font-weight: 700;
+  color: white;
 }
 
 .user-handle {
   font-size: 0.9rem;
-  color: #666;
+  color: lightgray;
 }
 
 .scheduled-count {
   font-size: 0.9rem;
-  color: #666;
-  background-color: white;
+  color: #333;
+  background-color: rgb(236, 236, 236);
   padding: 0.5rem 1rem;
   border-radius: 4px;
-  border: 1px solid #ddd;
 }
 
 .time-warning {

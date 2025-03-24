@@ -23,14 +23,15 @@ function handleClose() {
 <template>
   <div class="whats-new-modal">
     <div class="whats-new-content">
-      <h2>{{ isFirstVisit ? "What's new" : "What's new since your last visit!" }}</h2>
+      <button class="close-button" @click="handleClose">&times;</button>
+      <h2 class="winky-sans-700">{{ isFirstVisit ? "What's new" : "What's new since last time!" }}</h2>
       <div v-if="newFeatures.length === 0" class="no-new-features">
         No new features to show.
       </div>
       <div v-else class="features-list">
         <div v-for="group in newFeatures" :key="group.version" class="feature-group">
           <div class="version-header">
-            <h3>Version {{ group.version }}</h3>
+            <h3 class="winky-sans-500">In version {{ group.version }}</h3>
             <span class="release-date">{{ group.date }}</span>
           </div>
           <div class="features">
@@ -41,7 +42,7 @@ function handleClose() {
           </div>
         </div>
       </div>
-      <button @click="handleClose" class="close-button">
+      <button @click="handleClose" class="close-whats-new-modal-button">
         Got it!
       </button>
     </div>
@@ -56,6 +57,7 @@ function handleClose() {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,18 +66,20 @@ function handleClose() {
 
 .whats-new-content {
   background-color: white;
-  padding: 0.8rem 1.2rem 1.2rem;
-  border-radius: 8px;
+  border-radius: 1rem;
   max-width: 500px;
+  padding: 2rem;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
   position: relative;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 h2 {
+  font-size: 2rem;
   margin-top: 0;
-  color: #2c3e50;
+  color: #333;
 }
 
 .features-list {
@@ -95,12 +99,12 @@ h2 {
   align-items: center;
   justify-content: space-between;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px dashed #eee;
 }
 
 .version-header h3 {
   margin: 0;
-  color: #2c3e50;
+  color: #333;
   font-size: 1rem;
 }
 
@@ -118,28 +122,34 @@ h2 {
 }
 
 .feature-item h4 {
-  color: #2c3e50;
-  font-size: 0.9rem;
+  color: #333;
+  font-size: 1rem;
 }
 
 .feature-item p {
   margin: 0;
   color: #666;
+  font-size: 0.9rem;
+}
+
+.close-whats-new-modal-button {
+  margin-top: 1rem;
+  background-color: #333;
+  width: 100%;
+  border: none;
+  color: #fff;
+  padding: 0.8rem 3.6rem;
+  border-radius: 3rem;
   font-size: 0.8rem;
-}
-
-.close-button {
-  background-color: #4CAF50;
-  color: white;
-  border: 1px solid #4CAF50;
-  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s ease;
 }
 
-.close-button:hover {
-  background-color: #45a049;
+.clos-whats-new-modal-button:hover {
+  background-color: #444;
 }
 
 .no-new-features {

@@ -53,10 +53,10 @@ async function handleLogin() {
 
 <template>
   <div class="login-form">
-    <h2>Connect to Mastodon</h2>
+    <h2 class="winky-sans-700">Instance Sign In</h2>
     <form @submit.prevent="handleLogin">
-      <div>
-        <label for="instance">Mastodon Instance URL</label>
+      <div class="form-group">
+        <label for="instance">Enter your instance URL</label>
         <input
           id="instance"
           v-model="instance"
@@ -68,7 +68,7 @@ async function handleLogin() {
         />
       </div>
       <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" :disabled="isLoading">
+      <button type="submit" :disabled="isLoading" class="submit-button">
         {{ isLoading ? 'Connecting...' : 'Connect' }}
       </button>
     </form>
@@ -78,23 +78,39 @@ async function handleLogin() {
 <style scoped>
 .login-form {
   max-width: 400px;
-  margin: 2rem auto;
-  padding: 1rem;
+  margin: 0 auto;
 }
 
-form {
-  margin-top: 1rem;
+h2 {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
 }
 
 label {
   display: block;
   margin-bottom: 0.5rem;
+  color: #666;
+  font-size: 0.9rem;
 }
 
 input {
   width: 100%;
-  padding: 0.5rem;
-  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: #555;
 }
 
 input:disabled {
@@ -102,18 +118,37 @@ input:disabled {
   cursor: not-allowed;
 }
 
-button {
-  width: 100%;
-  padding: 0.5rem;
+.error {
+  color: #e74c3c;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background-color: #fde8e7;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
 }
 
-button:disabled {
+.submit-button {
+  width: 100%;
+  margin-top: 1rem;
+  background-color: #333;
+  border: none;
+  color: #fff;
+  padding: 1rem 3.6rem;
+  border-radius: 3rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #444;
+}
+
+.submit-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
-}
-
-.error {
-  color: red;
-  margin-bottom: 1rem;
 }
 </style> 

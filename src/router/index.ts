@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import LoginForm from '../components/LoginForm.vue';
 import TootComposer from '../components/TootComposer.vue';
+import LandingPage from '../components/LandingPage.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,6 +10,11 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
+      component: LandingPage,
+    },
+    {
+      path: '/composer',
+      name: 'composer',
       component: TootComposer,
       meta: { requiresAuth: true },
     },
@@ -32,7 +38,7 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !auth.accessToken) {
     next({ name: 'login' });
   } else if (to.name === 'login' && auth.accessToken) {
-    next({ name: 'home' });
+    next({ name: 'composer' });
   } else {
     next();
   }
