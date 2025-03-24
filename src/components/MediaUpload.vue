@@ -140,7 +140,6 @@ function handleFocusPointClick(event: MouseEvent, index: number) {
         class="hidden"
       />
       <div class="upload-content">
-        <span class="upload-icon">📷</span>
         <p>Drag & drop images here or click to select</p>
         <p class="upload-hint">Up to 4 images, max 8MB each</p>
       </div>
@@ -240,22 +239,27 @@ function handleFocusPointClick(event: MouseEvent, index: number) {
 .upload-area.is-dragging {
   border-color: #2b90d9;
   background-color: #f0f7ff;
+  transform: scale(1.02);
 }
 
 .upload-area.is-uploading {
   border-color: #2b90d9;
   background-color: #f0f7ff;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { background-color: #f0f7ff; }
+  50% { background-color: #d7e9fc; }
+  100% { background-color: #f0f7ff; }
 }
 
 .upload-content {
+  pointer-events: none; /* Allows mouse events to pass through to parent elements */  
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-}
-
-.upload-icon {
-  font-size: 2rem;
 }
 
 .upload-hint {
