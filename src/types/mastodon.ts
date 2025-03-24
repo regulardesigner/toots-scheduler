@@ -25,6 +25,11 @@ export interface MastodonMediaAttachment {
   type: 'image' | 'video' | 'gifv' | 'audio';
   url: string;
   preview_url: string;
+  description?: string;
+  focus?: {
+    x: number;
+    y: number;
+  };
 }
 
 export interface MastodonAccount {
