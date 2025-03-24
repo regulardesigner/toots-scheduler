@@ -71,8 +71,6 @@ function handleWhatsNewClose() {
     "wdth" 100,
     "YTLC" 500;
 
-  color-scheme: light dark;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
