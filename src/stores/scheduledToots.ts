@@ -11,6 +11,22 @@ export const useScheduledTootsStore = defineStore('scheduledToots', {
   }),
   getters: {
     count: (state) => state.toots.length,
+    sortedToots: (state) => {
+      return [...state.toots].sort((a, b) => {
+        // Convert scheduled_at to timestamps, handling potential undefined values
+        const getTimestamp = (toot: MastodonStatus): number => {
+          if (!toot.scheduled_at) return 0;
+          const date = new Date(toot.scheduled_at);
+          return isNaN(date.getTime()) ? 0 : date.getTime();
+        };
+
+        const timestampA = getTimestamp(a);
+        const timestampB = getTimestamp(b);
+
+        // Sort by timestamp (includes both date and time)
+        return timestampA - timestampB;
+      });
+    },
   },
   actions: {
     setToots(toots: MastodonStatus[]) {

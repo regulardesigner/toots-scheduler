@@ -7,6 +7,27 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.7.12',
+      date: '2025-03-24',
+      features: [
+        {
+          id: 'toots-asc-ordering',
+          title: '🚸 Toots list ordering',  
+          description: 'Now the sheduled toots list is ordered by ascending scheduled date!',
+        },
+        {
+          id: 'routing-to-home',
+          title: '🚚 Better auth routing',  
+          description: 'Now the app will route you to the home page if you are not authenticated!',
+        },
+        {
+          id: 'layout-ui-fix',
+          title: '💄 Layout & UI fixes',  
+          description: 'Fixed some minor layouts and UI issues!',
+        },
+      ],
+    },
+    {
       version: '0.7.9',
       date: '2025-03-24',
       features: [

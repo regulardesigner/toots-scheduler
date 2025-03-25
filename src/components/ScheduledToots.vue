@@ -71,7 +71,7 @@ onMounted(() => {
           class="toots-list"
         >
           <TootCard
-            v-for="toot in store.toots"
+            v-for="toot in store.sortedToots"
             :key="toot.id"
             :id="toot.id"
             :scheduled-at="toot.scheduled_at || ''"
