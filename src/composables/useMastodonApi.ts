@@ -2,6 +2,17 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 import type { MastodonStatus, ScheduledToot } from '../types/mastodon';
 
+interface MastodonApi {
+  registerApplication: (instanceUrl: string) => Promise<any>;
+  getAccessToken: (code: string, clientId: string, clientSecret: string) => Promise<any>;
+  verifyCredentials: () => Promise<any>;
+  scheduleToot: (toot: ScheduledToot) => Promise<any>;
+  uploadMedia: (file: File) => Promise<any>;
+  getScheduledToots: () => Promise<ScheduledToot[]>;
+  deleteScheduledToot: (id: string) => Promise<void>;
+  get: <T>(endpoint: string) => Promise<T>;
+}
+
 export function useMastodonApi() {
   const auth = useAuthStore();
 
@@ -34,7 +45,7 @@ export function useMastodonApi() {
       const response = await axios.post(`${normalizedUrl}/api/v1/apps`, {
         client_name: 'Toots Scheduler',
         redirect_uris: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
-        scopes: 'read:accounts read:statuses write:media write:statuses',
+        scopes: 'read:accounts read:statuses write:media write:statuses read:follows',
         website: window.location.origin + import.meta.env.BASE_URL
       }, {
         headers: {
@@ -66,7 +77,7 @@ export function useMastodonApi() {
         client_id: clientId,
         client_secret: clientSecret,
         redirect_uri: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
-        scope: 'read:accounts read:statuses write:media write:statuses'
+        scope: 'read:accounts read:statuses write:media write:statuses read:follows'
       }, {
         headers: {
           'Content-Type': 'application/json',
@@ -159,6 +170,21 @@ export function useMastodonApi() {
     }
   }
 
+  async function get<T>(endpoint: string): Promise<T> {
+    const response = await fetch(`${auth.instance}${endpoint}`, {
+      headers: {
+        'Authorization': `Bearer ${auth.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
   return {
     registerApplication,
     getAccessToken,
@@ -167,5 +193,6 @@ export function useMastodonApi() {
     uploadMedia,
     getScheduledToots,
     deleteScheduledToot,
+    get,
   };
 } 

@@ -43,4 +43,15 @@ export interface ScheduledToot {
   sensitive?: boolean;
   spoiler_text?: string;
   language?: string;
+}
+
+export interface Tag {
+  name: string;
+  url: string;
+  history?: {
+    day: string;
+    uses: string;
+    accounts: string;
+  }[];
+  following?: boolean;
 } 

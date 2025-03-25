@@ -38,7 +38,7 @@ async function handleLogin() {
       client_id: appData.client_id,
       redirect_uri: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
       response_type: 'code',
-      scope: 'read:accounts read:statuses write:media write:statuses',
+      scope: 'read:accounts read:statuses write:media write:statuses read:follows',
     });
 
     window.location.href = `${normalizedUrl}/oauth/authorize?${params.toString()}`;

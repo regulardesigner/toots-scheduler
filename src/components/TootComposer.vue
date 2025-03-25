@@ -6,6 +6,7 @@ import { format, addMinutes, isBefore, parseISO } from 'date-fns';
 import type { ScheduledToot } from '../types/mastodon';
 import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore } from '../stores/scheduledToots';
+import FollowedTags from './FollowedTags.vue';
 
 const auth = useAuthStore();
 const content = ref('');
@@ -107,6 +108,12 @@ const languages = [
   { code: 'hi', name: 'हिन्दी' },
 ] as const;
 
+function handleTagSelect(tagName: string) {
+  // Add a space before the hashtag if the content doesn't end with one
+  const space = content.value.endsWith(' ') ? '' : ' ';
+  content.value += `${space}#${tagName}`;
+}
+
 async function handleSubmit() {
   try {
     error.value = '';
@@ -180,6 +187,8 @@ async function handleSubmit() {
         </div>
       </div>
 
+      
+
       <div class="content-warning">
         <div class="form-group">
           <label for="sensitive-toggle" class="warning-label">
@@ -210,7 +219,7 @@ async function handleSubmit() {
           rows="4"
         ></textarea>
         <div class="textarea-footer">
-          <span class="hashtag">{{ HASHTAG }}</span>
+          <FollowedTags @select-tag="handleTagSelect" />
           <span class="character-count" :class="{ 'near-limit': remainingCharacters < 50 }">
             {{ remainingCharacters }}
           </span>
