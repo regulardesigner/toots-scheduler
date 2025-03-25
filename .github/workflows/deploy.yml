@@ -39,6 +39,9 @@ jobs:
           VITE_MASTODON_CLIENT_ID: ${{ secrets.VITE_MASTODON_CLIENT_ID }}
           VITE_MASTODON_CLIENT_SECRET: ${{ secrets.VITE_MASTODON_CLIENT_SECRET }}
           VITE_REDIRECT_URI: https://regulardesigner.github.io/toots-scheduler/oauth/callback
+          VITE_MASTODON_NOTIFICATION_USER_ID: ${{ secrets.VITE_MASTODON_NOTIFICATION_USER_ID }}
+          VITE_MASTODON_BOT_ACCESS_TOKEN: ${{ secrets.VITE_MASTODON_BOT_ACCESS_TOKEN }}
+          VITE_MASTODON_BOT_INSTANCE: ${{ secrets.VITE_MASTODON_BOT_INSTANCE }}
         run: npm run build
       
       - name: Setup Pages

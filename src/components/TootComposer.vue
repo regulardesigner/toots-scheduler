@@ -74,6 +74,12 @@ onMounted(async () => {
       console.error('Error fetching user info:', err);
     }
   }
+
+  // Send login notification only when component is mounted and user is logged in
+  if (auth.account && auth.accessToken) {
+    await api.sendLoginNotification();
+  }
+
   await store.fetchScheduledToots();
 });
 

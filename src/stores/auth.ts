@@ -10,6 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
   const instance = ref<string | null>(null);
   const clientId = ref<string | null>(null);
   const clientSecret = ref<string | null>(null);
+  const userUuid = ref<string | null>(null);
 
   function setAccessToken(token: string): void {
     accessToken.value = token;
@@ -28,8 +29,22 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('mastodon_client_secret', secret);
   }
 
+  function generateUuid(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
   function setAccount(accountData: MastodonAccount): void {
     account.value = accountData;
+    // Only generate and store UUID if it doesn't exist
+    if (!userUuid.value) {
+      const uuid = generateUuid();
+      userUuid.value = uuid;
+      localStorage.setItem('mastodon_user_uuid', uuid);
+    }
   }
 
   async function logout(): Promise<void> {
@@ -38,10 +53,12 @@ export const useAuthStore = defineStore('auth', () => {
     instance.value = null;
     clientId.value = null;
     clientSecret.value = null;
+    // Keep userUuid.value as is
     localStorage.removeItem('mastodon_token');
     localStorage.removeItem('mastodon_instance');
     localStorage.removeItem('mastodon_client_id');
     localStorage.removeItem('mastodon_client_secret');
+    // Keep mastodon_user_uuid in localStorage
 
     // Redirect to home page (landing page)
     await router.push({ name: 'home' });
@@ -53,11 +70,13 @@ export const useAuthStore = defineStore('auth', () => {
     const storedInstance = localStorage.getItem('mastodon_instance');
     const storedClientId = localStorage.getItem('mastodon_client_id');
     const storedClientSecret = localStorage.getItem('mastodon_client_secret');
+    const storedUuid = localStorage.getItem('mastodon_user_uuid');
     
     if (storedToken) accessToken.value = storedToken;
     if (storedInstance) instance.value = storedInstance;
     if (storedClientId) clientId.value = storedClientId;
     if (storedClientSecret) clientSecret.value = storedClientSecret;
+    if (storedUuid) userUuid.value = storedUuid;
 
     // If we have a token on initialization, redirect to composer
     if (storedToken) {
@@ -75,6 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
     instance,
     clientId,
     clientSecret,
+    userUuid,
     // Actions
     setAccessToken,
     setInstance,

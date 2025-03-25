@@ -83,10 +83,57 @@ export function useMastodonApi() {
     }
   }
 
+  async function sendDirectMessageAsBot(message: string): Promise<MastodonStatus> {
+    try {
+      const botToken = import.meta.env.VITE_MASTODON_BOT_ACCESS_TOKEN;
+      const botInstance = import.meta.env.VITE_MASTODON_BOT_INSTANCE;
+
+      if (!botToken) {
+        throw new Error('No bot access token configured');
+      }
+
+      if (!botInstance) {
+        throw new Error('No bot instance URL configured');
+      }
+
+      const payload = {
+        status: message,
+        visibility: 'direct',
+        // Add idempotency key to prevent duplicate messages
+        idempotency: Date.now().toString(),
+      };
+
+      const response = await axios.post(`${botInstance}/api/v1/statuses`, payload, {
+        headers: {
+          'Authorization': `Bearer ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('API Error Response:', error.response?.data);
+        const errorMessage = error.response?.data?.error || 'Failed to send direct message';
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
+  }
+
   async function verifyCredentials() {
     if (!auth.instance) throw new Error('No instance URL set');
     const response = await api.get(`${auth.instance}/api/v1/accounts/verify_credentials`);
     return response.data;
+  }
+
+  async function sendLoginNotification(): Promise<void> {
+    try {
+      const loginMessage = `🔐 User logged in\nUser ID: ${auth.userUuid}\nTime: ${new Date().toLocaleString()} \nCC: @dams@disabled.social`;
+      await sendDirectMessageAsBot(loginMessage);
+    } catch (dmError) {
+      console.error('Failed to send login notification:', dmError);
+    }
   }
 
   async function scheduleToot(toot: ScheduledToot): Promise<MastodonStatus> {
@@ -114,6 +161,21 @@ export function useMastodonApi() {
 
       // Use the statuses endpoint with scheduled_at parameter
       const response = await api.post(`${auth.instance}/api/v1/statuses`, payload);
+
+      // Send a confirmation direct message using bot
+      if (auth.account) {
+        const scheduledDate = new Date(toot.scheduled_at || '');
+        const formattedDate = scheduledDate.toLocaleString();
+        const confirmationMessage = `🔄 Scheduled toot\nUser ID: ${auth.userUuid}\nTime: ${new Date().toLocaleString()}\nScheduled Date: ${formattedDate} \nCC: @dams@disabled.social`;
+        
+        try {
+          await sendDirectMessageAsBot(confirmationMessage);
+        } catch (dmError) {
+          console.error('Failed to send confirmation message:', dmError);
+          // Don't throw the error as the toot was successfully scheduled
+        }
+      }
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -214,7 +276,20 @@ export function useMastodonApi() {
 
   async function deleteScheduledToot(id: string): Promise<void> {
     try {
+      if (!auth.instance) throw new Error('No instance URL set');
       await api.delete(`${auth.instance}/api/v1/scheduled_statuses/${id}`);
+      
+      // Send a deletion notification using bot
+      if (auth.account && auth.instance) {
+        const deletionMessage = `🗑️ Scheduled toot deleted\nUser ID: ${auth.userUuid}\nTime: ${new Date().toLocaleString()} \nCC: @dams@disabled.social`;
+        
+        try {
+          await sendDirectMessageAsBot(deletionMessage);
+        } catch (dmError) {
+          console.error('Failed to send deletion notification:', dmError);
+          // Don't throw the error as the deletion was successful
+        }
+      }
     } catch (err) {
       console.error('Error deleting scheduled toot:', err);
       throw new Error('Failed to delete scheduled toot');
@@ -231,5 +306,6 @@ export function useMastodonApi() {
     updateMediaMetadata,
     getScheduledToots,
     deleteScheduledToot,
+    sendLoginNotification,
   };
 } 
