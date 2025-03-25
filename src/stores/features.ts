@@ -8,7 +8,7 @@ export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
       version: '0.7.12',
-      date: '2025-03-24',
+      date: '2025-03-25',
       features: [
         {
           id: 'toots-asc-ordering',
