@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
-import LoginForm from '../components/LoginForm.vue';
 import TootComposer from '../components/TootComposer.vue';
 import LandingPage from '../components/LandingPage.vue';
 
@@ -19,15 +18,14 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/login',
-      name: 'login',
-      component: LoginForm,
-    },
-    {
       path: '/oauth/callback',
       name: 'oauth-callback',
       component: () => import('../components/OAuthCallback.vue'),
     },
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: { name: 'home' }
+    }
   ],
 });
 
@@ -35,11 +33,15 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore();
   
+  // If trying to access composer without auth, redirect to home
   if (to.meta.requiresAuth && !auth.accessToken) {
-    next({ name: 'login' });
-  } else if (to.name === 'login' && auth.accessToken) {
+    next({ name: 'home' });
+  } 
+  // If authenticated and trying to access home, redirect to composer
+  else if (to.name === 'home' && auth.accessToken) {
     next({ name: 'composer' });
-  } else {
+  } 
+  else {
     next();
   }
 });

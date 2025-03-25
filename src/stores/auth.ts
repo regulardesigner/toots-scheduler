@@ -58,6 +58,11 @@ export const useAuthStore = defineStore('auth', () => {
     if (storedInstance) instance.value = storedInstance;
     if (storedClientId) clientId.value = storedClientId;
     if (storedClientSecret) clientSecret.value = storedClientSecret;
+
+    // If we have a token on initialization, redirect to composer
+    if (storedToken) {
+      router.push({ name: 'composer' });
+    }
   }
 
   // Initialize on store creation

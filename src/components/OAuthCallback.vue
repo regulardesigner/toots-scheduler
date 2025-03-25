@@ -38,7 +38,7 @@ onMounted(async () => {
     console.error('OAuth callback error:', err);
     error.value = err instanceof Error ? err.message : 'Authentication failed. Please try again.';
     setTimeout(() => {
-      router.push({ name: 'login' });
+      router.push({ name: 'home' });
     }, 3000);
   }
 });
