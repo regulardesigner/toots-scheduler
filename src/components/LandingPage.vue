@@ -15,7 +15,7 @@ function handleCloseLoginForm() {
 
 <template>
   <div class="landing-hero">
-    <h1 class="landing-title winky-sans-900">The first scheduling toot <br>service of all time!</h1>
+    <h1 class="landing-title winky-sans-900">The first toot scheduling <br>service of all time!</h1>
 
     <button class="landing-button" @click="handleGetStarted">Get started</button>
     <p class="landing-subtitle">An instance account is required.</p>
