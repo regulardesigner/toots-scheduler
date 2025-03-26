@@ -170,7 +170,8 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
 .burger-menu span {
   display: block;
   width: 25px;
-  height: 2px;
+  height: 3px;
+  border-radius: 5px;
   background-color: #333;
   transition: all 0.3s ease;
 }
@@ -221,9 +222,8 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   display: none;
 }
 
-
 .burger-menu.is-open span:nth-child(1) {
-  transform: translateY(8px) rotate(45deg);
+  transform: translateY(9px) rotate(45deg);
 }
 
 .burger-menu.is-open span:nth-child(2) {
@@ -231,7 +231,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
 }
 
 .burger-menu.is-open span:nth-child(3) {
-  transform: translateY(-8px) rotate(-45deg);
+  transform: translateY(-9px) rotate(-45deg);
 }
 
 .mobile-menu {
