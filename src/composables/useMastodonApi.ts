@@ -19,6 +19,7 @@ export function useMastodonApi() {
     return config;
   });
 
+  // Normalize the URL to get the instance URL
   function normalizeUrl(url: string): string {
     try {
       const parsedUrl = new URL(url);
@@ -28,14 +29,20 @@ export function useMastodonApi() {
     }
   }
 
+  const APP_NAME = 'Toot Scheduler';
+  const REDIRECT_URI = window.location.origin + import.meta.env.BASE_URL + 'oauth/callback';
+  const SCOPES = 'read:accounts read:statuses write:media write:statuses';
+  const WEBSITE = window.location.origin + import.meta.env.BASE_URL;
+
+  // Register an application with the Mastodon instance
   async function registerApplication(instanceUrl: string) {
     try {
       const normalizedUrl = normalizeUrl(instanceUrl);
       const response = await axios.post(`${normalizedUrl}/api/v1/apps`, {
-        client_name: 'Toot Scheduler',
-        redirect_uris: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
-        scopes: 'read:accounts read:statuses write:media write:statuses',
-        website: window.location.origin + import.meta.env.BASE_URL
+        client_name: APP_NAME,
+        redirect_uris: REDIRECT_URI,
+        scopes: SCOPES,
+        website: WEBSITE
       }, {
         headers: {
           'Content-Type': 'application/json',
@@ -65,8 +72,8 @@ export function useMastodonApi() {
         code,
         client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
-        scope: 'read:accounts read:statuses write:media write:statuses'
+        redirect_uri: REDIRECT_URI,
+        scope: SCOPES
       }, {
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +105,8 @@ export function useMastodonApi() {
 
       const payload = {
         status: message,
-        visibility: 'direct',
+        // 'direct': Only for bot and mentioned user
+        visibility: 'direct', 
         // Add idempotency key to prevent duplicate messages
         idempotency: Date.now().toString(),
       };
@@ -121,12 +129,6 @@ export function useMastodonApi() {
     }
   }
 
-  async function verifyCredentials() {
-    if (!auth.instance) throw new Error('No instance URL set');
-    const response = await api.get(`${auth.instance}/api/v1/accounts/verify_credentials`);
-    return response.data;
-  }
-
   async function sendLoginNotification(): Promise<void> {
     try {
       const loginMessage = `🔐 User logged in\nUser ID: ${auth.userUuid}\nTime: ${new Date().toLocaleString()} \nCC: @dams@disabled.social`;
@@ -134,6 +136,12 @@ export function useMastodonApi() {
     } catch (dmError) {
       console.error('Failed to send login notification:', dmError);
     }
+  }
+
+  async function verifyCredentials() {
+    if (!auth.instance) throw new Error('No instance URL set');
+    const response = await api.get(`${auth.instance}/api/v1/accounts/verify_credentials`);
+    return response.data;
   }
 
   async function scheduleToot(toot: ScheduledToot): Promise<MastodonStatus> {
