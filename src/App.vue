@@ -244,7 +244,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   top: 60px;
   right: -100%;
   width: 100%;
-  height: calc(100vh - 60px);
+  height: calc(100dvh - 60px);
   background-color: #f5f5f5;
   padding: 1rem;
   transition: right 0.3s ease;
