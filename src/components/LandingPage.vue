@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import LoginForm from './LoginForm.vue';
+import LoginForm from './Modals/LoginForm.vue';
+import ModalView from './Modals/ModalView.vue';
 
 const showLoginForm = ref(false);
 
@@ -57,13 +58,9 @@ function handleCloseLoginForm() {
     </div>
   </section>
 
-  <div v-if="showLoginForm" class="login-modal">
-    <div class="login-modal-overlay" @click="handleCloseLoginForm"></div>
-    <div class="login-modal-content">
-      <button class="close-button" @click="handleCloseLoginForm">&times;</button>
-      <LoginForm />
-    </div>
-  </div>
+  <ModalView :is-open="showLoginForm" @close-modal="handleCloseLoginForm">
+    <LoginForm @close-modal="handleCloseLoginForm" />
+  </ModalView>
 </main>
 </template>
 
@@ -192,66 +189,6 @@ function handleCloseLoginForm() {
   margin-bottom: 0.5rem;
 }
 
-/* Login Modal Styles */
-.login-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.login-modal-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.login-modal-content {
-  position: relative;
-  background-color: white;
-  padding: 2rem;
-  border-radius: 1rem;
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.close-button {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #666;
-  padding: 0.5rem;
-  line-height: 1;
-  border-radius: 50%;
-  width: 2.5rem;
-  height: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease;
-}
-
-.close-button:hover {
-  background-color: #f0f0f0;
-  color: #333;
-}
-
 @media (max-width: 768px) {
   .landing-title {
     font-size: 2.5rem;
@@ -259,11 +196,6 @@ function handleCloseLoginForm() {
   
   .landing-how-it-works h2 {
     font-size: 2rem;
-  }
-  
-  .login-modal-content {
-    width: 95%;
-    padding: 1.5rem;
   }
 }
 </style>

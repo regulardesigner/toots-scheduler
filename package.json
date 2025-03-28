@@ -1,7 +1,7 @@
 {
   "name": "toots-scheduler",
   "private": true,
-  "version": "0.7.12",
+  "version": "0.8.12",
   "type": "module",
   "scripts": {
     "dev": "vite",

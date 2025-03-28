@@ -125,6 +125,34 @@ export function useMastodonApi() {
     }
   }
 
+  async function sendDirectMessageAsUser(message: string): Promise<MastodonStatus> {
+    try {
+      const response = await api.post(`${auth.instance}/api/v1/statuses`, {
+        status: message,
+        // 'direct': Only Mentioned Users
+        visibility: 'direct',
+      });
+      console.log('Direct message sent:', response.data);
+
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('API Error Response:', error.response?.data);
+        throw new Error(error.response?.data?.error || 'Failed to send direct message');
+      }
+      throw error;
+    }
+  }
+
+  async function sendDirectThanksNotification(): Promise<void> {
+    try {
+      const thanksMessage = `🤗 ${auth.account?.display_name} is sending you a thank you! \nToday at ${new Date().toLocaleString()} \nCC: @dams@disabled.social`;
+      await sendDirectMessageAsUser(thanksMessage);
+    } catch (error) {
+      console.error('Failed to send thanks notification:', error);
+    }
+  }
+
   async function uploadMedia(file: File) {
     if (!auth.instance) throw new Error('No instance URL set');
     const formData = new FormData();
@@ -164,6 +192,7 @@ export function useMastodonApi() {
     getAccessToken,
     verifyCredentials,
     scheduleToot,
+    sendDirectThanksNotification,
     uploadMedia,
     getScheduledToots,
     deleteScheduledToot,

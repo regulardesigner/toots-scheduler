@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useAuthStore } from '../stores/auth';
-import { useMastodonApi } from '../composables/useMastodonApi';
+import { useAuthStore } from '../../stores/auth';
+import { useMastodonApi } from '../../composables/useMastodonApi';
+
+const emit = defineEmits<{
+  (e: 'close-child-modal'): void;
+}>();
 
 const instance = ref('');
 const auth = useAuthStore();
@@ -46,6 +50,7 @@ async function handleLogin() {
     console.error('Login error:', err);
     error.value = err instanceof Error ? err.message : 'Failed to connect to Mastodon instance. Please check the URL and try again.';
   } finally {
+    emit('close-child-modal');
     isLoading.value = false;
   }
 }
