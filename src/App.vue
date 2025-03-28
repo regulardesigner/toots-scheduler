@@ -4,10 +4,13 @@ import { useAuthStore } from './stores/auth';
 import { useSessionTimeout } from './composables/useSessionTimeout';
 import { useFeaturesStore } from './stores/features';
 import { storeToRefs } from 'pinia';
-import WhatsNew from './components/WhatsNew.vue';
 import { ref, computed } from 'vue';
 import { useMastodonApi } from './composables/useMastodonApi';
 import { useToast } from 'vue-toastification';
+
+import WhatsNew from './components/Modals/WhatsNew.vue';
+import ModalView from './components/Modals/ModalView.vue';
+import Send from './components/icons/Send.vue';
 
 const auth = useAuthStore();
 const featuresStore = useFeaturesStore();
@@ -29,12 +32,12 @@ function handleWhatsNewClose() {
   showWhatsNew.value = false;
 }
 
-async function sendHugNotification() {
+async function sendThanksNotification() {
   try {
-    await mastodonApi.sendDirectHugNotification();
-    toast.success('Virual Hug sent successfully! 🤗');
+    await mastodonApi.sendDirectThanksNotification();
+    toast.success('Thanks sent successfully! 🤗');
   } catch (error) {
-    toast.error('Failed to send hug. Please try again later.');
+    toast.error('Failed to send thanks. Please try again later.');
   }
   isMenuOpen.value = false;
 }
@@ -60,7 +63,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
         >
           What's New
         </button>
-        <button class="hug-button" @click="sendHugNotification">Send Hug</button>
+        <button class="thanks-button" @click="sendThanksNotification"><Send class="thanks-button-icon" />Say Thanks</button>
         <button class="logout-button" @click="handleLogout">Logout</button>
       </nav>
 
@@ -82,7 +85,10 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
             >
               What's New
             </button>
-            <button class="hug-button" @click="sendHugNotification">Send A Virtual Hug</button>
+            <button class="thanks-button" @click="sendThanksNotification">
+              <Send class="thanks-button-icon" />
+              Say Thanks
+            </button>
           </span>
           <button class="logout-button" @click="handleLogout">Logout</button>
         </div>
@@ -95,10 +101,9 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
       <p>&copy; {{ new Date().getFullYear() }} Toots Scheduler</p>
     </footer>
 
-    <WhatsNew
-      v-if="showWhatsNew"
-      @close="handleWhatsNewClose"
-    />
+    <ModalView :is-open="showWhatsNew" @close-modal="handleWhatsNewClose">
+      <WhatsNew @close-child-modal="handleWhatsNewClose" />
+    </ModalView>
   </div>
 </template>
 
@@ -292,17 +297,26 @@ footer {
 button {
   padding: 0.5rem 1rem;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .header-title {
   font-size: 1.2rem;
 }
 
-.whats-new-button, .logout-button, .hug-button {
+.thanks-button-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.whats-new-button, .logout-button, .thanks-button {
   background-color: #333;
   border: none;
   color: #fff;
-  padding: 0.8rem 2rem;
+  padding: 0.6rem 2rem;
   border-radius: 3rem;
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -312,6 +326,10 @@ button {
   transition: background-color 0.2s ease;
   width: 100%;
   text-wrap: nowrap;
+}
+
+.thanks-button {
+  padding-left: 1.2rem;
 }
 
 .whats-new-button {
@@ -325,7 +343,7 @@ button {
   color: #333;
 }
 
-.logout-button:hover, .hug-button:hover {
+.logout-button:hover, .thanks-button:hover {
   font-weight: 700;
   background-color: #444;
 }

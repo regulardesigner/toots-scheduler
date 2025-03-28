@@ -7,6 +7,17 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.8.12',
+      date: '2025-03-28',
+      features: [
+        {
+          id: 'direct-thanks-you',
+          title: '🤗 Direct thanks you message',
+          description: 'Now you can directly send me a direct message to say thanks on mastodon!',
+        },
+      ],
+    },
+    {
       version: '0.7.12',
       date: '2025-03-25',
       features: [

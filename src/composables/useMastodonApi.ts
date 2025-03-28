@@ -144,12 +144,12 @@ export function useMastodonApi() {
     }
   }
 
-  async function sendDirectHugNotification(): Promise<void> {
+  async function sendDirectThanksNotification(): Promise<void> {
     try {
-      const hugMessage = `🤗 ${auth.account?.display_name} is sedding a Virtual Hug to thank you! \nToday at ${new Date().toLocaleString()} \nCC: @dams@disabled.social`;
-      await sendDirectMessageAsUser(hugMessage);
+      const thanksMessage = `🤗 ${auth.account?.display_name} is sending you a thank you! \nToday at ${new Date().toLocaleString()} \nCC: @dams@disabled.social`;
+      await sendDirectMessageAsUser(thanksMessage);
     } catch (error) {
-      console.error('Failed to send hug notification:', error);
+      console.error('Failed to send thanks notification:', error);
     }
   }
 
@@ -192,7 +192,7 @@ export function useMastodonApi() {
     getAccessToken,
     verifyCredentials,
     scheduleToot,
-    sendDirectHugNotification,
+    sendDirectThanksNotification,
     uploadMedia,
     getScheduledToots,
     deleteScheduledToot,
