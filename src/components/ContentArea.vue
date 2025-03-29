@@ -55,17 +55,16 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 0.5rem;
   padding: 0 0.5rem;
 }
 
 .hashtag {
-  color: #666;
-  font-size: 0.9rem;
+  color: #2b90d9;
+  font-size: .875rem;
 }
 
 .character-count {
-  font-size: 0.9rem;
+  font-size: .875rem;
   color: #666;
 }
 

@@ -157,23 +157,6 @@ async function handleSubmit() {
         v-model="isSensitive"
         v-model:spoilerText="spoilerText"
       />
-
-      <div class="content-area" id="schedule-button">
-        <textarea
-          v-model="content"
-          :placeholder="'What\'s on your mind?'"
-          required
-          :maxlength="500 - HASHTAG.length - 1"
-          rows="4"
-        >
-        </textarea>
-        <div class="textarea-footer">
-          <span class="hashtag">{{ HASHTAG }}</span>
-          <span class="character-count" :class="{ 'near-limit': remainingCharacters < 50 }">
-            {{ remainingCharacters }}
-          </span>
-        </div>
-      </div>
       
       <MediaUpload
         v-model="mediaAttachments"
@@ -203,8 +186,8 @@ async function handleSubmit() {
 <style scoped>
 .toot-composer {
   max-width: 600px;
-  margin: 0 auto;
-  padding: 1rem;
+  margin: 3.4rem auto 2rem;;
+  padding: 0 0.5rem;
 }
 
 .user-info {

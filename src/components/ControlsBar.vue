@@ -93,32 +93,33 @@ const languages = [
         </select>
       </div>
     </div>
-
-    <div class="form-actions">
-      <button
-        v-if="isEditing"
-        type="button"
-        class="cancel-button"
-        @click="emit('cancel')"
-      >
-        Cancel
-      </button>
-      <button
-        type="submit"
-        :class="{ 'edit-mode': isEditing }"
-      >
-        {{ isEditing ? 'Update' : 'Schedule' }}
-      </button>
-    </div>
+  </div>
+  <div class="form-actions">
+    <button
+      v-if="isEditing"
+      type="button"
+      class="cancel-button"
+      @click="emit('cancel')"
+    >
+      Cancel
+    </button>
+    <button
+      type="submit"
+      :class="{ 'edit-mode': isEditing }"
+    >
+      {{ isEditing ? 'Update' : 'Schedule' }}
+    </button>
   </div>
 </template>
 
 <style scoped>
 .controls-bar {
   display: flex;
-  flex-direction: column;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f8f8f8;
+  border-radius: .5rem;
 }
 
 .form-group {

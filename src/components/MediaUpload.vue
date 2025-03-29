@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import type { MastodonMediaAttachment } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
+import ModalView from './Modals/ModalView.vue';
 
 const props = defineProps<{
   modelValue: MastodonMediaAttachment[];
@@ -17,7 +18,6 @@ const uploadError = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
 const editingMediaIndex = ref<number | null>(null);
 const mediaDescription = ref('');
-const mediaFocus = ref({ x: 0, y: 0 });
 const isDragging = ref(false);
 const uploadProgress = ref<{ [key: string]: number }>({});
 
@@ -85,7 +85,6 @@ function startEditingMedia(index: number) {
   editingMediaIndex.value = index;
   const media = props.modelValue[index];
   mediaDescription.value = media.description || '';
-  mediaFocus.value = media.focus || { x: 0, y: 0 };
 }
 
 async function saveMediaMetadata() {
@@ -96,7 +95,6 @@ async function saveMediaMetadata() {
     const updatedMedia = await api.updateMediaMetadata(
       media.id,
       mediaDescription.value,
-      mediaFocus.value
     );
     
     const newMedia = [...props.modelValue];
@@ -107,16 +105,6 @@ async function saveMediaMetadata() {
     console.error('Error updating media metadata:', err);
     uploadError.value = 'Failed to update image details';
   }
-}
-
-function handleFocusPointClick(event: MouseEvent, index: number) {
-  if (editingMediaIndex.value !== index) return;
-  
-  const rect = (event.target as HTMLElement).getBoundingClientRect();
-  const x = ((event.clientX - rect.left) / rect.width) * 100;
-  const y = ((event.clientY - rect.top) / rect.height) * 100;
-  
-  mediaFocus.value = { x, y };
 }
 </script>
 
@@ -165,55 +153,58 @@ function handleFocusPointClick(event: MouseEvent, index: number) {
         class="preview-item"
         :class="{ 'is-editing': editingMediaIndex === index }"
       >
-        <div class="preview-image-wrapper" @click="handleFocusPointClick($event, index)">
+        <div class="preview-image-wrapper">
           <img 
             :src="media.preview_url" 
-            :alt="media.description || 'Uploaded image'"
-            :style="{
-              objectPosition: `${media.focus?.x || 0}% ${media.focus?.y || 0}%`
-            }"
+            :alt="media.description || ''"
           />
-          <div v-if="editingMediaIndex === index" class="focus-point" :style="{
-            left: `${mediaFocus.x}%`,
-            top: `${mediaFocus.y}%`
-          }"></div>
-        </div>
-        
-        <div class="preview-controls">
-          <button 
-            type="button" 
-            class="edit-button"
-            @click="startEditingMedia(index)"
-          >
-            {{ editingMediaIndex === index ? 'Save' : 'Edit' }}
-          </button>
-          <button 
-            type="button" 
-            class="remove-button"
-            @click="removeMedia(index)"
-          >
-            Remove
-          </button>
+          <div class="preview-controls">
+            <button 
+              type="button" 
+              class="edit-alt-button"
+              @click="startEditingMedia(index)"
+            >
+              {{ editingMediaIndex === index ? 'Alt' : 'Alt' }}
+            </button>
+            
+            <button 
+              type="button" 
+              class="remove-button"
+              @click="removeMedia(index)"
+              aria-label="Remove Image"
+            >
+              &times;
+            </button>
+          </div>
         </div>
 
-        <div v-if="editingMediaIndex === index" class="media-edit-form">
-          <div class="form-group">
-            <label>Alt text</label>
-            <input
-              type="text"
-              v-model="mediaDescription"
-              placeholder="Describe this image"
-              @keyup.enter="saveMediaMetadata"
+        <ModalView :is-open="editingMediaIndex === index" @close-modal="editingMediaIndex = null">
+          <label class="winky-sans-700 media-edit-label" for="media-edit-input">Add a description</label>
+          <div class="media-edit-form">
+            <img 
+              class="media-edit-image"
+              :src="media.preview_url" 
+              :alt="media.description || ''"
             />
+            <div class="form-group">
+              <input
+                id="media-edit-input"
+                class="media-edit-input"
+                type="text"
+                v-model="mediaDescription"
+                placeholder="Describe the image if necessary"
+                @keyup.enter="saveMediaMetadata"
+              />
+            </div>
+            <button 
+              type="button" 
+              class="save-button"
+              @click="saveMediaMetadata"
+            >
+              Save Alt Text
+            </button>
           </div>
-          <button 
-            type="button" 
-            class="save-button"
-            @click="saveMediaMetadata"
-          >
-            Save Details
-          </button>
-        </div>
+        </ModalView>
       </div>
     </div>
 
@@ -316,7 +307,7 @@ function handleFocusPointClick(event: MouseEvent, index: number) {
 
 .media-preview {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, calc(25% - (3rem / 4)));
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -324,6 +315,8 @@ function handleFocusPointClick(event: MouseEvent, index: number) {
 .preview-item {
   position: relative;
   background: white;
+  background-size: cover;
+  background-position: center;
   border-radius: 0.5rem;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -331,8 +324,10 @@ function handleFocusPointClick(event: MouseEvent, index: number) {
 
 .preview-image-wrapper {
   position: relative;
-  aspect-ratio: 1;
-  cursor: crosshair;
+  aspect-ratio: 5 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .preview-image-wrapper img {
@@ -341,53 +336,71 @@ function handleFocusPointClick(event: MouseEvent, index: number) {
   object-fit: cover;
 }
 
-.focus-point {
+.edit-alt-button,
+.remove-button {
   position: absolute;
-  width: 12px;
-  height: 12px;
-  background: #2b90d9;
-  border: 2px solid white;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-.preview-controls {
+  border: none;
+  padding: 0;
   display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background: rgba(0,0,0,0.05);
+  align-items: center;
+  justify-content: center;
 }
 
-.edit-button,
-.remove-button {
-  flex: 1;
-  padding: 0.25rem;
-  font-size: 0.8rem;
-  border-radius: 0.25rem;
-}
-
-.edit-button {
-  background-color: #2b90d9;
+.edit-alt-button {
+  bottom: 0.4rem;
+  left: 0.4rem;
+  background-color: #cbcbcb;
   color: white;
+  border-radius: 0.3rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.1rem 0.3rem;
 }
 
 .remove-button {
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 1.2rem;
+  height: 1.2rem;
   background-color: #ff4136;
   color: white;
+  border-radius: 1.2rem;
 }
 
-.media-edit-form {
+.media-edit-label {
+  font-size: 2rem;
+}
+
+.media-edit-image {
+  border-radius: 0.3rem;
+  border: 1px solid #ccc;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-edit-input {
+  width: 100%;
   padding: 0.5rem;
-  background: white;
-  border-top: 1px solid #eee;
+  border: 1px solid #ccc;
+  border-radius: 0.3rem;
+  font-size: 1rem;
 }
 
 .save-button {
+  margin-top: 1rem;
+  background-color: #333;
   width: 100%;
-  margin-top: 0.5rem;
-  background-color: #2b90d9;
-  color: white;
+  border: none;
+  color: #fff;
+  padding: 0.8rem 3.6rem;
+  border-radius: 3rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  cursor: pointer;
 }
 
 .hidden {
