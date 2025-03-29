@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { format } from 'date-fns';
+import { ref } from 'vue';
 
 interface Props {
   id: string;
@@ -8,6 +9,8 @@ interface Props {
   visibility?: string;
   language?: string;
   isLoading?: boolean;
+  sensitive?: boolean;
+  spoiler_text?: string;
   onDelete: (id: string) => Promise<void>;
   onEdit: (id: string) => void;
 }
@@ -44,6 +47,12 @@ function getLanguageName(code: string | undefined): string {
   if (!code) return 'Unknown';
   return languages[code as keyof typeof languages] || code;
 }
+
+const showSensitiveContent = ref(!props.sensitive);
+
+const handleShowSensitiveContent = () => {
+  showSensitiveContent.value = !showSensitiveContent.value;
+};
 </script>
 
 <template>
@@ -71,8 +80,12 @@ function getLanguageName(code: string | undefined): string {
         </button>
       </div>
     </div>
+    <div v-if="props.sensitive" class="sensitive-warning">
+      <input id="sensitive" name="sensitive" type="checkbox" @click="handleShowSensitiveContent" v-model="showSensitiveContent" />
 
-    <div class="toot-content">{{ props.text }}</div>
+      <label for="sensitive">{{ props.spoiler_text }}</label>
+    </div>
+    <div class="toot-content" :class="{ blurred: !showSensitiveContent }">{{ props.text }}</div>
 
     <div class="toot-footer">
       {{ getCapitalizedVisibility(props.visibility) }} toot in {{ getLanguageName(props.language) }}
@@ -98,7 +111,8 @@ function getLanguageName(code: string | undefined): string {
 
 .meta-row {
   display: flex;
-  align-items: center;
+  align-items: start;
+  flex-direction: column;
   gap: 0.5rem;
   color: #666;
   font-size: 0.9rem;
@@ -118,7 +132,53 @@ function getLanguageName(code: string | undefined): string {
   background-color: white;
   border-radius: 0.5rem;
   border: none;
+  white-space: pre-line; /* Allow line breaks in the toot content */
 }
+
+.toot-content.blurred {
+  filter: blur(4px);
+}
+
+.sensitive-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  background-color: antiquewhite;
+  border-radius: 0.5rem;
+  border: 1px solid #999;
+  background-image: repeating-linear-gradient(-45deg, transparent 0, transparent 1rem, #fff 1rem, #fff 2rem);
+}
+
+.sensitive-warning label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  display: inline-block;
+  width: 100%;
+  cursor: pointer;
+}
+
+/* checkbox should be a eye closed when false and a eye open when true */
+.sensitive-warning input[type="checkbox"] {
+  cursor: pointer;
+  appearance: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  border: none;
+  background-size: cover;
+}
+
+.sensitive-warning input[type="checkbox"]:checked {
+  background-image: url('@/assets/eye-open.svg');
+}
+
+.sensitive-warning input[type="checkbox"]:not(:checked) {
+  background-image: url('@/assets/eye-closed.svg');
+}
+
+
 
 .toot-footer {
   color: #666;

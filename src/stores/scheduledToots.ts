@@ -41,6 +41,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', {
     setEditingToot(toot: MastodonStatus | null) {
       this.editingToot = toot;
     },
+    
     async fetchScheduledToots() {
       try {
         this.setLoading(true);
@@ -55,6 +56,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', {
         this.setLoading(false);
       }
     },
+
     async updateToot(id: string, updatedToot: ScheduledToot) {
       try {
         this.setLoading(true);

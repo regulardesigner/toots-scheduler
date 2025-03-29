@@ -7,6 +7,17 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.9.13',
+      date: '2025-03-29',
+      features: [
+        {
+          id: 'show-sensitive-content',
+          title: '👁️ Show/Hide sensitive content in Scheduled Toots',
+          description: 'Now you can see if a scheduled toot has sensitive content!',
+        },
+      ],
+    },
+    {
       version: '0.8.13',
       date: '2025-03-28',
       features: [
