@@ -53,6 +53,7 @@ const showSensitiveContent = ref(!props.sensitive);
 const handleShowSensitiveContent = () => {
   showSensitiveContent.value = !showSensitiveContent.value;
 };
+
 </script>
 
 <template>
@@ -85,7 +86,7 @@ const handleShowSensitiveContent = () => {
 
       <label for="sensitive">{{ props.spoiler_text }}</label>
     </div>
-    <div class="toot-content" :class="{ blurred: !showSensitiveContent }">{{ props.text }}</div>
+    <div class="toot-content"><p :class="{ blurred: !showSensitiveContent }">{{ props.text }}</p></div>
 
     <div class="toot-footer">
       {{ getCapitalizedVisibility(props.visibility) }} toot in {{ getLanguageName(props.language) }}
@@ -135,7 +136,7 @@ const handleShowSensitiveContent = () => {
   white-space: pre-line; /* Allow line breaks in the toot content */
 }
 
-.toot-content.blurred {
+.toot-content > .blurred {
   filter: blur(4px);
 }
 

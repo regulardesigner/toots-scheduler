@@ -7,7 +7,7 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
-      version: '0.9.14',
+      version: '0.9.15',
       date: '2025-03-29',
       features: [
         {
