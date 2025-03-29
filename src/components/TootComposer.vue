@@ -38,7 +38,7 @@ watch(() => store.editingToot, (newToot) => {
     visibility.value = newToot.params?.visibility as ScheduledToot['visibility'] || 'public';
     language.value = newToot.language || 'en';
     isSensitive.value = newToot.params?.sensitive || false;
-    spoilerText.value = newToot.spoiler_text || '';
+    spoilerText.value = newToot.params?.spoiler_text || '';
   }
 }, { immediate: true });
 
