@@ -38,7 +38,7 @@ watch(() => store.editingToot, (newToot) => {
     visibility.value = newToot.params?.visibility as ScheduledToot['visibility'] || 'public';
     language.value = newToot.language || 'en';
     isSensitive.value = newToot.params?.sensitive || false;
-    spoilerText.value = newToot.spoiler_text || '';
+    spoilerText.value = newToot.params?.spoiler_text || '';
   }
 }, { immediate: true });
 
@@ -208,7 +208,8 @@ async function handleSubmit() {
           required
           :maxlength="500 - HASHTAG.length - 1"
           rows="4"
-        ></textarea>
+        >
+        </textarea>
         <div class="textarea-footer">
           <span class="hashtag">{{ HASHTAG }}</span>
           <span class="character-count" :class="{ 'near-limit': remainingCharacters < 50 }">
