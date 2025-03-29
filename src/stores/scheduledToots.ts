@@ -27,6 +27,13 @@ export const useScheduledTootsStore = defineStore('scheduledToots', {
         return timestampA - timestampB;
       });
     },
+    todayTootsCount: (state) => {
+      return state.toots.filter((toot) => {
+        const scheduledAt = new Date(toot.scheduled_at!);
+        const today = new Date();
+        return scheduledAt.toDateString() === today.toDateString();
+      }).length;
+    },
   },
   actions: {
     setToots(toots: MastodonStatus[]) {

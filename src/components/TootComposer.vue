@@ -176,7 +176,7 @@ async function handleSubmit() {
           </div>
         </div>
         <div class="scheduled-count">
-          {{ store.count }} scheduled
+          {{ store.count }} scheduled <span v-if="store.todayTootsCount > 0" class="today-count">({{ store.todayTootsCount }} today)</span>
         </div>
       </div>
 
@@ -504,11 +504,25 @@ input#scheduled-date, input#scheduled-time, input#visibility, input#language {
 }
 
 .scheduled-count {
+  display: flex;
+  gap: 0.5rem;
   font-size: 0.9rem;
   color: #333;
   background-color: rgb(236, 236, 236);
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
   border-radius: 4px;
+}
+
+.today-count {
+  display: flex;
+  color: white;
+  font-weight: 700;
+  justify-content: center;
+  font-size: smaller;
+  align-items: center;
+  border-radius: 1rem;
+  background: #FF9200;
+  padding: 0 0.5rem;
 }
 
 .time-warning {
