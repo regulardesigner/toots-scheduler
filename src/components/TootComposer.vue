@@ -6,6 +6,8 @@ import { format, addMinutes, isBefore, parseISO } from 'date-fns';
 import type { ScheduledToot } from '../types/mastodon';
 import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore } from '../stores/scheduledToots';
+import ModalView from './Modals/ModalView.vue';
+import TootsCalendar from './TootsCalendar.vue';
 
 const auth = useAuthStore();
 const content = ref('');
@@ -18,7 +20,7 @@ const error = ref('');
 const isSensitive = ref(false);
 const spoilerText = ref('');
 const HASHTAG = '#TootScheduler';
-
+const showScheduledToots = ref(false);
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
 
@@ -56,6 +58,10 @@ function resetForm() {
 function handleCancelEdit() {
   store.setEditingToot(null);
   resetForm();
+}
+
+function handleScheduledCountClick() {
+  showScheduledToots.value = !showScheduledToots.value;
 }
 
 onMounted(async () => {
@@ -175,9 +181,15 @@ async function handleSubmit() {
             <div class="user-handle">@{{ auth.account?.acct }}</div>
           </div>
         </div>
-        <div class="scheduled-count">
-          {{ store.count }} scheduled <span v-if="store.todayTootsCount > 0" class="today-count">({{ store.todayTootsCount }} today)</span>
-        </div>
+        <button class="scheduled-count" @click.prevent="handleScheduledCountClick">
+          {{ store.count }} scheduled
+          <span v-if="store.todayTootsCount > 0" class="today-count">
+            {{ store.todayTootsCount }} today
+          </span>
+        </button>
+        <ModalView :isOpen="showScheduledToots" @close-modal="handleScheduledCountClick">
+          <TootsCalendar />
+        </ModalView>
       </div>
 
       <div class="content-warning">
@@ -511,6 +523,7 @@ input#scheduled-date, input#scheduled-time, input#visibility, input#language {
   background-color: rgb(236, 236, 236);
   padding: 0.5rem;
   border-radius: 4px;
+  width: auto;
 }
 
 .today-count {
