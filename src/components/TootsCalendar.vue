@@ -9,8 +9,7 @@ const toots = ref(store.sortedToots);
 // state for the current month and year
 const currentDate = ref(new Date());
 
-// the date in the past
-const inThePast = ref(new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() - 1));
+const today = new Date();
 
 // navigate to the previous month
 function goToPreviousMonth() {
@@ -62,18 +61,35 @@ const isScheduled = (date: Date) => {
     return scheduledDate === formattedDate;
   });
 };
+
+const isBeforeToday = (date: Date) => {
+  // Check if the date is before today
+  // Use toISOString to compare dates in UTC
+  // This ensures that the time part is ignored and only the date part is compared
+  // to avoid timezone issues
+  const todayDate = new Date(today.toISOString().split('T')[0]);
+  date = new Date(date.toISOString().split('T')[0]);
+
+  return date < todayDate;
+};
+
+const isToday = (date: Date) => {
+  return date.toDateString() === today.toDateString();
+};
+
+
 </script>
 
 <template>
   <div class="calendar-container">
     <div class="calendar-header">
-      <button v-if="currentDate > inThePast" class="nav-button" @click.prevent="goToPreviousMonth">&larr;</button>
+      <button v-if="currentDate > today" class="nav-button" @click.prevent="goToPreviousMonth">&larr;</button>
       <h2 class="winky-sans-700">{{ currentMonthName }}</h2>
       <button class="nav-button" @click.prevent="goToNextMonth">&rarr;</button>
     </div>
     <div class="calendar-grid">
       <div class="empty-day" v-for="i in emptyDaysBeforeFirstDayOfMonth" :key="i" />
-      <div class="calendar-day" v-for="date in generateCalendar" :key="date.toISOString()" :class="{ 'scheduled': isScheduled(date) }">
+      <div class="calendar-day" v-for="date in generateCalendar" :key="date.toISOString()" :class="{ 'scheduled': isScheduled(date), 'past-day': isBeforeToday(date), 'today': isToday(date) }">
         {{ new Date(date).toLocaleDateString('fr-FR', { day: 'numeric' }) }}
       </div>
       <div class="empty-day" v-for="i in emptyDaysToFill" :key="i" />
@@ -114,23 +130,48 @@ const isScheduled = (date: Date) => {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 0.1rem;
+  gap: 0.3rem;
   padding: 0.3rem;
 }
 
-.calendar-day {
+.calendar-day, .empty-day {
   display: flex;
   justify-content: center;
   align-items: center;
   background-color: antiquewhite;
   padding: 0.3rem;
   aspect-ratio: 1/1;
+  border-radius: 0.5rem;
 }
 
 .empty-day {
   background-color: white;
   background-color: whitesmoke;
-  border: none;
+}
+
+.today {
+  background-color: #FF9200;
+  color: white;
+  font-weight: 800;
+}
+
+.past-day {
+  position: relative;
+  background-color: whitesmoke;
+  color: #ccc;
+}
+
+.past-day::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 2px;
+  rotate: -45deg;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #ccc;
+  border-radius: 1rem;
 }
 
 .scheduled { 
