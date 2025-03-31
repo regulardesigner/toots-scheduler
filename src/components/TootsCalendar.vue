@@ -6,28 +6,38 @@ const store = useScheduledTootsStore();
 
 const toots = ref(store.sortedToots);
 
-// Add state for current month and year
+// state for the current month and year
 const currentDate = ref(new Date());
+
+// the date in the past
 const inThePast = ref(new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() - 1));
 
-// Navigation functions
+// navigate to the previous month
 function goToPreviousMonth() {
   currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() - 1);
 }
 
+// navigate to the next month
 function goToNextMonth() {
   currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1);
 }
 
-// Get current month name
+// get the current month name
 const currentMonthName = computed(() => {
   return currentDate.value.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 });
 
+// calculate the number of empty days before the first day of the month
 const emptyDaysBeforeFirstDayOfMonth = computed(() => {
   return new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 0).getDay();
 });
 
+// calculate the number of empty days to fill
+const emptyDaysToFill = computed(() => {
+  return 7 - (emptyDaysBeforeFirstDayOfMonth.value + generateCalendar.value.length) % 7;
+});
+
+// generate the calendar
 const generateCalendar = computed(() => {
   const calendar = [];
   const todayMonth = currentDate.value.getMonth();
@@ -45,10 +55,13 @@ const generateCalendar = computed(() => {
 
 // check if the date is in the toots.scheduled_at array
 const isScheduled = (date: Date) => {
-  console.log(date.toISOString().split('T')[0]);
-  return toots.value.some(toot => toot.scheduled_at?.split('T')[0] === date.toISOString().split('T')[0]);
-};
+  const formattedDate = date.toISOString().split('T')[0];
 
+  return toots.value.some(toot => {
+    const scheduledDate = toot.scheduled_at?.split('T')[0];
+    return scheduledDate === formattedDate;
+  });
+};
 </script>
 
 <template>
@@ -63,6 +76,7 @@ const isScheduled = (date: Date) => {
       <div class="calendar-day" v-for="date in generateCalendar" :key="date.toISOString()" :class="{ 'scheduled': isScheduled(date) }">
         {{ new Date(date).toLocaleDateString('fr-FR', { day: 'numeric' }) }}
       </div>
+      <div class="empty-day" v-for="i in emptyDaysToFill" :key="i" />
     </div>
   </div>
 </template>
