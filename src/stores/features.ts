@@ -7,6 +7,17 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.10.15',
+      date: '2025-04-02',
+      features: [
+        {
+          id: 'upload-media-image',
+          title: '🖼️ Upload media image',
+          description: 'Now you can upload images to your scheduled toots!',
+        },
+      ],
+    },
+    {
       version: '0.9.15',
       date: '2025-03-29',
       features: [

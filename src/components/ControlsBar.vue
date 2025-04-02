@@ -45,53 +45,51 @@ const languages = [
 
 <template>
   <div class="controls-bar">
-    <div class="form-group-controls">
-      <div class="form-group">
-        <label for="scheduled-date">Date</label>
-        <input
-          id="scheduled-date"
-          type="date"
-          :value="scheduledDate"
-          @input="emit('update:scheduledDate', ($event.target as HTMLInputElement).value)"
-          :min="minDateTime.split('T')[0]"
-          required
-        />
-      </div>
-      <div class="form-group">
-        <label for="scheduled-time">Time</label>
-        <input
-          id="scheduled-time"
-          type="time"
-          :value="scheduledTime"
-          @input="emit('update:scheduledTime', ($event.target as HTMLInputElement).value)"
-          required
-        />
-      </div>
-      <div class="form-group">
-        <label for="visibility">Visibility</label>
-        <select
-          id="visibility"
-          :value="visibility"
-          @change="emit('update:visibility', ($event.target as HTMLSelectElement).value as ScheduledToot['visibility'])"
-        >
-          <option value="public">Public</option>
-          <option value="unlisted">Unlisted</option>
-          <option value="private">Followers only</option>
-          <option value="direct">Direct message</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="language">Language</label>
-        <select
-          id="language"
-          :value="language"
-          @change="emit('update:language', ($event.target as HTMLSelectElement).value)"
-        >
-          <option v-for="lang in languages" :key="lang.code" :value="lang.code">
-            {{ lang.name }}
-          </option>
-        </select>
-      </div>
+    <div class="form-group">
+      <label for="scheduled-date">Date</label>
+      <input
+        id="scheduled-date"
+        type="date"
+        :value="scheduledDate"
+        @input="emit('update:scheduledDate', ($event.target as HTMLInputElement).value)"
+        :min="minDateTime.split('T')[0]"
+        required
+      />
+    </div>
+    <div class="form-group">
+      <label for="scheduled-time">Time</label>
+      <input
+        id="scheduled-time"
+        type="time"
+        :value="scheduledTime"
+        @input="emit('update:scheduledTime', ($event.target as HTMLInputElement).value)"
+        required
+      />
+    </div>
+    <div class="form-group">
+      <label for="visibility">Visibility</label>
+      <select
+        id="visibility"
+        :value="visibility"
+        @change="emit('update:visibility', ($event.target as HTMLSelectElement).value as ScheduledToot['visibility'])"
+      >
+        <option value="public">Public</option>
+        <option value="unlisted">Unlisted</option>
+        <option value="private">Followers only</option>
+        <option value="direct">Direct message</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="language">Language</label>
+      <select
+        id="language"
+        :value="language"
+        @change="emit('update:language', ($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="lang in languages" :key="lang.code" :value="lang.code">
+          {{ lang.name }}
+        </option>
+      </select>
     </div>
   </div>
   <div class="form-actions">
@@ -115,6 +113,7 @@ const languages = [
 <style scoped>
 .controls-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 1.5rem;
   padding: 1rem;
@@ -127,12 +126,6 @@ const languages = [
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.form-group-controls{
-  display: flex;
-  flex-direction: row;
-  gap: 1rem;
 }
 
 label {
@@ -202,16 +195,13 @@ button.edit-mode:hover:not(:disabled) {
 
 @media (max-width: 768px) {
   .controls-bar {
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 0.5rem;
-  }
-
-  .form-group-controls{
-    flex-direction: column;
   }
 
   .form-group {
     margin: 0.5rem 0;
+    flex-basis: 40%;
   }
 
   .form-actions {
