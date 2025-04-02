@@ -26,10 +26,6 @@ export interface MastodonMediaAttachment {
   url: string;
   preview_url: string;
   description?: string;
-  focus?: {
-    x: number;
-    y: number;
-  };
 }
 
 export interface MastodonAccount {
