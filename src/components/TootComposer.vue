@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { useAuthStore } from '../stores/auth';
 import { format, addMinutes, isBefore, parseISO } from 'date-fns';
-import type { ScheduledToot } from '../types/mastodon';
+import type { ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
 import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore } from '../stores/scheduledToots';
+import MediaUpload from './MediaUpload.vue';
+import ContentWarning from './ContentWarning.vue';
+import ContentArea from './ContentArea.vue';
+import ControlsBar from './ControlsBar.vue';
 
 const auth = useAuthStore();
 const content = ref('');
@@ -17,6 +21,7 @@ const language = ref('en');
 const error = ref('');
 const isSensitive = ref(false);
 const spoilerText = ref('');
+const mediaAttachments = ref<MastodonMediaAttachment[]>([]);
 const HASHTAG = '#TootScheduler';
 
 const api = useMastodonApi();
@@ -51,6 +56,7 @@ function resetForm() {
   spoilerText.value = '';
   visibility.value = 'public';
   language.value = 'en';
+  mediaAttachments.value = [];
 }
 
 function handleCancelEdit() {
@@ -71,41 +77,6 @@ onMounted(async () => {
   }
   await store.fetchScheduledToots();
 });
-
-const minDateTime = computed(() => {
-  const now = new Date();
-  const minDate = addMinutes(now, 5); // Minimum 5 minutes in the future
-  return format(minDate, "yyyy-MM-dd'T'HH:mm");
-});
-
-const characterCount = computed(() => content.value.length);
-const remainingCharacters = computed(() => 500 - characterCount.value - HASHTAG.length - 1);
-
-// Add validation for the selected date/time
-const isValidScheduledTime = computed(() => {
-  if (!scheduledDate.value || !scheduledTime.value) return false;
-  const selectedDateTime = new Date(`${scheduledDate.value}T${scheduledTime.value}`);
-  const minTime = addMinutes(new Date(), 5);
-  return !isBefore(selectedDateTime, minTime);
-});
-
-// Common languages used in Mastodon
-const languages = [
-  { code: 'en', name: 'English' },
-  { code: 'fr', name: 'Français' },
-  { code: 'de', name: 'Deutsch' },
-  { code: 'es', name: 'Español' },
-  { code: 'it', name: 'Italiano' },
-  { code: 'pt', name: 'Português' },
-  { code: 'ru', name: 'Русский' },
-  { code: 'ja', name: '日本語' },
-  { code: 'zh', name: '中文' },
-  { code: 'ko', name: '한국어' },
-  { code: 'nl', name: 'Nederlands' },
-  { code: 'pl', name: 'Polski' },
-  { code: 'ar', name: 'العربية' },
-  { code: 'hi', name: 'हिन्दी' },
-] as const;
 
 async function handleSubmit() {
   try {
@@ -133,6 +104,7 @@ async function handleSubmit() {
         language: language.value,
         sensitive: isSensitive.value,
         spoiler_text: isSensitive.value ? spoilerText.value : undefined,
+        media_ids: mediaAttachments.value.map(media => media.id),
       };
       
       await store.updateToot(store.editingToot.id, updatedToot);
@@ -145,6 +117,7 @@ async function handleSubmit() {
         language: language.value,
         sensitive: isSensitive.value,
         spoiler_text: isSensitive.value ? spoilerText.value : undefined,
+        media_ids: mediaAttachments.value.map(media => media.id),
       };
 
       await api.scheduleToot(toot);
@@ -180,113 +153,32 @@ async function handleSubmit() {
         </div>
       </div>
 
-      <div class="content-warning">
-        <div class="form-group">
-          <label for="sensitive-toggle" class="warning-label">
-            <input
-              type="checkbox"
-              v-model="isSensitive"
-              id="sensitive-toggle"
-            />
-            Add content warning
-          </label>
-          <div class="warning-input-wrapper" v-show="isSensitive">
-            <input
-              type="text"
-              v-model="spoilerText"
-              placeholder="Write your warning here"
-              id="spoiler-text"
-            />
-          </div>
-        </div>
-      </div>
+      <ContentWarning
+        v-model="isSensitive"
+        v-model:spoilerText="spoilerText"
+      />
+      
+      <MediaUpload
+        v-model="mediaAttachments"
+      />
 
-      <div class="content-area" id="schedule-button">
-        <textarea
-          v-model="content"
-          :placeholder="'What\'s on your mind?'"
-          required
-          :maxlength="500 - HASHTAG.length - 1"
-          rows="4"
-        >
-        </textarea>
-        <div class="textarea-footer">
-          <span class="hashtag">{{ HASHTAG }}</span>
-          <span class="character-count" :class="{ 'near-limit': remainingCharacters < 50 }">
-            {{ remainingCharacters }}
-          </span>
-        </div>
-      </div>
+      <ContentArea
+        v-model="content"
+        :hashtag="HASHTAG"
+      />
 
-      <div class="controls-bar">
-        <div class="form-group">
-          <label for="scheduled-date">Date</label>
-          <input
-            id="scheduled-date"
-            type="date"
-            v-model="scheduledDate"
-            :min="minDateTime.split('T')[0]"
-            required
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="scheduled-time">Time</label>
-          <input
-            id="scheduled-time"
-            type="time"
-            v-model="scheduledTime"
-            required
-          />
-          <small v-if="!isValidScheduledTime && (scheduledDate && scheduledTime)" class="time-warning">
-            Must be at least 5 minutes in the future
-          </small>
-        </div>
-
-        <div class="form-group">
-          <label for="visibility">Visibility</label>
-          <select id="visibility" v-model="visibility" required>
-            <option value="public">Public</option>
-            <option value="unlisted">Unlisted</option>
-            <option value="private">Private</option>
-            <option value="direct">Direct</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="language">Language</label>
-          <select id="language" v-model="language" required>
-            <option v-for="lang in languages" :key="lang.code" :value="lang.code">
-              {{ lang.name }}
-            </option>
-          </select>
-        </div>
-      </div>
+      <ControlsBar
+        v-model:scheduledDate="scheduledDate"
+        v-model:scheduledTime="scheduledTime"
+        v-model:visibility="visibility"
+        v-model:language="language"
+        :isEditing="!!store.editingToot"
+        @cancel="handleCancelEdit"
+      />
 
       <p v-if="error" class="error">{{ error }}</p>
-
-      <div class="form-actions">
-        <button
-          v-if="store.editingToot"
-          type="button"
-          class="cancel-button"
-          @click="handleCancelEdit"
-        >
-          Cancel Edit
-        </button>
-        <button
-          type="submit"
-          :class="{ 'edit-mode': store.editingToot }"
-          :disabled="isSubmitting || !content.trim() || !isValidScheduledTime"
-        >
-          {{ isSubmitting 
-            ? (store.editingToot ? 'Updating...' : 'Scheduling...') 
-            : (store.editingToot ? 'Update Toot' : 'Schedule Toot') 
-          }}
-        </button>
-      </div>
     </form>
-    
+
     <ScheduledToots />
   </div>
 </template>
@@ -294,172 +186,8 @@ async function handleSubmit() {
 <style scoped>
 .toot-composer {
   max-width: 600px;
-  width: 100%;
-  margin: 3.4rem auto 2rem;
+  margin: 3.4rem auto 2rem;;
   padding: 0 0.5rem;
-}
-
-.content-area {
-  position: relative;
-  margin-bottom: 1rem;
-}
-
-textarea {
-  width: 100%;
-  min-height: 20rem;
-  padding: 0.5rem;
-  font-size: 1.2rem;
-  margin-bottom: 0;
-  font-weight: 600;
-  resize: vertical;
-  border: 1px solid #999;
-  border-radius: 0.5rem;
-  font-family: inherit;
-}
-
-.textarea-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  color: #666;
-}
-
-.hashtag {
-  color: #2b90d9;
-  font-size: 0.875rem;
-}
-
-.character-count {
-  color: #666;
-}
-
-.character-count.near-limit {
-  font-weight: 700;
-  color: #ff4136;
-}
-
-.controls-bar {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  background-color: #f8f8f8;
-  border-radius: 0.5rem;
-}
-
-.form-group {
-  flex: 1;
-  min-width: 0; /* Prevents flex items from overflowing */
-}
-
-.form-group label {
-  display: block;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-input, select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #333;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  background-color: white;
-}
-
-button {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #e0e0e0;
-  color: #333;
-  border: none;
-  border-radius: 3rem;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-button:hover:not(:disabled) {
-  background-color: #333;
-  color: white;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.error {
-  color: #e74c3c;
-  margin: 1rem 0;
-  padding: 0.5rem;
-  border-radius: 4px;
-  background-color: #fde8e7;
-}
-
-@media (max-width: 768px) {
-  .controls-bar {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .form-group {
-    margin: 0.5rem 0;
-  }
-}
-
-.content-warning {
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background-color: antiquewhite;
-  border-radius: 0.5rem;
-}
-
-.content-warning .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.warning-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: #333;
-  font-size: 1rem;
-  font-weight: 500;
-  margin-bottom: 0 !important;
-}
-
-.warning-label input[type="checkbox"] {
-  width: auto;
-  margin: 0;
-  cursor: pointer;
-}
-
-.warning-input-wrapper {
-  transition: all 0.2s ease-in-out;
-  overflow: hidden;
-  opacity: 1;
-  max-height: 40px; /* Approximate height of input */
-}
-
-.warning-input-wrapper[style*="display: none"] {
-  opacity: 0;
-  max-height: 0;
-}
-
-input[type="text"]:disabled {
-  background-color: #f0f0f0;
-  cursor: not-allowed;
-}
-
-input#scheduled-date, input#scheduled-time, input#visibility, input#language {
-  height: 2.2rem;
 }
 
 .user-info {
@@ -511,45 +239,17 @@ input#scheduled-date, input#scheduled-time, input#visibility, input#language {
   border-radius: 4px;
 }
 
-.time-warning {
-  display: block;
-  color: #ff4136;
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.cancel-button {
-  background-color: #95a5a6;
-  color: white;
-}
-
-.cancel-button:hover:not(:disabled) {
-  background-color: #7f8c8d;
-}
-
-button.edit-mode {
-  background-color: #2b90d9;
-  color: white;
-}
-
-button.edit-mode:hover:not(:disabled) {
-  background-color: #2577b1;
+.error {
+  color: #e74c3c;
+  margin: 1rem 0;
+  padding: 0.5rem;
+  border-radius: 4px;
+  background-color: #fde8e7;
 }
 
 @media (max-width: 768px) {
-  .form-actions {
-    flex-direction: column;
-  }
-  
-  .cancel-button,
-  button[type="submit"] {
-    width: 100%;
+  .toot-composer {
+    padding: 0.5rem;
   }
 }
 </style> 
