@@ -44,6 +44,7 @@ watch(() => store.editingToot, (newToot) => {
     language.value = newToot.language || 'en';
     isSensitive.value = newToot.params?.sensitive || false;
     spoilerText.value = newToot.params?.spoiler_text || '';
+    mediaAttachments.value = newToot.media_attachments || [];
   }
 }, { immediate: true });
 

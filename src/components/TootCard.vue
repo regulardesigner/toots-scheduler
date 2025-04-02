@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { format } from 'date-fns';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 interface Props {
   id: string;
@@ -10,6 +10,7 @@ interface Props {
   language?: string;
   isLoading?: boolean;
   sensitive?: boolean;
+  medias?: Array<{ id: string; description: string; preview_url: string }>;
   spoiler_text?: string;
   onDelete: (id: string) => Promise<void>;
   onEdit: (id: string) => void;
@@ -54,6 +55,10 @@ const handleShowSensitiveContent = () => {
   showSensitiveContent.value = !showSensitiveContent.value;
 };
 
+const hasMedia = computed(() => {
+  return props.medias && props.medias.length > 0;
+});
+
 </script>
 
 <template>
@@ -89,8 +94,9 @@ const handleShowSensitiveContent = () => {
     <div class="toot-content"><p :class="{ blurred: !showSensitiveContent }">{{ props.text }}</p></div>
 
     <div class="toot-footer">
-      {{ getCapitalizedVisibility(props.visibility) }} toot in {{ getLanguageName(props.language) }}
+      {{ getCapitalizedVisibility(props.visibility) }} toot in {{ getLanguageName(props.language) }} <span v-if="hasMedia">- with {{medias?.length}} media</span>
     </div>
+    
   </div>
 </template>
 
