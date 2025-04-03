@@ -44,4 +44,10 @@ export interface ScheduledToot {
   sensitive?: boolean;
   spoiler_text?: string;
   language?: string;
+  poll?: {
+    options: string[];
+    expires_in: number;
+    multiple?: boolean;
+    hide_totals?: boolean;
+  };
 } 

@@ -27,6 +27,23 @@ const HASHTAG = '#TootScheduler';
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
 
+const pollOptions = ref<string[]>(['', '']); // Start with two empty options
+const pollExpiresIn = ref(86400); // Default to 1 day
+const pollMultiple = ref(false);
+const pollHideTotals = ref(false);
+
+function addPollOption() {
+  if (pollOptions.value.length < 4) {
+    pollOptions.value.push('');
+  }
+}
+
+function removePollOption(index: number) {
+  if (pollOptions.value.length > 2) {
+    pollOptions.value.splice(index, 1);
+  }
+}
+
 // Watch for editing toot changes
 watch(() => store.editingToot, (newToot) => {
   if (newToot) {
@@ -106,6 +123,12 @@ async function handleSubmit() {
         sensitive: isSensitive.value,
         spoiler_text: isSensitive.value ? spoilerText.value : undefined,
         media_ids: mediaAttachments.value.map(media => media.id),
+        poll: {
+          options: pollOptions.value.filter(option => option.trim() !== ''),
+          expires_in: pollExpiresIn.value,
+          multiple: pollMultiple.value,
+          hide_totals: pollHideTotals.value,
+        },
       };
       
       await store.updateToot(store.editingToot.id, updatedToot);
@@ -120,6 +143,16 @@ async function handleSubmit() {
         spoiler_text: isSensitive.value ? spoilerText.value : undefined,
         media_ids: mediaAttachments.value.map(media => media.id),
       };
+
+      // Add poll data if options are provided
+      if (pollOptions.value.some(option => option.trim() !== '')) {
+        toot.poll = {
+          options: pollOptions.value.filter(option => option.trim() !== ''),
+          expires_in: pollExpiresIn.value,
+          multiple: pollMultiple.value,
+          hide_totals: pollHideTotals.value,
+        };
+      }
 
       await api.scheduleToot(toot);
     }
@@ -167,6 +200,46 @@ async function handleSubmit() {
         v-model="content"
         :hashtag="HASHTAG"
       />
+
+      <div class="poll-section">
+        <div class="poll-options">
+          <div v-for="(_, index) in pollOptions" :key="index" :data-index="index + 1" class="poll-option" :class="{ 'poll-option--multiple': pollMultiple }">
+            <input
+              v-model="pollOptions[index]"
+              type="text"
+              placeholder="Poll option"
+              required
+            />
+            <button class="pull-option_button_remove" v-if="pollOptions.length > 2" aria-label="Remove this option" @click="removePollOption(index)">&times;</button>
+          </div>
+
+          <button v-if="pollOptions.length < 4" @click="addPollOption">Add Option</button>
+        </div>
+
+        <div class="poll-settings">
+          <label>
+          Poll Duration:
+          <select v-model="pollExpiresIn">
+            <option value="300">5 minutes</option>
+            <option value="3600">1 hour</option>
+            <option value="21600">6 hours</option>
+            <option value="43200">12 hours</option>
+            <option value="86400">1 day</option>
+            <option value="259200">3 days</option>
+            <option value="604800">7 days</option>
+          </select>
+        </label>
+        <label>
+          <input v-model="pollMultiple" type="checkbox" />
+          Allow multiple votes
+        </label>
+        <label>
+          <input v-model="pollHideTotals" type="checkbox" />
+          Hide totals until poll ends
+        </label>
+        </div>
+          
+      </div>
 
       <ControlsBar
         v-model:scheduledDate="scheduledDate"
@@ -253,4 +326,81 @@ async function handleSubmit() {
     padding: 0.5rem;
   }
 }
+
+.poll-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f8f8f8;
+  border-radius: .5rem;
+}
+
+.poll-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.poll-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
+.poll-option > input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.poll-option::before {
+  border-radius: 50%;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  content: attr(data-index);
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.poll-option:first-child::before {
+  background-color: #333;
+  color: white;
+}
+.poll-option::before {
+  border: 2px solid #333;
+  background-color: white;
+  color: #333;
+}
+
+.poll-option--multiple::before {
+  background-color: #333;
+  color: white;
+  border-radius: 0.3rem;
+}
+
+.pull-option_button_remove {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  font-size: 1.5rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 </style> 
