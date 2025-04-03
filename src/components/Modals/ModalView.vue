@@ -10,6 +10,7 @@ const emit = defineEmits<{
 }>();
 
 const modalRef = ref<HTMLElement | null>(null);
+
 const previousActiveElement = ref<HTMLElement | null>(null);
 
 function handleClose() {

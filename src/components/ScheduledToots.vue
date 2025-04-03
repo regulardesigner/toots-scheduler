@@ -80,6 +80,7 @@ onMounted(() => {
             :language="toot.params?.language"
             :spoiler_text="toot.params?.spoiler_text"
             :sensitive="toot.params?.sensitive"
+            :poll="toot.params?.poll"
             :medias="toot.media_attachments"
             :is-loading="store.isLoading"
             :on-delete="handleDelete"

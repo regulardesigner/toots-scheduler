@@ -10,6 +10,7 @@ import MediaUpload from './MediaUpload.vue';
 import ContentWarning from './ContentWarning.vue';
 import ContentArea from './ContentArea.vue';
 import ControlsBar from './ControlsBar.vue';
+import PollSection from './PollSection.vue';
 
 const auth = useAuthStore();
 const content = ref('');
@@ -20,11 +21,36 @@ const visibility = ref<ScheduledToot['visibility']>('public');
 const language = ref('en');
 const error = ref('');
 const isSensitive = ref(false);
+const showMedia = ref(false);
+const showPoll = ref(false);
 const spoilerText = ref('');
 const mediaAttachments = ref<MastodonMediaAttachment[]>([]);
 
+const pollData = ref({
+  options: ['', ''],
+  expiresIn: 86400,
+  multiple: false,
+  hideTotals: false
+});
+
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
+
+function handleShowMedia() {
+  if (showMedia.value) {
+    showMedia.value = false;
+  } else {
+    showMedia.value = true;
+  }
+}
+
+function handleShowPoll() {
+  if (showPoll.value) {
+    showPoll.value = false;
+  } else {
+    showPoll.value = true;
+  }
+}
 
 // Watch for editing toot changes
 watch(() => store.editingToot, (newToot) => {
@@ -43,6 +69,24 @@ watch(() => store.editingToot, (newToot) => {
     isSensitive.value = newToot.params?.sensitive || false;
     spoilerText.value = newToot.params?.spoiler_text || '';
     mediaAttachments.value = newToot.media_attachments || [];
+
+    // Show media section if there are media attachments
+    showMedia.value = newToot.media_attachments?.length > 0;
+
+    // Check both poll and params.poll for poll data
+    const poll = newToot.poll || newToot.params?.poll;
+    if (poll) {
+      console.log('Found poll data:', poll);
+      showPoll.value = true;
+      pollData.value = {
+        options: poll.options || [],
+        expiresIn: poll.expires_in || 86400,
+        multiple: poll.multiple || false,
+        hideTotals: poll.hide_totals || false
+      };
+    } else {
+      showPoll.value = false;
+    }
   }
 }, { immediate: true });
 
@@ -56,6 +100,14 @@ function resetForm() {
   visibility.value = 'public';
   language.value = 'en';
   mediaAttachments.value = [];
+  showMedia.value = false;
+  showPoll.value = false;
+  pollData.value = {
+    options: ['', ''],
+    expiresIn: 86400,
+    multiple: false,
+    hideTotals: false
+  };
 }
 
 function handleCancelEdit() {
@@ -103,6 +155,12 @@ async function handleSubmit() {
         sensitive: isSensitive.value,
         spoiler_text: isSensitive.value ? spoilerText.value : undefined,
         media_ids: mediaAttachments.value.map(media => media.id),
+        poll: pollData.value.options.some(option => option.trim() !== '') ? {
+          options: pollData.value.options.filter(option => option.trim() !== ''),
+          expires_in: pollData.value.expiresIn,
+          multiple: pollData.value.multiple,
+          hide_totals: pollData.value.hideTotals,
+        } : undefined,
       };
       
       await store.updateToot(store.editingToot.id, updatedToot);
@@ -116,6 +174,12 @@ async function handleSubmit() {
         sensitive: isSensitive.value,
         spoiler_text: isSensitive.value ? spoilerText.value : undefined,
         media_ids: mediaAttachments.value.map(media => media.id),
+        poll: pollData.value.options.some(option => option.trim() !== '') ? {
+          options: pollData.value.options.filter(option => option.trim() !== ''),
+          expires_in: pollData.value.expiresIn,
+          multiple: pollData.value.multiple,
+          hide_totals: pollData.value.hideTotals,
+        } : undefined,
       };
 
       await api.scheduleToot(toot);
@@ -155,13 +219,23 @@ async function handleSubmit() {
         v-model="isSensitive"
         v-model:spoilerText="spoilerText"
       />
-      
-      <MediaUpload
-        v-model="mediaAttachments"
-      />
 
       <ContentArea
         v-model="content"
+        @add-media="handleShowMedia"
+        @add-poll="handleShowPoll"
+        :has-poll="pollData.options.some(option => option.trim() !== '')"
+        :has-media="mediaAttachments.length > 0"
+      />
+
+      <MediaUpload
+        v-if="showMedia"
+        v-model="mediaAttachments"
+      />
+
+      <PollSection
+        v-if="showPoll"
+        v-model="pollData"
       />
 
       <ControlsBar

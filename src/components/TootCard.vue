@@ -11,6 +11,7 @@ interface Props {
   isLoading?: boolean;
   sensitive?: boolean;
   medias?: Array<{ id: string; description: string; preview_url: string }>;
+  poll?: { id: string; options: Array<{ id: string; text: string }> };
   spoiler_text?: string;
   onDelete: (id: string) => Promise<void>;
   onEdit: (id: string) => void;
@@ -59,6 +60,10 @@ const hasMedia = computed(() => {
   return props.medias && props.medias.length > 0;
 });
 
+const hasPoll = computed(() => {
+  return props.poll
+});
+
 </script>
 
 <template>
@@ -94,7 +99,7 @@ const hasMedia = computed(() => {
     <div class="toot-content"><p :class="{ blurred: !showSensitiveContent }">{{ props.text }}</p></div>
 
     <div class="toot-footer">
-      {{ getCapitalizedVisibility(props.visibility) }} toot in {{ getLanguageName(props.language) }} <span v-if="hasMedia">- with {{medias?.length}} media</span>
+      {{ getCapitalizedVisibility(props.visibility) }} toot in {{ getLanguageName(props.language) }} <span v-if="hasMedia">- with {{medias?.length}} media</span> <span v-if="hasPoll">- with poll</span>
     </div>
     
   </div>

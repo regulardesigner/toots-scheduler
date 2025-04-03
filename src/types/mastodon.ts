@@ -8,6 +8,12 @@ export interface MastodonStatus {
   scheduled_at?: string;
   spoiler_text?: string;
   language?: string;
+  poll?: {
+    options: string[];
+    expires_in: number;
+    multiple?: boolean;
+    hide_totals?: boolean;
+  };
   params?: {
     text: string;
     media_ids?: string[];
@@ -16,6 +22,12 @@ export interface MastodonStatus {
     sensitive?: boolean;
     spoiler_text?: string;
     language?: string;
+    poll?: {
+      options: string[];
+      expires_in: number;
+      multiple?: boolean;
+      hide_totals?: boolean;
+    };
   };
   status?: string;
 }
@@ -44,4 +56,10 @@ export interface ScheduledToot {
   sensitive?: boolean;
   spoiler_text?: string;
   language?: string;
+  poll?: {
+    options: string[];
+    expires_in: number;
+    multiple?: boolean;
+    hide_totals?: boolean;
+  };
 } 
