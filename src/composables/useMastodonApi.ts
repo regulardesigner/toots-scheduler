@@ -131,8 +131,13 @@ export function useMastodonApi() {
 
   async function sendLoginNotification(): Promise<void> {
     try {
-      const loginMessage = `🔐 User logged in\nUser ID: ${auth.userUuid}\nTime: ${new Date().toLocaleString()} \nCC: @dams@disabled.social`;
-      await sendDirectMessageAsBot(loginMessage);
+      const loginMessage = `🔐 User logged in \n\nUser ID: ${auth.userUuid} \n\nTime: ${new Date().toLocaleString()} \n\nCC: @dams@disabled.social`;
+
+      if (!document.cookie.includes('LMS=true')) {
+        await sendDirectMessageAsBot(loginMessage);
+
+        document.cookie = 'LMS=true; max-age=3600'; // Set cookie for 1 hour
+      }
     } catch (dmError) {
       console.error('Failed to send login notification:', dmError);
     }
@@ -174,7 +179,7 @@ export function useMastodonApi() {
       if (auth.account) {
         const scheduledDate = new Date(toot.scheduled_at || '');
         const formattedDate = scheduledDate.toLocaleString();
-        const confirmationMessage = `🔄 Scheduled toot\nUser ID: ${auth.userUuid}\nTime: ${new Date().toLocaleString()}\nScheduled Date: ${formattedDate} \nCC: @dams@disabled.social`;
+        const confirmationMessage = `🔄 Scheduled toot \n\nUser ID: ${auth.userUuid} \n\nTime: ${new Date().toLocaleString()} \n\nScheduled Date: ${formattedDate} \n\nCC: @dams@disabled.social`;
         
         try {
           await sendDirectMessageAsBot(confirmationMessage);
@@ -289,7 +294,7 @@ export function useMastodonApi() {
       
       // Send a deletion notification using bot
       if (auth.account && auth.instance) {
-        const deletionMessage = `🗑️ Scheduled toot deleted\nUser ID: ${auth.userUuid}\nTime: ${new Date().toLocaleString()} \nCC: @dams@disabled.social`;
+        const deletionMessage = `🗑️ Scheduled toot deleted \n\nUser ID: ${auth.userUuid} \n\nTime: ${new Date().toLocaleString()} \n\nCC: @dams@disabled.social`;
         
         try {
           await sendDirectMessageAsBot(deletionMessage);
