@@ -32,7 +32,7 @@ export function useMastodonApi() {
     try {
       const normalizedUrl = normalizeUrl(instanceUrl);
       const response = await axios.post(`${normalizedUrl}/api/v1/apps`, {
-        client_name: 'Toots Scheduler',
+        client_name: 'Toot Scheduler',
         redirect_uris: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
         scopes: 'read:accounts read:statuses write:media write:statuses',
         website: window.location.origin + import.meta.env.BASE_URL

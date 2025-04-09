@@ -22,7 +22,6 @@ const error = ref('');
 const isSensitive = ref(false);
 const spoilerText = ref('');
 const mediaAttachments = ref<MastodonMediaAttachment[]>([]);
-const HASHTAG = '#TootScheduler';
 
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
@@ -30,8 +29,7 @@ const store = useScheduledTootsStore();
 // Watch for editing toot changes
 watch(() => store.editingToot, (newToot) => {
   if (newToot) {
-    // Remove the hashtag from the content if it exists
-    content.value = (newToot.params?.text || '').replace(` ${HASHTAG}`, '');
+    content.value = newToot.params?.text || '';
     
     // Parse the scheduled date and time
     if (newToot.scheduled_at) {
@@ -93,8 +91,7 @@ async function handleSubmit() {
       return;
     }
 
-    // Create the toot with hashtag
-    const tootContent = content.value.trim() + ' ' + HASHTAG;
+    const tootContent = content.value.trim();
 
     if (store.editingToot) {
       // Create a new ScheduledToot object for updating
@@ -165,7 +162,6 @@ async function handleSubmit() {
 
       <ContentArea
         v-model="content"
-        :hashtag="HASHTAG"
       />
 
       <ControlsBar

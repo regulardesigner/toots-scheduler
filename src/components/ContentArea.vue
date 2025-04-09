@@ -3,7 +3,6 @@ import { computed } from 'vue';
 
 const props = defineProps<{
   modelValue: string;
-  hashtag: string;
 }>();
 
 const emit = defineEmits<{
@@ -11,7 +10,7 @@ const emit = defineEmits<{
 }>();
 
 const characterCount = computed(() => props.modelValue.length);
-const remainingCharacters = computed(() => 500 - characterCount.value - props.hashtag.length - 1);
+const remainingCharacters = computed(() => 500 - characterCount.value);
 </script>
 
 <template>
@@ -21,11 +20,10 @@ const remainingCharacters = computed(() => 500 - characterCount.value - props.ha
       @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
       :placeholder="'What\'s on your mind?'"
       required
-      :maxlength="500 - hashtag.length - 1"
+      :maxlength="500"
       rows="4"
     ></textarea>
     <div class="textarea-footer">
-      <span class="hashtag">{{ hashtag }}</span>
       <span class="character-count" :class="{ 'near-limit': remainingCharacters < 50 }">
         {{ remainingCharacters }}
       </span>
@@ -53,14 +51,9 @@ textarea {
 
 .textarea-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: end;
   align-items: center;
   padding: 0 0.5rem;
-}
-
-.hashtag {
-  color: #2b90d9;
-  font-size: .875rem;
 }
 
 .character-count {

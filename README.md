@@ -1,4 +1,4 @@
-# Toots Scheduler 📅 ⏰
+# Toot Scheduler 📅 ⏰
 
 [![Deploy to GitHub Pages](https://github.com/regulardesigner/toots-scheduler/actions/workflows/deploy.yml/badge.svg)](https://github.com/regulardesigner/toots-scheduler/actions/workflows/deploy.yml)
 

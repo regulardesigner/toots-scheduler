@@ -52,7 +52,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
 <template>
   <div class="app">
     <header class="header">
-      <h1 class="header-title winky-sans-900">Toots Scheduler</h1>
+      <h1 class="header-title winky-sans-900">Toot Scheduler</h1>
       
       <!-- Desktop Navigation -->
       <nav v-if="auth.accessToken" class="nav-buttons desktop-nav">
@@ -98,7 +98,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
     <RouterView />
 
     <footer>
-      <p>&copy; {{ new Date().getFullYear() }} Toots Scheduler</p>
+      <p>&copy; {{ new Date().getFullYear() }} Toot Scheduler</p>
     </footer>
 
     <ModalView :is-open="showWhatsNew" @close-modal="handleWhatsNewClose">

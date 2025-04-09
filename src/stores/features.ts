@@ -7,6 +7,22 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.11.17',
+      date: '2025-04-09',
+      features: [
+        {
+          id: 'tootsheduler-hashtag-removal',
+          title: '🔖 Hashtag #TootScheduler removal',
+          description: 'I\'ve removed the #TootScheduler hashtag from scheduled toots. No more unwanted hashtags! Bye bye hashtag, you will be missed!',
+        },
+        {
+          id: 'name-tootsheduler',
+          title: '🧠 Toots Scheduler is now Toot Scheduler',
+          description: 'Corrected a small typo in the name of the app. Why? Because the double "s" was annoying me as dyslexic person. I know, it\'s a small thing, but having the right name is important!',
+        },
+      ],
+    },
+    {
       version: '0.10.16',
       date: '2025-04-02',
       features: [
@@ -152,7 +168,7 @@ export const useFeaturesStore = defineStore('features', () => {
       features: [
         {
           id: 'hashtag-tootsSheduler',
-          title: '🔖 Hashtag Toots Scheduler',
+          title: '🔖 Hashtag TootScheduler',
           description: 'Let\'s spread the word! Now all scheduled toots will be tagged with #TootScheduler!',
         },
       ],
@@ -164,7 +180,7 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'schedule-posts',
           title: '🕒 Schedule Posts',
-          description: 'Welcome to Toots Scheduler! You can schedule your posts to be published at a specific time!',
+          description: 'Welcome to Toot Scheduler! You can schedule your posts to be published at a specific time!',
         },
         {
           id: 'bugs-fixes-0.1.2',
