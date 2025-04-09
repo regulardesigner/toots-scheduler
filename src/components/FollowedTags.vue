@@ -4,15 +4,9 @@ import { useFollowedTags } from '../composables/useFollowedTags';
 
 const { followedTags, isLoading, error, fetchFollowedTags } = useFollowedTags();
 
-// Filter out TootScheduler and sort tags alphabetically
-const filteredTags = computed(() => 
-  followedTags.value
-    .filter(tag => tag.name.toLowerCase() !== 'tootscheduler')
-    .sort((a, b) => a.name.localeCompare(b.name))
-);
 
-const firstTwoTags = computed(() => filteredTags.value.slice(0, 2));
-const remainingTags = computed(() => filteredTags.value.slice(2));
+const displayedTags = computed(() => followedTags.value.slice(0, 4));
+const remainingTags = computed(() => followedTags.value.slice(4));
 
 const emit = defineEmits<{
   (e: 'select-tag', tagName: string): void
@@ -21,6 +15,11 @@ const emit = defineEmits<{
 function handleTagClick(tagName: string, event: Event) {
   event.preventDefault();
   emit('select-tag', tagName);
+}
+
+function handleDetailClick(event: Event) {
+  const element = event?.target as HTMLDetailsElement;
+  console.log('Detail clicked:', element);
 }
 
 onMounted(() => {
@@ -34,23 +33,19 @@ onMounted(() => {
     <div v-else-if="error">{{ error }}</div>
     <div v-else-if="followedTags.length === 0">No followed hashtags</div>
     <div v-else class="tags-container">
-      <!-- Always show TootScheduler first as non-clickable -->
-      <span class="tag default-tag">#TootScheduler</span>
-      
-      <!-- Show first two filtered tags -->
-      <template v-for="tag in firstTwoTags" :key="tag.name">
-        <a 
-          class="tag" 
-          href="#"
-          @click="handleTagClick(tag.name, $event)"
-        >
-          #{{ tag.name }}
-        </a>
-      </template>
-
       <!-- Show remaining tags -->
-      <details v-if="remainingTags.length > 0" class="more-tags">
+      <details v-if="remainingTags.length > 0" class="more-tags" @click="handleDetailClick($event)">
         <summary>
+          <!-- Show first two filtered tags -->
+          <template v-for="tag in displayedTags" :key="tag.name">
+            <a 
+              class="tag" 
+              href="#"
+              @click="handleTagClick(tag.name, $event)"
+            >
+              #{{ tag.name }}
+            </a>
+          </template>
           <span class="more-count">+{{ remainingTags.length }} more</span>
         </summary>
         <div class="tags-list">
@@ -71,7 +66,6 @@ onMounted(() => {
 
 <style scoped>
 .followed-tags {
-  margin: 1rem 0;
   font-size: 0.9rem;
   color: #666;
 }
@@ -106,18 +100,19 @@ onMounted(() => {
   display: inline;
 }
 
-summary {
+summary > span {
   display: inline-block;
   cursor: pointer;
   color: #666;
   font-size: 0.8rem;
   padding: 0.2rem 0.5rem;
+  margin-left: 0.5rem;
   background-color: #f0f0f0;
   border-radius: 1rem;
   user-select: none;
 }
 
-summary:hover {
+summary:hover > span {
   background-color: #e0e0e0;
 }
 

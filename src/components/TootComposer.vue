@@ -18,7 +18,6 @@ const language = ref('en');
 const error = ref('');
 const isSensitive = ref(false);
 const spoilerText = ref('');
-const HASHTAG = '#TootScheduler';
 
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
@@ -26,9 +25,6 @@ const store = useScheduledTootsStore();
 // Watch for editing toot changes
 watch(() => store.editingToot, (newToot) => {
   if (newToot) {
-    // Remove the hashtag from the content if it exists
-    content.value = (newToot.params?.text || '').replace(` ${HASHTAG}`, '');
-    
     // Parse the scheduled date and time
     if (newToot.scheduled_at) {
       const date = parseISO(newToot.scheduled_at);
@@ -80,7 +76,7 @@ const minDateTime = computed(() => {
 });
 
 const characterCount = computed(() => content.value.length);
-const remainingCharacters = computed(() => 500 - characterCount.value - HASHTAG.length - 1);
+const remainingCharacters = computed(() => 500 - characterCount.value);
 
 // Add validation for the selected date/time
 const isValidScheduledTime = computed(() => {
@@ -128,8 +124,7 @@ async function handleSubmit() {
       return;
     }
 
-    // Create the toot with hashtag
-    const tootContent = content.value.trim() + ' ' + HASHTAG;
+    const tootContent = content.value.trim();
 
     if (store.editingToot) {
       // Create a new ScheduledToot object for updating
@@ -215,7 +210,7 @@ async function handleSubmit() {
           v-model="content"
           :placeholder="'What\'s on your mind?'"
           required
-          :maxlength="500 - HASHTAG.length - 1"
+          :maxlength="500"
           rows="4"
         ></textarea>
         <div class="textarea-footer">
@@ -328,6 +323,7 @@ textarea {
 .textarea-footer {
   display: flex;
   justify-content: space-between;
+  align-items: start;
   align-items: center;
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
