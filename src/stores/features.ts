@@ -7,6 +7,17 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.12.17',
+      date: '2025-04-16',
+      features: [
+        {
+          id: 'tootsheduler-poll',
+          title: '🗳️ Add a poll to your toot ✨',
+          description:'We\'re thrilled to announce a new feature that will transform the way you interact on Toot Scheduler! Now you can easily add a poll to your scheduled toots. 📣 Let\'s Poll Up!'
+        },
+      ],
+    },
+    {
       version: '0.11.17',
       date: '2025-04-09',
       features: [
