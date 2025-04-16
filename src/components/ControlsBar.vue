@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { format, addMinutes } from 'date-fns';
 import type { ScheduledToot } from '../types/mastodon';
 
-const props = defineProps<{
+defineProps<{
   scheduledDate: string;
   scheduledTime: string;
   visibility: ScheduledToot['visibility'];
@@ -112,6 +112,7 @@ const languages = [
 
 <style scoped>
 .controls-bar {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;

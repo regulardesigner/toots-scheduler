@@ -98,7 +98,7 @@ export function useMastodonApi() {
       }
 
       // Format the request payload according to Mastodon API specs
-      const payload = {
+      const payload: any = {
         status: toot.status,
         scheduled_at: toot.scheduled_at,
         media_ids: toot.media_ids || [],
@@ -110,7 +110,15 @@ export function useMastodonApi() {
         idempotency: Date.now().toString(),
       };
 
-      console.log('Scheduling toot with payload:', payload);
+      // Add poll data if present
+      if (toot.poll) {
+        payload.poll = {
+          options: toot.poll.options,
+          expires_in: toot.poll.expires_in,
+          multiple: toot.poll.multiple || false,
+          hide_totals: toot.poll.hide_totals || false,
+        };
+      }
 
       // Use the statuses endpoint with scheduled_at parameter
       const response = await api.post(`${auth.instance}/api/v1/statuses`, payload);
@@ -205,6 +213,11 @@ export function useMastodonApi() {
     try {
       const response = await api.get(`${auth.instance}/api/v1/scheduled_statuses`);
       console.log('Scheduled toots response:', response.data);
+      // Log the first toot's poll data if it exists
+      if (response.data.length > 0) {
+        console.log('First toot poll data:', response.data[0].poll);
+        console.log('First toot params:', response.data[0].params);
+      }
       return response.data;
     } catch (error) {
       console.error('Error fetching scheduled toots:', error);
