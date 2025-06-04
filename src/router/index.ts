@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
-import TootComposer from '../components/TootComposer.vue';
+import TootComposer from '../components/Toot/TootComposer.vue';
 import LandingPage from '../components/LandingPage.vue';
 
 const router = createRouter({

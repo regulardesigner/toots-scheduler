@@ -13,14 +13,7 @@ const api = useMastodonApi();
 const error = ref('');
 const isLoading = ref(false);
 
-function normalizeInstanceUrl(url: string): string {
-  try {
-    const parsedUrl = new URL(url);
-    return parsedUrl.origin;
-  } catch {
-    throw new Error('Invalid URL format');
-  }
-}
+import { normalizeUrl } from '../../utils/url';
 
 async function handleLogin() {
   try {
@@ -28,7 +21,7 @@ async function handleLogin() {
     isLoading.value = true;
     
     // Normalize and validate the instance URL
-    const normalizedUrl = normalizeInstanceUrl(instance.value);
+    const normalizedUrl = normalizeUrl(instance.value);
     
     // Store the instance URL
     auth.setInstance(normalizedUrl);

@@ -85,21 +85,28 @@ function handlePollCheckboxChange(event: Event) {
 
 <style scoped>
 .content-area {
+  overflow: hidden;
+  border: 1px solid #999;
+  border-radius: 0.5rem;
   position: relative;
   margin-bottom: 1rem;
 }
 
+.content-area:focus-within {
+  border: solid 2px var(--v-focus-ring-color, #007bff);
+}
+
 textarea {
   width: 100%;
+  border: none;
   min-height: 20rem;
   padding: 0.5rem;
   font-size: 1.2rem;
   margin-bottom: 0;
   font-weight: 600;
   resize: vertical;
-  border: 1px solid #999;
-  border-radius: 0.5rem;
   font-family: inherit;
+  outline: none; /* Removes the focus outline */
 }
 
 .textarea-footer {
@@ -119,7 +126,7 @@ textarea {
 }
 
 .media-poll-controls {
-  bottom: 2rem;
+  bottom: 0.2rem;
   left: 0.3rem;
   position: absolute;
   display: flex;

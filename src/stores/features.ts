@@ -4,6 +4,10 @@ import type { FeatureGroup, UserFeatureState } from '../types/features';
 
 const STORAGE_KEY = 'masto-publish-later-features';
 
+/**
+ * Creates a Pinia store for managing app features.
+ * @returns {Object} The features store with state and actions.
+ */
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
@@ -13,7 +17,7 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'tootsheduler-poll',
           title: '🗳️ Add a poll to your toot ✨',
-          description:'We\'re thrilled to announce a new feature that will transform the way you interact on Toot Scheduler! Now you can easily add a poll to your scheduled toots. 📣 Let\'s Poll Up!'
+          description: 'We are thrilled to announce a new feature that will transform the way you interact on Toot Scheduler! Now you can easily add a poll to your scheduled toots. Let\'s Poll Up!'
         },
       ],
     },
@@ -24,12 +28,12 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'tootsheduler-hashtag-removal',
           title: '🔖 Hashtag #TootScheduler removal',
-          description: 'I\'ve removed the #TootScheduler hashtag from scheduled toots. No more unwanted hashtags! Bye bye hashtag, you will be missed!',
+          description: 'The #TootScheduler hashtag has been removed from scheduled toots. No more unwanted hashtags!'
         },
         {
           id: 'name-tootsheduler',
           title: '🧠 Toots Scheduler is now Toot Scheduler',
-          description: 'Corrected a small typo in the name of the app. Why? Because the double "s" was annoying me as dyslexic person. I know, it\'s a small thing, but having the right name is important!',
+          description: 'Corrected a small typo in the app name. The double "s" was annoying, especially for dyslexic users.'
         },
       ],
     },
@@ -40,7 +44,7 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'upload-media-image',
           title: '🖼️ Upload media image',
-          description: 'Now you can upload images to your scheduled toots!',
+          description: 'You can now upload images to your scheduled toots!'
         },
       ],
     },
@@ -51,12 +55,12 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'show-sensitive-content',
           title: '👁️ Show/Hide sensitive content in Scheduled Toots',
-          description: 'Now you can see if a scheduled toot has sensitive content!',
+          description: 'You can now see if a scheduled toot has sensitive content!'
         },
         {
           id: 'fix-spoiler-text',
           title: '🐛 Fix spoiler text',
-          description: 'The spoiler text wasn\'t correctly retrieved when updating a scheduled toot…',
+          description: 'Fixed an issue where spoiler text wasn\'t correctly retrieved when updating a scheduled toot.'
         },
       ],
     },
@@ -67,7 +71,7 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'direct-thanks-you',
           title: '🤗 Direct thanks you message',
-          description: 'Now you can directly send me a direct message to say thanks on mastodon!',
+          description: 'You can now directly send a thank you message via Mastodon!'
         },
       ],
     },
@@ -77,18 +81,18 @@ export const useFeaturesStore = defineStore('features', () => {
       features: [
         {
           id: 'toots-asc-ordering',
-          title: '🚸 Toots list ordering',  
-          description: 'Now the sheduled toots list is ordered by ascending scheduled date!',
+          title: '🚸 Toots list ordering',
+          description: 'The scheduled toots list is now ordered by ascending scheduled date.'
         },
         {
           id: 'routing-to-home',
-          title: '🚚 Better auth routing',  
-          description: 'Now the app will route you to the home page if you are not authenticated!',
+          title: '🚚 Better auth routing',
+          description: 'The app will now route you to the home page if you are not authenticated.'
         },
         {
           id: 'layout-ui-fix',
-          title: '💄 Layout & UI fixes',  
-          description: 'Fixed some minor layouts and UI issues!',
+          title: '💄 Layout & UI fixes',
+          description: 'Fixed some minor layout and UI issues.'
         },
       ],
     },
@@ -98,8 +102,8 @@ export const useFeaturesStore = defineStore('features', () => {
       features: [
         {
           id: 'New Landing & new design',
-          title: '💄 Landing & design',  
-          description: 'Let\'s face it we needed a proper landing page with clear arguments and a incredible design!',
+          title: '💄 Landing & design',
+          description: 'Added a proper landing page with clear information and an incredible design!'
         },
       ],
     },
@@ -110,12 +114,12 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'edit-scheduled-toots',
           title: '🔄 Edit scheduled toots',
-          description: 'Made a typo? No problem! Now you can edit your scheduled toots!',
+          description: 'You can now edit your scheduled toots!'
         },
         {
           id: 'edit-mode-scroll-to-textarea',
           title: '🚡 Edit mode scroll to textarea',
-          description: 'When you click on the Edit button, we "scroll" you straight to the textarea!',
+          description: 'When you click on the Edit button, we scroll you straight to the textarea!'
         },
       ],
     },
@@ -126,7 +130,7 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'header-layout-fix',
           title: '📱 Header layout fix',
-          description: 'Fixed the header layout to be more responsive on mobile devices!',
+          description: 'The header layout is now more responsive on mobile devices.'
         },
       ],
     },
@@ -137,12 +141,12 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'whats-new',
           title: '👋 Say hello to What\'s new?',
-          description: 'Now you can discover (here) the latest features and updates in the app!',
+          description: 'You can now discover the latest features and updates in the app!'
         },
         {
           id: 'bugs-fixes-0.5.7',
           title: '🐛 Bugs fixes',
-          description: 'Yep, I\'ve improved the app and fixed some bugs!',
+          description: 'Improved the app and fixed some bugs.'
         },
       ],
     },
@@ -153,7 +157,7 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'timout-session',
           title: '🏴‍☠️ Auto logout session',
-          description: 'Safety first! If you leave the page open for too long, you will be logged out automatically.',
+          description: 'For safety, you will be automatically logged out if you leave the page open for too long.'
         },
       ],
     },
@@ -164,12 +168,12 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'minimun-scheduling-time',
           title: '🐘 Minimum toot scheduling time & Bugs fixes',
-          description: 'Mastodon doesn\'t allow you to plan a toot less than 5 minutes later, so I\'ve made sure that\'s no longer possible.',
+          description: 'Implemented a minimum 5-minute scheduling time for toots, as required by Mastodon.'
         },
         {
           id: 'bugs-fixes-0.3.4',
           title: '🐛 Bugs fixes',
-          description: 'I\'ve fixed some bugs.',
+          description: 'Fixed some bugs.'
         },
       ],
     },
@@ -180,7 +184,7 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'hashtag-tootsSheduler',
           title: '🔖 Hashtag TootScheduler',
-          description: 'Let\'s spread the word! Now all scheduled toots will be tagged with #TootScheduler!',
+          description: 'All scheduled toots are now tagged with #TootScheduler!'
         },
       ],
     },
@@ -191,18 +195,22 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'schedule-posts',
           title: '🕒 Schedule Posts',
-          description: 'Welcome to Toot Scheduler! You can schedule your posts to be published at a specific time!',
+          description: 'Welcome to Toot Scheduler! You can now schedule your posts to be published at a specific time.'
         },
         {
           id: 'bugs-fixes-0.1.2',
           title: '🐛 Bugs fixes',
-          description: 'I\'ve fixed some bugs.',
+          description: 'Fixed some bugs.'
         },
       ],
     },
   ]);
 
   // Get the latest version from features
+  /**
+   * Computes the latest version from the features list.
+   * @returns {string} The latest version number.
+   */
   const latestVersion = computed(() => {
     return features.value[0]?.version || '1.0.0';
   });
@@ -213,6 +221,9 @@ export const useFeaturesStore = defineStore('features', () => {
   });
 
   // Load state from localStorage
+  /**
+   * Loads the user's feature state from localStorage.
+   */
   function loadState() {
     const savedState = localStorage.getItem(STORAGE_KEY);
     if (savedState) {
@@ -221,11 +232,18 @@ export const useFeaturesStore = defineStore('features', () => {
   }
 
   // Save state to localStorage
+  /**
+   * Saves the user's feature state to localStorage.
+   */
   function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userState.value));
   }
 
   // Get new features that haven't been seen
+  /**
+   * Computes the list of new features that haven't been seen by the user.
+   * @returns {Array} The list of new feature groups.
+   */
   const newFeatures = computed(() => {
     return features.value.filter(
       (group: FeatureGroup) => !userState.value.seenFeatures.includes(group.version)
@@ -233,11 +251,18 @@ export const useFeaturesStore = defineStore('features', () => {
   });
 
   // Get last 3 new features
+  /**
+   * Computes the last three new features.
+   * @returns {Array} The last three new feature groups.
+   */
   const lastThreeNewFeatures = computed(() => {
     return newFeatures.value.slice(0, 3);
   });
 
   // Mark features as seen
+  /**
+   * Marks all features as seen and updates the user's state.
+   */
   function markFeaturesAsSeen() {
     userState.value.seenFeatures = features.value.map((group: FeatureGroup) => group.version);
     userState.value.lastSeenVersion = latestVersion.value;
@@ -248,8 +273,21 @@ export const useFeaturesStore = defineStore('features', () => {
   loadState();
 
   return {
+    /**
+     * The list of feature groups.
+     * @type {Ref<FeatureGroup[]>}
+     */
     features,
+  
+    /**
+     * The last three new features that haven't been seen by the user.
+     * @type {ComputedRef<Array>}
+     */
     newFeatures: lastThreeNewFeatures,
+  
+    /**
+     * Marks all features as seen.
+     */
     markFeaturesAsSeen,
   };
 }); 

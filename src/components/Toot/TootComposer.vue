@@ -1,4 +1,8 @@
 <script setup lang="ts">
+// Constants
+const MIN_SCHEDULE_AHEAD_MINUTES = 5;
+const DEFAULT_POLL_EXPIRATION_SECONDS = 86400; // 24 hours
+
 import { ref, onMounted, watch } from 'vue';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { useAuthStore } from '../stores/auth';
@@ -28,7 +32,7 @@ const mediaAttachments = ref<MastodonMediaAttachment[]>([]);
 
 const pollData = ref({
   options: ['', ''],
-  expiresIn: 86400,
+  expiresIn: DEFAULT_POLL_EXPIRATION_SECONDS,
   multiple: false,
   hideTotals: false
 });
@@ -80,7 +84,7 @@ watch(() => store.editingToot, (newToot) => {
       showPoll.value = true;
       pollData.value = {
         options: poll.options || [],
-        expiresIn: poll.expires_in || 86400,
+        expiresIn: poll.expires_in || DEFAULT_POLL_EXPIRATION_SECONDS,
         multiple: poll.multiple || false,
         hideTotals: poll.hide_totals || false
       };
@@ -104,7 +108,7 @@ function resetForm() {
   showPoll.value = false;
   pollData.value = {
     options: ['', ''],
-    expiresIn: 86400,
+    expiresIn: DEFAULT_POLL_EXPIRATION_SECONDS,
     multiple: false,
     hideTotals: false
   };
@@ -136,10 +140,10 @@ async function handleSubmit() {
 
     // Validate scheduled time
     const scheduledDateTime = new Date(`${scheduledDate.value}T${scheduledTime.value}`);
-    const minTime = addMinutes(new Date(), 5);
+    const minTime = addMinutes(new Date(), MIN_SCHEDULE_AHEAD_MINUTES);
     
     if (isBefore(scheduledDateTime, minTime)) {
-      error.value = 'Please schedule the toot at least 5 minutes in the future.';
+      error.value = `Please schedule the toot at least ${MIN_SCHEDULE_AHEAD_MINUTES} minutes in the future.`;
       return;
     }
 
