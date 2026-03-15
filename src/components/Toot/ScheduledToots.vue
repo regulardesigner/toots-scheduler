@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { useMastodonApi } from '../composables/useMastodonApi';
+import { useMastodonApi } from '../../composables/useMastodonApi';
 import TootCard from './TootCard.vue';
-import { useScheduledTootsStore } from '../stores/scheduledToots';
+import { useScheduledTootsStore } from '../../stores/scheduledToots';
 
 const api = useMastodonApi();
 const store = useScheduledTootsStore();

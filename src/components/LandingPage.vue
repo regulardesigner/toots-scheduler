@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import LoginForm from './Modals/LoginForm.vue';
+import LoginForm from './Auth/LoginForm.vue';
 import ModalView from './Modals/ModalView.vue';
 
 const showLoginForm = ref(false);

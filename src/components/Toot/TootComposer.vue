@@ -4,17 +4,17 @@ const MIN_SCHEDULE_AHEAD_MINUTES = 5;
 const DEFAULT_POLL_EXPIRATION_SECONDS = 86400; // 24 hours
 
 import { ref, onMounted, watch } from 'vue';
-import { useMastodonApi } from '../composables/useMastodonApi';
-import { useAuthStore } from '../stores/auth';
+import { useMastodonApi } from '../../composables/useMastodonApi';
+import { useAuthStore } from '../../stores/auth';
 import { format, addMinutes, isBefore, parseISO } from 'date-fns';
-import type { ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
+import type { ScheduledToot, MastodonMediaAttachment } from '../../types/mastodon';
 import ScheduledToots from './ScheduledToots.vue';
-import { useScheduledTootsStore } from '../stores/scheduledToots';
-import MediaUpload from './MediaUpload.vue';
-import ContentWarning from './ContentWarning.vue';
-import ContentArea from './ContentArea.vue';
-import ControlsBar from './ControlsBar.vue';
-import PollSection from './PollSection.vue';
+import { useScheduledTootsStore } from '../../stores/scheduledToots';
+import MediaUpload from '../MediaUpload.vue';
+import ContentWarning from '../ContentWarning.vue';
+import ContentArea from '../ContentArea.vue';
+import ControlsBar from '../ControlsBar.vue';
+import PollSection from '../Toot/PollSection.vue';
 
 const auth = useAuthStore();
 const content = ref('');
