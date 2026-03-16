@@ -26,6 +26,7 @@ useSessionTimeout();
 async function handleLogout(): Promise<void> {
   await auth.logout();
   isMenuOpen.value = false;
+  toast.success('You have been logged out successfully.');
 }
 
 function handleWhatsNewClose() {
