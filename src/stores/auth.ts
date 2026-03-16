@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -74,22 +75,34 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Initialize from localStorage
   /**
-   * Initializes the authentication state from localStorage.
+   * Initializes the authentication state from localStorage and validates
+   * the stored token against the Mastodon instance before redirecting.
    */
-  function initializeFromStorage(): void {
+  async function initializeFromStorage(): Promise<void> {
     const storedToken = localStorage.getItem('mastodon_token');
     const storedInstance = localStorage.getItem('mastodon_instance');
     const storedClientId = localStorage.getItem('mastodon_client_id');
     const storedClientSecret = localStorage.getItem('mastodon_client_secret');
-  
+
     if (storedToken) accessToken.value = storedToken;
     if (storedInstance) instance.value = storedInstance;
     if (storedClientId) clientId.value = storedClientId;
     if (storedClientSecret) clientSecret.value = storedClientSecret;
-  
-    // If we have a token on initialization, redirect to composer
-    if (storedToken) {
-      router.push({ name: 'composer' });
+
+    if (storedToken && storedInstance) {
+      try {
+        // Validate the token directly with axios to avoid circular dependency
+        // with useMastodonApi, which itself imports useAuthStore.
+        const response = await axios.get(`${storedInstance}/api/v1/accounts/verify_credentials`, {
+          headers: { Authorization: `Bearer ${storedToken}` },
+          timeout: 10000,
+        });
+        account.value = response.data;
+        router.push({ name: 'composer' });
+      } catch {
+        // Token is expired or revoked — silently clear credentials
+        await logout();
+      }
     }
   }
 
