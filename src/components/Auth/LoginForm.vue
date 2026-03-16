@@ -38,12 +38,12 @@ async function handleLogin() {
       scope: 'read:accounts read:statuses write:media write:statuses',
     });
 
+    emit('close-child-modal');
     window.location.href = `${normalizedUrl}/oauth/authorize?${params.toString()}`;
   } catch (err) {
     console.error('Login error:', err);
     error.value = err instanceof Error ? err.message : 'Failed to connect to Mastodon instance. Please check the URL and try again.';
   } finally {
-    emit('close-child-modal');
     isLoading.value = false;
   }
 }
