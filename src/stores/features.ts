@@ -11,6 +11,33 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.12.19',
+      date: '2026-03-16',
+      features: [
+        {
+          id: 'fix-auth-token-timeout',
+          title: '🔐 Auth: token validation & timeout fixes',
+          description: 'Fixed token validation issues and axios timeout during authentication. Your sessions are now rock solid! 💪'
+        },
+        {
+          id: 'fix-auth-callback-form',
+          title: '🚪 Auth: callback & login error display',
+          description: 'Fixed the callback error redirect and improved how login errors are displayed. No more confusion when something goes wrong! 🎯'
+        },
+      ],
+    },
+    {
+      version: '0.12.18',
+      date: '2026-03-15',
+      features: [
+        {
+          id: 'fix-wrong-import-url',
+          title: '🐛 Fix: wrong import url',
+          description: 'Fixed a wrong import URL that was causing loading issues. Everything\'s back on track! 🛤️'
+        },
+      ],
+    },
+    {
       version: '0.12.17',
       date: '2025-04-16',
       features: [
