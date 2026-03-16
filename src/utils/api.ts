@@ -11,7 +11,7 @@ export function createApiClient() {
 
   api.interceptors.request.use(function(config) {
     const auth = useAuthStore();
-    if (auth.accessToken) {
+    if (auth.accessToken && auth.instance && config.url?.startsWith(auth.instance)) {
       config.headers.Authorization = `Bearer ${auth.accessToken}`;
     }
     return config;
