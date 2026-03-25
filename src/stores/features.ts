@@ -11,6 +11,17 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.13.0',
+      date: '2026-03-25',
+      features: [
+        {
+          id: 'delete-confirmation-modal',
+          title: '🗑️ Nicer Delete Confirmation',
+          description: 'Deleting a scheduled toot now shows a clean in-app confirmation dialog instead of the browser\'s default popup. The experience is smoother and matches the rest of the app.'
+        },
+      ],
+    },
+    {
       version: '0.12.19',
       date: '2026-03-16',
       features: [
