@@ -334,7 +334,7 @@ Consolidated list, ordered by impact vs. effort.
 |----------|---------|--------|--------|--------------------|
 | 🔴 1 | GAP-01: Missing OAuth `state` | Low | Critical | Implement before any public promotion |
 | 🔴 2 | GAP-03: No CSP | Very low | Critical | Add `<meta>` CSP tag |
-| 🔴 3 | 1.1 / 1.10: `window.confirm()` for delete | Low | High | Replace with `ModalView` confirmation |
+| ~~🔴 3~~ | ~~1.1 / 1.10: `window.confirm()` for delete~~ | ~~Low~~ | ~~High~~ | ✅ Fixed — `DeleteConfirmModal.vue` + `ModalView` |
 | 🔴 4 | 1.6: Unlabelled media / poll toggles | Low | High | Add visible "Photo" / "Poll" labels |
 | 🟠 5 | 1.2: No success feedback | Very low | High | Add toast on schedule/update success |
 | 🟠 6 | GAP-04: No file validation | Low | High | Validate MIME type and size before upload |

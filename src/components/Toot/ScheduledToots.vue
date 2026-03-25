@@ -1,23 +1,58 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import TootCard from './TootCard.vue';
+import ModalView from '../Modals/ModalView.vue';
+import DeleteConfirmModal from '../Modals/DeleteConfirmModal.vue';
 import { useScheduledTootsStore } from '../../stores/scheduledToots';
+import type { MastodonStatus } from '../../types/mastodon';
+
+const PREVIEW_MAX_LENGTH = 120;
 
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
 
-async function handleDelete(id: string) {
-  if (!confirm('Are you sure you want to delete this scheduled toot?')) {
-    return;
-  }
+/** The toot pending deletion, or null when no confirmation is open. */
+const tootToDelete = ref<MastodonStatus | null>(null);
+
+/** Truncated preview text shown inside the confirmation modal. */
+const tootDeletePreview = ref('');
+
+/**
+ * Opens the delete confirmation modal for the given toot ID.
+ * @param {string} id - The ID of the toot to delete.
+ */
+function handleDeleteRequest(id: string) {
+  const toot = store.toots.find(t => t.id === id);
+  if (!toot) return;
+  tootToDelete.value = toot;
+  const text = toot.params?.text ?? '';
+  tootDeletePreview.value = text.length > PREVIEW_MAX_LENGTH
+    ? text.slice(0, PREVIEW_MAX_LENGTH) + '…'
+    : text;
+}
+
+/**
+ * Cancels the pending deletion and closes the confirmation modal.
+ */
+function handleDeleteCancel() {
+  tootToDelete.value = null;
+  tootDeletePreview.value = '';
+}
+
+/**
+ * Confirms the deletion of the pending toot and refreshes the list.
+ */
+async function handleDeleteConfirm() {
+  if (!tootToDelete.value) return;
+  const id = tootToDelete.value.id;
+  handleDeleteCancel();
 
   try {
     store.setLoading(true);
     await api.deleteScheduledToot(id);
-    await store.fetchScheduledToots(); // Refresh the list
+    await store.fetchScheduledToots();
   } catch (err) {
-    console.error('Error deleting toot:', err);
     store.setError(err instanceof Error ? err.message : 'Failed to delete toot');
   } finally {
     store.setLoading(false);
@@ -83,13 +118,21 @@ onMounted(() => {
             :poll="toot.params?.poll"
             :medias="toot.media_attachments"
             :is-loading="store.isLoading"
-            :on-delete="handleDelete"
+            :on-delete="handleDeleteRequest"
             :on-edit="handleEdit"
           />
         </TransitionGroup>
       </div>
     </details>
   </div>
+
+  <ModalView :is-open="!!tootToDelete" @close-modal="handleDeleteCancel">
+    <DeleteConfirmModal
+      :toot-preview="tootDeletePreview"
+      @confirm="handleDeleteConfirm"
+      @cancel="handleDeleteCancel"
+    />
+  </ModalView>
 </template>
 
 <style scoped>

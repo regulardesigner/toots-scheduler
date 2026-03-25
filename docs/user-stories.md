@@ -405,9 +405,13 @@ Status column uses: ✅ Done | 🚧 Partial | ⚠️ Known gap
 
 **Acceptance criteria:**
 - [ ] Each toot card has a "Delete" button
-- [ ] A confirmation dialog is shown before the deletion proceeds
-- [ ] After deletion, the list refreshes to reflect the change
+- [ ] Clicking "Delete" opens an in-app modal — not a browser `window.confirm()` dialog
+- [ ] The modal displays the beginning of the toot text so I can confirm I'm deleting the right one
+- [ ] The modal has a clearly labelled "Cancel" button and a visually distinct "Delete" button
+- [ ] Pressing Escape or clicking the overlay closes the modal without deleting
+- [ ] After confirmed deletion, the list refreshes to reflect the change
 - [ ] Errors during deletion are shown in the list, not as a page crash
+- [ ] The modal is accessible: focus is trapped inside while open and returns to the triggering element on close
 
 **Status:** ✅ Done
 

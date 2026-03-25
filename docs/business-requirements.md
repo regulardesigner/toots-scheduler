@@ -267,7 +267,7 @@ The application has three routes, managed by Vue Router with a navigation guard 
 | ST-05 | Each toot card indicates if it has media attachments (with count) or a poll |
 | ST-06 | A toot with a content warning displays the spoiler text; the toot body is blurred by default and revealed by a toggle |
 | ST-07 | Each toot card provides an "Edit" button that loads the toot into the composer in edit mode |
-| ST-08 | Each toot card provides a "Delete" button with a confirmation dialog before deletion |
+| ST-08 | Each toot card provides a "Delete" button that opens an in-app confirmation modal (not `window.confirm()`). The modal shows a preview of the toot text, a "Cancel" button, and a "Delete" button. Pressing Escape or clicking the overlay dismisses without deleting. |
 | ST-09 | The list refreshes after any create, update, or delete action |
 | ST-10 | Loading and error states are displayed during API operations |
 | ST-11 | An empty state message is shown when no scheduled toots exist |
