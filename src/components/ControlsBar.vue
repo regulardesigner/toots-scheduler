@@ -51,10 +51,10 @@ const languages = [
         id="scheduled-date"
         type="date"
         :value="scheduledDate"
-        @input="emit('update:scheduledDate', ($event.target as HTMLInputElement).value)"
         :min="minDateTime.split('T')[0]"
         required
-      />
+        @input="emit('update:scheduledDate', ($event.target as HTMLInputElement).value)"
+      >
     </div>
     <div class="form-group">
       <label for="scheduled-time">Time</label>
@@ -62,9 +62,9 @@ const languages = [
         id="scheduled-time"
         type="time"
         :value="scheduledTime"
-        @input="emit('update:scheduledTime', ($event.target as HTMLInputElement).value)"
         required
-      />
+        @input="emit('update:scheduledTime', ($event.target as HTMLInputElement).value)"
+      >
     </div>
     <div class="form-group">
       <label for="visibility">Visibility</label>
@@ -73,10 +73,18 @@ const languages = [
         :value="visibility"
         @change="emit('update:visibility', ($event.target as HTMLSelectElement).value as ScheduledToot['visibility'])"
       >
-        <option value="public">Public</option>
-        <option value="unlisted">Unlisted</option>
-        <option value="private">Followers only</option>
-        <option value="direct">Direct message</option>
+        <option value="public">
+          Public
+        </option>
+        <option value="unlisted">
+          Unlisted
+        </option>
+        <option value="private">
+          Followers only
+        </option>
+        <option value="direct">
+          Direct message
+        </option>
       </select>
     </div>
     <div class="form-group">
@@ -86,7 +94,11 @@ const languages = [
         :value="language"
         @change="emit('update:language', ($event.target as HTMLSelectElement).value)"
       >
-        <option v-for="lang in languages" :key="lang.code" :value="lang.code">
+        <option
+          v-for="lang in languages"
+          :key="lang.code"
+          :value="lang.code"
+        >
           {{ lang.name }}
         </option>
       </select>

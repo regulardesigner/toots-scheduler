@@ -78,31 +78,43 @@ const hasPoll = computed(() => {
       <div class="actions">
         <button 
           class="edit-button" 
-          @click="props.onEdit(props.id)"
           :disabled="props.isLoading"
+          @click="props.onEdit(props.id)"
         >
           {{ props.isLoading ? 'Editing...' : 'Edit' }}
         </button>
         <button 
           class="delete-button" 
-          @click="props.onDelete(props.id)"
           :disabled="props.isLoading"
+          @click="props.onDelete(props.id)"
         >
           {{ props.isLoading ? 'Deleting...' : 'Delete' }}
         </button>
       </div>
     </div>
-    <div v-if="props.sensitive" class="sensitive-warning">
-      <input id="sensitive" name="sensitive" type="checkbox" @click="handleShowSensitiveContent" v-model="showSensitiveContent" />
+    <div
+      v-if="props.sensitive"
+      class="sensitive-warning"
+    >
+      <input
+        id="sensitive"
+        v-model="showSensitiveContent"
+        name="sensitive"
+        type="checkbox"
+        @click="handleShowSensitiveContent"
+      >
 
       <label for="sensitive">{{ props.spoiler_text }}</label>
     </div>
-    <div class="toot-content"><p :class="{ blurred: !showSensitiveContent }">{{ props.text }}</p></div>
+    <div class="toot-content">
+      <p :class="{ blurred: !showSensitiveContent }">
+        {{ props.text }}
+      </p>
+    </div>
 
     <div class="toot-footer">
-      {{ getCapitalizedVisibility(props.visibility) }} toot in {{ getLanguageName(props.language) }} <span v-if="hasMedia">- with {{medias?.length}} media</span> <span v-if="hasPoll">- with poll</span>
+      {{ getCapitalizedVisibility(props.visibility) }} toot in {{ getLanguageName(props.language) }} <span v-if="hasMedia">- with {{ medias?.length }} media</span> <span v-if="hasPoll">- with poll</span>
     </div>
-    
   </div>
 </template>
 

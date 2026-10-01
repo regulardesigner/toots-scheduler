@@ -44,39 +44,45 @@ function handlePollCheckboxChange(event: Event) {
 </script>
 
 <template>
-  <div class="content-area" id="schedule-button">
+  <div
+    id="schedule-button"
+    class="content-area"
+  >
     <textarea
       :value="modelValue"
-      @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
       :placeholder="'What\'s on your mind?'"
       required
       :maxlength="500"
       rows="4"
+      @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />
     <div class="media-poll-controls">
       <input 
+        id="media" 
+        v-model="isMediaChecked" 
         type="checkbox" 
         name="media-or-poll" 
-        id="media" 
         value="media" 
         aria-label="Upload media" 
-        @click="handleMediaCheckboxChange" 
-        v-model="isMediaChecked" 
         :disabled="isPollChecked || hasPoll" 
-      />
+        @click="handleMediaCheckboxChange" 
+      >
       <input 
+        id="poll" 
+        v-model="isPollChecked" 
         type="checkbox" 
         name="media-or-poll" 
-        id="poll" 
         value="poll" 
         aria-label="Add a poll" 
-        @click="handlePollCheckboxChange" 
-        v-model="isPollChecked" 
-        :disabled="isMediaChecked || hasMedia"
-      />
+        :disabled="isMediaChecked || hasMedia" 
+        @click="handlePollCheckboxChange"
+      >
     </div>
     <div class="textarea-footer">
-      <span class="character-count" :class="{ 'near-limit': remainingCharacters < 50 }">
+      <span
+        class="character-count"
+        :class="{ 'near-limit': remainingCharacters < 50 }"
+      >
         {{ remainingCharacters }}
       </span>
     </div>

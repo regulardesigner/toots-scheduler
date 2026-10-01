@@ -124,29 +124,44 @@ async function saveMediaMetadata() {
         type="file"
         accept="image/*"
         multiple
-        @change="handleFileSelect"
         class="hidden"
-      />
+        @change="handleFileSelect"
+      >
       <div class="upload-content">
         <p>Drag & drop images here or click to select</p>
-        <p class="upload-hint">Up to 4 images, max 8MB each</p>
+        <p class="upload-hint">
+          Up to 4 images, max 8MB each
+        </p>
       </div>
     </div>
 
     <!-- Upload Progress Section -->
-    <div v-if="Object.keys(uploadProgress).length > 0" class="upload-progress">
-      <div v-for="(progress, fileName) in uploadProgress" :key="fileName" class="progress-item">
+    <div
+      v-if="Object.keys(uploadProgress).length > 0"
+      class="upload-progress"
+    >
+      <div
+        v-for="(progress, fileName) in uploadProgress"
+        :key="fileName"
+        class="progress-item"
+      >
         <div class="progress-info">
           <span class="file-name">{{ fileName }}</span>
           <span class="progress-percentage">{{ Math.round(progress) }}%</span>
         </div>
         <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+          <div
+            class="progress-fill"
+            :style="{ width: `${progress}%` }"
+          />
         </div>
       </div>
     </div>
 
-    <div v-if="modelValue.length > 0" class="media-preview">
+    <div
+      v-if="modelValue.length > 0"
+      class="media-preview"
+    >
       <div 
         v-for="(media, index) in modelValue" 
         :key="media.id" 
@@ -157,7 +172,7 @@ async function saveMediaMetadata() {
           <img 
             :src="media.preview_url" 
             :alt="media.description || ''"
-          />
+          >
           <div class="preview-controls">
             <button 
               type="button" 
@@ -170,31 +185,37 @@ async function saveMediaMetadata() {
             <button 
               type="button" 
               class="remove-button"
-              @click="removeMedia(index)"
               aria-label="Remove Image"
+              @click="removeMedia(index)"
             >
               &times;
             </button>
           </div>
         </div>
 
-        <ModalView :is-open="editingMediaIndex === index" @close-modal="editingMediaIndex = null">
-          <label class="winky-sans-700 media-edit-label" for="media-edit-input">Add a description</label>
+        <ModalView
+          :is-open="editingMediaIndex === index"
+          @close-modal="editingMediaIndex = null"
+        >
+          <label
+            class="winky-sans-700 media-edit-label"
+            for="media-edit-input"
+          >Add a description</label>
           <div class="media-edit-form">
             <img 
               class="media-edit-image"
               :src="media.preview_url" 
               :alt="media.description || ''"
-            />
+            >
             <div class="form-group">
               <input
                 id="media-edit-input"
+                v-model="mediaDescription"
                 class="media-edit-input"
                 type="text"
-                v-model="mediaDescription"
                 placeholder="Describe the image if necessary"
                 @keyup.enter="saveMediaMetadata"
-              />
+              >
             </div>
             <button 
               type="button" 
@@ -208,7 +229,12 @@ async function saveMediaMetadata() {
       </div>
     </div>
 
-    <p v-if="uploadError" class="error">{{ uploadError }}</p>
+    <p
+      v-if="uploadError"
+      class="error"
+    >
+      {{ uploadError }}
+    </p>
   </div>
 </template>
 

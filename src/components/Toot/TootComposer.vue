@@ -206,12 +206,23 @@ async function handleSubmit() {
 <template>
   <div class="toot-composer">
     <form @submit.prevent="handleSubmit">
-      <div class="user-info" v-if="auth.account">
+      <div
+        v-if="auth.account"
+        class="user-info"
+      >
         <div class="user-details">
-          <img :src="auth.account?.avatar" :alt="auth.account?.display_name" class="user-avatar" />
+          <img
+            :src="auth.account?.avatar"
+            :alt="auth.account?.display_name"
+            class="user-avatar"
+          >
           <div>
-            <div class="user-name">{{ auth.account?.display_name }}</div>
-            <div class="user-handle">@{{ auth.account?.acct }}</div>
+            <div class="user-name">
+              {{ auth.account?.display_name }}
+            </div>
+            <div class="user-handle">
+              @{{ auth.account?.acct }}
+            </div>
           </div>
         </div>
         <div class="scheduled-count">
@@ -221,15 +232,15 @@ async function handleSubmit() {
 
       <ContentWarning
         v-model="isSensitive"
-        v-model:spoilerText="spoilerText"
+        v-model:spoiler-text="spoilerText"
       />
 
       <ContentArea
         v-model="content"
-        @add-media="handleShowMedia"
-        @add-poll="handleShowPoll"
         :has-poll="pollData.options.some(option => option.trim() !== '')"
         :has-media="mediaAttachments.length > 0"
+        @add-media="handleShowMedia"
+        @add-poll="handleShowPoll"
       />
 
       <MediaUpload
@@ -243,15 +254,20 @@ async function handleSubmit() {
       />
 
       <ControlsBar
-        v-model:scheduledDate="scheduledDate"
-        v-model:scheduledTime="scheduledTime"
+        v-model:scheduled-date="scheduledDate"
+        v-model:scheduled-time="scheduledTime"
         v-model:visibility="visibility"
         v-model:language="language"
-        :isEditing="!!store.editingToot"
+        :is-editing="!!store.editingToot"
         @cancel="handleCancelEdit"
       />
 
-      <p v-if="error" class="error">{{ error }}</p>
+      <p
+        v-if="error"
+        class="error"
+      >
+        {{ error }}
+      </p>
     </form>
 
     <ScheduledToots />

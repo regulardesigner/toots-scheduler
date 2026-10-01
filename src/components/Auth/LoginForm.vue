@@ -51,7 +51,9 @@ async function handleLogin() {
 
 <template>
   <div class="login-form">
-    <h2 class="winky-sans-700">Instance Sign In</h2>
+    <h2 class="winky-sans-700">
+      Instance Sign In
+    </h2>
     <form @submit.prevent="handleLogin">
       <div class="form-group">
         <label for="instance">Enter your instance URL</label>
@@ -63,10 +65,19 @@ async function handleLogin() {
           required
           pattern="https?://.*"
           :disabled="isLoading"
-        />
+        >
       </div>
-      <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" :disabled="isLoading" class="submit-button">
+      <p
+        v-if="error"
+        class="error"
+      >
+        {{ error }}
+      </p>
+      <button
+        type="submit"
+        :disabled="isLoading"
+        class="submit-button"
+      >
         {{ isLoading ? 'Connecting...' : 'Connect' }}
       </button>
     </form>

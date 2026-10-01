@@ -53,45 +53,86 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
 <template>
   <div class="app">
     <header class="header">
-      <h1 class="header-title winky-sans-900">Toot Scheduler</h1>
+      <h1 class="header-title winky-sans-900">
+        Toot Scheduler
+      </h1>
       
       <!-- Desktop Navigation -->
-      <nav v-if="auth.accessToken" class="nav-buttons desktop-nav">
+      <nav
+        v-if="auth.accessToken"
+        class="nav-buttons desktop-nav"
+      >
         <button 
           v-if="hasNewFeatures"
-          @click="showWhatsNew = true"
           class="whats-new-button"
+          @click="showWhatsNew = true"
         >
           What's New
         </button>
-        <button class="thanks-button" @click="sendThanksNotification"><Send class="thanks-button-icon" />Say Thanks</button>
-        <button class="logout-button" @click="handleLogout">Logout</button>
+        <button
+          class="thanks-button"
+          @click="sendThanksNotification"
+        >
+          <Send class="thanks-button-icon" />Say Thanks
+        </button>
+        <button
+          class="logout-button"
+          @click="handleLogout"
+        >
+          Logout
+        </button>
       </nav>
 
       <!-- Mobile Burger Menu -->
-      <div v-if="auth.accessToken" class="mobile-nav">
-        <span v-if="hasNewFeatures" class="notification-dot" :class="{ 'notification-dot--none': isMenuOpen }"></span>
-        <span v-if="hasNewFeatures" class="whats-new-mobile-label" :class="{ 'whats-new-mobile-label--none': isMenuOpen }">What's New</span>
-        <button class="burger-menu" @click="toggleMenu" :class="{ 'is-open': isMenuOpen }">
-          <span></span>
-          <span></span>
-          <span></span>
+      <div
+        v-if="auth.accessToken"
+        class="mobile-nav"
+      >
+        <span
+          v-if="hasNewFeatures"
+          class="notification-dot"
+          :class="{ 'notification-dot--none': isMenuOpen }"
+        />
+        <span
+          v-if="hasNewFeatures"
+          class="whats-new-mobile-label"
+          :class="{ 'whats-new-mobile-label--none': isMenuOpen }"
+        >What's New</span>
+        <button
+          class="burger-menu"
+          :class="{ 'is-open': isMenuOpen }"
+          @click="toggleMenu"
+        >
+          <span />
+          <span />
+          <span />
         </button>
-        <div class="mobile-menu" :class="{ 'is-open': isMenuOpen }">
+        <div
+          class="mobile-menu"
+          :class="{ 'is-open': isMenuOpen }"
+        >
           <span class="mobile-menu-spacer">
             <button 
               v-if="hasNewFeatures"
-              @click="showWhatsNew = true"
               class="whats-new-button"
+              @click="showWhatsNew = true"
             >
               What's New
             </button>
-            <button class="thanks-button" @click="sendThanksNotification">
+            <button
+              class="thanks-button"
+              @click="sendThanksNotification"
+            >
               <Send class="thanks-button-icon" />
               Say Thanks
             </button>
           </span>
-          <button class="logout-button" @click="handleLogout">Logout</button>
+          <button
+            class="logout-button"
+            @click="handleLogout"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </header>
@@ -102,7 +143,10 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
       <p>&copy; {{ new Date().getFullYear() }} Toot Scheduler</p>
     </footer>
 
-    <ModalView :is-open="showWhatsNew" @close-modal="handleWhatsNewClose">
+    <ModalView
+      :is-open="showWhatsNew"
+      @close-modal="handleWhatsNewClose"
+    >
       <WhatsNew @close-child-modal="handleWhatsNewClose" />
     </ModalView>
   </div>
