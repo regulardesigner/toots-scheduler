@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { format } from 'date-fns';
 import { ref, computed } from 'vue';
+import type { ScheduledToot } from '../../types/mastodon';
 
 interface Props {
   id: string;
@@ -11,9 +12,9 @@ interface Props {
   isLoading?: boolean;
   sensitive?: boolean;
   medias?: Array<{ id: string; description: string; preview_url: string }>;
-  poll?: { id: string; options: Array<{ id: string; text: string }> };
+  poll?: ScheduledToot['poll'];
   spoiler_text?: string;
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string) => void;
   onEdit: (id: string) => void;
 }
 

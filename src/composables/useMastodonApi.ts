@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { createApiClient } from '../utils/api';
 import { useAuthStore } from '../stores/auth';
 import type { MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
