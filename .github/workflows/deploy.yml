@@ -49,7 +49,7 @@ jobs:
       id-token: write
     concurrency:
       group: 'pages'
-      cancel-in-progress: true
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
