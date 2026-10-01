@@ -27,6 +27,8 @@
 
 ## Lot 0 — Socle qualité & CI (CC-01, CC-02, SEC-01, SEC-10)
 
+> ✅ **Livré en 0.13.1** : branche `chore/lot-0-quality-gate`, plan [2026-10-01-lot-0-quality-gate.md](../plans/2026-10-01-lot-0-quality-gate.md).
+
 **Objectif :** rendre le typecheck réel, introduire tests et lint, bloquer un déploiement non conforme, assainir les dépendances.
 
 **Fichiers :** `package.json`, `tsconfig.app.json`, `vite.config.ts` (bloc `test`), `eslint.config.js` (nouveau), `.github/workflows/deploy.yml`, suppression de `yarn.lock`, `.env.example`, + correction des 5 erreurs TS (`ScheduledToots.vue`, `TootCard.vue`, `useMastodonApi.ts`, `ContentWarning.vue`, `router/index.ts`).
@@ -63,6 +65,7 @@
 - Édition : `language.value = newToot.params?.language ?? 'en'`. Fermer le sondage réinitialise `pollData`.
 - `PollSection` : `v-model.number` sur la durée.
 - Corriger la doc du skill mastodon-api (header et non body).
+- Type partagé `PollParams` dans `src/types/mastodon.ts` (la même forme de sondage est dupliquée l.11, l.25, l.59 et dans `TootComposer.vue`), utilisé par `buildScheduledToot`, `TootCard` et `PollSection`. *(Différé depuis la revue du Lot 0.)*
 
 **Tests (TDD) :**
 - `buildScheduledToot` : poll fermé → pas de poll ; poll + media → poll ignoré (ou erreur explicite) ; options vides filtrées ; `expires_in` numérique.
@@ -89,6 +92,7 @@
 - Client unique (`createApiClient(instance)`) avec `baseURL = instance` et chemins relatifs, ce qui supprime la comparaison par préfixe (SEC-08). Interceptor de réponse : sur 401, `auth.logout({ revoke: false })` puis toast. `uploadMedia` passe sur axios avec `onUploadProgress` (suppression du XHR).
 - Store auth : stockage regroupé sous une clé `mastodon_auth` (D1/D2), avec migration silencieuse des 4 anciennes clés. `logout()` fait un `POST /oauth/revoke` en best-effort (timeout 5 s, erreurs ignorées) avant le nettoyage. Suppression de `useRouter()` dans le store : le router est importé directement, ou la navigation est déléguée à l'appelant.
 - Logs : utilitaire `logger` actif uniquement en `DEV`, et `esbuild.drop: ['console', 'debugger']` en build prod.
+- Erreurs : lors d'un re-throw dans `useMastodonApi` et les stores, conserver la cause (`new Error(message, { cause: err })`) au lieu d'écraser l'erreur d'origine. *(Différé depuis la revue du Lot 0.)*
 - **Expiration d'inactivité persistante (option A, D1)** :
   - `src/utils/session.ts` (fonctions pures + test) : `isSessionExpired(lastActivityAt: number | null, now: number, duration: number): boolean`. Une valeur absente ou invalide est considérée comme expirée lorsqu'un token est présent.
   - `lastActivityAt` stocké dans l'objet `mastodon_auth`, et écrit au login puis sur activité, **throttlé à 30 s max** (`useThrottleFn` de @vueuse/core). Cela couvre aussi WEB-03 : plus de reset de timers à chaque `mousemove`. Événements écoutés : `pointerdown`, `keydown`, `scroll` (passive), `visibilitychange`.
@@ -171,6 +175,7 @@
 - `constants.ts` : langues (partagées par TootCard et ControlsBar), scopes, limites par défaut.
 - `features.ts` : `JSON.parse` sous `try/catch` avec fallback, renommage `lastThreeNewFeatures` → `recentNewFeatures`, suppression de `APP_VERSION`.
 - Suppression de `@vueuse/components` (et de `@vueuse/core` s'il n'est pas utilisé après le lot).
+- `eslint.config.js` : bloc `{ files: ['*.config.{js,ts}'], languageOptions: { globals: globals.node } }`, car aujourd'hui `vite.config.ts` n'est accepté que parce que typescript-eslint désactive `no-undef`. *(Différé depuis la revue du Lot 0.)*
 - Purge des JSDoc dupliquées dans les objets retournés, simplification des toggles (`showMedia.value = !showMedia.value`).
 
 **Critères d'acceptation :** taille des polices < 300 Ko dans `dist/assets` ; aucune dépendance listée non importée (vérifiable avec `npx depcheck`) ; Lighthouse perf ≥ 90 sur la landing ; tests, lint et typecheck verts.
