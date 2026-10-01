@@ -37,7 +37,7 @@ async function sendThanksNotification() {
   try {
     await mastodonApi.sendDirectThanksNotification();
     toast.success('Thanks sent successfully! 🤗');
-  } catch (error) {
+  } catch {
     toast.error('Failed to send thanks. Please try again later.');
   }
   isMenuOpen.value = false;
