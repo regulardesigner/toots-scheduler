@@ -2595,4 +2595,9 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-2-au
 - **More accepted residuals:**
   - Revocation is best effort: if the user is offline or the instance is down, the token stays valid until the user revokes it under *Authorized apps*. The README says so.
   - If another tab switches account while a new toot is being typed, the typed text stays in the composer, now under the new account.
+  - `takePendingLogin` does not re-validate `instance` with `normalizeUrl` (defence in depth only: only this page's scripts can write sessionStorage).
+  - At startup with a restored session, `verify_credentials` runs twice: once from the store's `loadAccount`, once from `TootComposer.onMounted`. This is harmless.
+  - The auth store's `storage` listener is never removed. The store lives as long as the app.
+  - If another tab's logout event has not arrived when this tab's expiry fires, this tab shows an "inactivity" toast and sends a second revoke, which is harmless, instead of signing out silently.
+  - Within the 30 s throttle window, activity does not re-read storage. The re-read before every write still prevents resurrection, and the `storage` event remains the main sync path.
   - Response validation (SEC-07, zod) and the CSP (SEC-03 part 1, WEB-04) are in Lot 3.
