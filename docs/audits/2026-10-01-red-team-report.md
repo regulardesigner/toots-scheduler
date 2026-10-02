@@ -235,6 +235,6 @@ Un nouveau client axios est créé à chaque `useMastodonApi()`. `uploadMedia` c
 - La modale possède un focus trap et gère `Escape`, la confirmation de suppression est in-app.
 - La surface est réduite : pas de backend, aucune donnée stockée côté service.
 
-**Statut :** CC-01, CC-02, SEC-01 et SEC-10 sont corrigés en 0.13.1 (Lot 0).
+**Statut :** CC-01, CC-02, SEC-01 et SEC-10 sont corrigés en 0.13.1 (Lot 0). BUG-01 à BUG-05, BUG-07 et CC-03 sont corrigés en 0.13.2 (Lot 1).
 
 Le plan de remédiation priorisé est dans [docs/superpowers/specs/2026-10-01-red-team-remediation-design.md](../superpowers/specs/2026-10-01-red-team-remediation-design.md).

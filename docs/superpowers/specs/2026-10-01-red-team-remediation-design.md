@@ -52,6 +52,8 @@
 
 ## Lot 1 — Intégrité des données (BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-07, CC-03)
 
+> ✅ **Livré en 0.13.2** : branche `fix/lot-1-data-integrity`, plan [2026-10-02-lot-1-data-integrity.md](../plans/2026-10-02-lot-1-data-integrity.md). Validé sur une vraie instance le 2026-10-02 (contrôles 1 à 13 ; le 6 est bloqué par l'interface, comme prévu).
+
 **Objectif :** ne plus jamais perdre, dupliquer ou masquer un toot programmé.
 
 **Fichiers :** `src/utils/buildScheduledToot.ts` (nouveau) + test, `src/composables/useMastodonApi.ts`, `src/stores/scheduledToots.ts` (migré en setup store, CC-06), `src/components/Toot/TootComposer.vue`, `src/components/ControlsBar.vue`, `src/components/Toot/PollSection.vue`, `.claude/skills/mastodon-api/SKILL.md` (l.109).
