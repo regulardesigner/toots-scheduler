@@ -1,84 +1,124 @@
 import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
 import type { MastodonStatus, ScheduledToot } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
+import { isOnlyScheduleChange } from '../utils/isOnlyScheduleChange';
 
-export const useScheduledTootsStore = defineStore('scheduledToots', {
-  state: () => ({
-    toots: [] as MastodonStatus[],
-    isLoading: false,
-    error: '',
-    editingToot: null as MastodonStatus | null,
-  }),
-  getters: {
-    count: (state) => state.toots.length,
-    sortedToots: (state) => {
-      return [...state.toots].sort((a, b) => {
-        // Convert scheduled_at to timestamps, handling potential undefined values
-        const getTimestamp = (toot: MastodonStatus): number => {
-          if (!toot.scheduled_at) return 0;
-          const date = new Date(toot.scheduled_at);
-          return isNaN(date.getTime()) ? 0 : date.getTime();
-        };
+/** Outcome of an edit, so the UI can warn when a stale copy is left behind. */
+export interface UpdateTootResult {
+  /** False when the new version was scheduled but the previous one could not be deleted. */
+  previousVersionRemoved: boolean;
+}
 
-        const timestampA = getTimestamp(a);
-        const timestampB = getTimestamp(b);
+function getTimestamp(toot: MastodonStatus): number {
+  if (!toot.scheduled_at) return 0;
+  const time = new Date(toot.scheduled_at).getTime();
+  return isNaN(time) ? 0 : time;
+}
 
-        // Sort by timestamp (includes both date and time)
-        return timestampA - timestampB;
-      });
-    },
-  },
-  actions: {
-    setToots(toots: MastodonStatus[]) {
-      this.toots = toots;
-    },
-    setLoading(loading: boolean) {
-      this.isLoading = loading;
-    },
-    setError(error: string) {
-      this.error = error;
-    },
-    setEditingToot(toot: MastodonStatus | null) {
-      this.editingToot = toot;
-    },
-    
-    async fetchScheduledToots() {
-      try {
-        this.setLoading(true);
-        this.setError('');
-        const api = useMastodonApi();
-        const toots = await api.getScheduledToots();
-        this.setToots(toots);
-      } catch (err) {
-        console.error('Error fetching scheduled toots:', err);
-        this.setError(err instanceof Error ? err.message : 'Failed to fetch scheduled toots');
-      } finally {
-        this.setLoading(false);
+/**
+ * Creates a Pinia store for the user's scheduled toots.
+ * @returns {Object} The scheduled toots store with state and actions.
+ */
+export const useScheduledTootsStore = defineStore('scheduledToots', () => {
+  const toots = ref<MastodonStatus[]>([]);
+  const isLoading = ref(false);
+  const error = ref('');
+  const editingToot = ref<MastodonStatus | null>(null);
+
+  const count = computed(() => toots.value.length);
+  const sortedToots = computed(() => [...toots.value].sort((a, b) => getTimestamp(a) - getTimestamp(b)));
+
+  function setToots(value: MastodonStatus[]): void {
+    toots.value = value;
+  }
+
+  function setLoading(value: boolean): void {
+    isLoading.value = value;
+  }
+
+  function setError(value: string): void {
+    error.value = value;
+  }
+
+  function setEditingToot(toot: MastodonStatus | null): void {
+    editingToot.value = toot;
+  }
+
+  /**
+   * Loads all scheduled toots from the instance.
+   */
+  async function fetchScheduledToots(): Promise<void> {
+    try {
+      setLoading(true);
+      setError('');
+      const api = useMastodonApi();
+      setToots(await api.getScheduledToots());
+    } catch (err) {
+      console.error('Error fetching scheduled toots:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch scheduled toots');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /**
+   * Applies an edit to a scheduled toot without ever losing the original.
+   * A date-only change is rescheduled in place. Any other change creates the new
+   * version first and deletes the original only once the new one exists.
+   * @param {MastodonStatus} original - The scheduled toot being edited.
+   * @param {ScheduledToot} updated - The payload built from the edited form.
+   * @param {string} idempotencyKey - The draft's idempotency key.
+   * @returns {Promise<UpdateTootResult>} Whether the previous version was removed.
+   * @throws {Error} If rescheduling or creating the new version fails (the original is kept).
+   */
+  async function updateToot(
+    original: MastodonStatus,
+    updated: ScheduledToot,
+    idempotencyKey: string,
+  ): Promise<UpdateTootResult> {
+    try {
+      setLoading(true);
+      setError('');
+      const api = useMastodonApi();
+      let previousVersionRemoved = true;
+
+      if (updated.scheduled_at && isOnlyScheduleChange(original, updated)) {
+        await api.rescheduleToot(original.id, updated.scheduled_at);
+      } else {
+        await api.scheduleToot(updated, idempotencyKey);
+        try {
+          await api.deleteScheduledToot(original.id);
+        } catch (err) {
+          console.error('Error deleting the previous version of an edited toot:', err);
+          previousVersionRemoved = false;
+        }
       }
-    },
 
-    async updateToot(id: string, updatedToot: ScheduledToot) {
-      try {
-        this.setLoading(true);
-        this.setError('');
-        const api = useMastodonApi();
-        
-        // First, delete the existing toot
-        await api.deleteScheduledToot(id);
-        
-        // Then create a new one with the updated content
-        await api.scheduleToot(updatedToot, crypto.randomUUID());
-        
-        // Refresh the list and clear edit mode
-        await this.fetchScheduledToots();
-        this.setEditingToot(null);
-      } catch (err) {
-        console.error('Error updating toot:', err);
-        this.setError(err instanceof Error ? err.message : 'Failed to update toot');
-        throw err;
-      } finally {
-        this.setLoading(false);
-      }
-    },
-  },
-}); 
+      await fetchScheduledToots();
+      setEditingToot(null);
+      return { previousVersionRemoved };
+    } catch (err) {
+      console.error('Error updating toot:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update toot');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return {
+    toots,
+    isLoading,
+    error,
+    editingToot,
+    count,
+    sortedToots,
+    setToots,
+    setLoading,
+    setError,
+    setEditingToot,
+    fetchScheduledToots,
+    updateToot,
+  };
+});
