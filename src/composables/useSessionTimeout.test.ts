@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import type { VueWrapper } from '@vue/test-utils';
 import { defineComponent } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -23,10 +24,12 @@ const Host = defineComponent({
   },
 });
 
+const mounted: VueWrapper[] = [];
+
 function signInAndMount() {
   const auth = useAuthStore();
   auth.completeLogin(credentials);
-  mount(Host);
+  mounted.push(mount(Host));
   return auth;
 }
 
@@ -42,6 +45,7 @@ describe('useSessionTimeout', () => {
   });
 
   afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount());
     vi.useRealTimers();
   });
 
@@ -121,5 +125,29 @@ describe('useSessionTimeout', () => {
 
     expect(auth.accessToken).toBeNull();
     expect(auth.sessionEndReason).toBe('inactivity');
+  });
+
+  it('counts scrolling inside an element, such as a long modal', async () => {
+    const auth = signInAndMount();
+    const panel = document.createElement('div');
+    document.body.appendChild(panel);
+
+    await vi.advanceTimersByTimeAsync(20 * MINUTE);
+    panel.dispatchEvent(new Event('scroll')); // scroll does not bubble
+    await vi.advanceTimersByTimeAsync(20 * MINUTE);
+
+    expect(auth.accessToken).toBe('token');
+    panel.remove();
+  });
+
+  it('stops listening once unmounted', async () => {
+    const auth = useAuthStore();
+    auth.completeLogin(credentials);
+    const wrapper = mount(Host);
+    wrapper.unmount();
+
+    await vi.advanceTimersByTimeAsync(31 * MINUTE);
+
+    expect(auth.accessToken).toBe('token');
   });
 });
