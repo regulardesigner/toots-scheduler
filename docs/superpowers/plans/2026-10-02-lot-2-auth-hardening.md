@@ -40,7 +40,7 @@
 - **PKCE test vector:** RFC 7636 appendix B. The verifier `dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk` gives the challenge `E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM`.
 - **WebCrypto in tests:** `crypto.subtle.digest` resolves outside the microtask queue, so `flushPromises()` is not enough after a hash. Wait for the effect itself with `await vi.waitFor(...)`.
 - **In tests, `import.meta.env.BASE_URL` is `/`, not `/toots-scheduler/`:** build expected URLs from it.
-- **Every code block below was dry-run on a scratch copy of this branch:** 136 tests pass, typecheck is clean, lint shows 0 errors and 5 warnings, and the production build contains no `console.` call.
+- **Every code block below was dry-run on a scratch copy of this branch:** 136 tests passed at plan time, typecheck was clean, lint showed 0 errors and 5 warnings, and the production build contained no `console.` call. After the review hardening (see the self-review notes), the branch has 160 tests.
 
 ## File map
 
@@ -2529,12 +2529,18 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   8. **Revoked elsewhere:** sign in, then revoke the app from the instance's *Authorized apps* page. Back in the app, reload the scheduled list (or schedule a toot). Expected: the toast "Your session is no longer valid. Please sign in again." and the landing page.
   9. **Media upload still works:** upload an image in the composer. Expected: the progress bar moves, and the image appears with its preview. This was rewritten from XHR to axios.
   10. **Production build:** run `npm run build && npm run preview`, sign in and use the app. Expected: no app output in the console.
+  11. **Back after sign-in:** sign in, then press the browser Back button. Expected: you stay signed in, no `POST /oauth/revoke`, no error toast. Also, while signed in, open `…/toots-scheduler/oauth/callback?code=fake&state=fake`. Expected: still signed in.
+  12. **Expiry with the tab open:** with two tabs open, run this in tab 2's console: `const s=JSON.parse(localStorage.mastodon_auth); s.lastActivityAt=Date.now()-26*60*1000; localStorage.mastodon_auth=JSON.stringify(s)`. Expected in tab 1: the "about to expire" warning. Clicking it shows "Session extended". Repeat with `-31*60*1000` and wait for the warning's timer, or switch tabs. Expected: the inactivity toast, `POST /oauth/revoke`, then the landing page in both tabs.
+  13. **Upgrade from 0.13.x:** check out `fix/lot-1-data-integrity` (0.13.2), sign in, switch to this branch and reload. Expected: the inactivity toast, `POST /oauth/revoke` answering 200, the four legacy `mastodon_*` keys gone, and the app removed from *Authorized apps*.
+  14. **Offline startup:** set DevTools to Offline and reload while signed in. Expected: still signed in, no sign-out, `mastodon_auth` kept.
+  15. **Upload details:** the media request's Content-Type is `multipart/form-data; boundary=…`. An unsupported or oversized file shows the instance's error message.
+  16. **Switching account in the same tab:** log out, then sign in with another account. Expected: no toot from the previous account appears at any point.
 
 **User Verification Required:**
 Before marking this task complete, you MUST call AskUserQuestion:
 ```yaml
 AskUserQuestion:
-  question: "On your Mastodon instance, do the 10 Lot 2 checks pass (PKCE login, http refused, forged callback, cancel, logout revokes, closed-tab expiry, multi-tab, revoked elsewhere, upload, prod console)?"
+  question: "On your Mastodon instance, do the Lot 2 checks pass (1–16: PKCE login, http refused, forged callback, cancel, logout revokes, closed-tab expiry, multi-tab, revoked elsewhere, upload, prod console, Back after sign-in, open-tab expiry, upgrade, offline startup, upload details, account switch)?"
   header: "Verification"
   options:
     - label: "All checks pass"
@@ -2544,7 +2550,7 @@ AskUserQuestion:
 ```
 
 ```json:metadata
-{"files": [], "verifyCommand": "", "acceptanceCriteria": ["user confirms the 10 checks on a real instance"], "requiresUserVerification": true, "userVerificationPrompt": "On your Mastodon instance, do the 10 Lot 2 checks pass (PKCE login, http refused, forged callback, cancel, logout revokes, closed-tab expiry, multi-tab, revoked elsewhere, upload, prod console)?"}
+{"files": [], "verifyCommand": "", "acceptanceCriteria": ["user confirms the 16 checks on a real instance"], "requiresUserVerification": true, "userVerificationPrompt": "On your Mastodon instance, do the Lot 2 checks pass (1–16: PKCE login, http refused, forged callback, cancel, logout revokes, closed-tab expiry, multi-tab, revoked elsewhere, upload, prod console, Back after sign-in, open-tab expiry, upgrade, offline startup, upload details, account switch)?"}
 ```
 
 ---
@@ -2574,3 +2580,19 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-2-au
   - While signed in, a script injected into the page could read the token. That is the D1 trade-off; the CSP comes in Lot 3.
   - On instances older than 4.3, PKCE is ignored and `state` alone protects the flow.
   - Existing users are signed out once after the update.
+- **Hardening added during task and final reviews:**
+  - `normalizeUrl` also rejects hosts without a dot (except local hosts). A stored session whose instance is not an HTTPS origin, or malformed data, is erased without being revoked, so its token is never sent over http.
+  - An activity time more than 5 minutes in the future counts as expired; smaller clock skew is tolerated. The spec said a future value means "not expired".
+  - `recordActivity` checks expiry first, then throttles, then re-reads `mastodon_auth` before writing. It never brings back a session another tab removed, and it adopts a switched account and reloads it. `loadAccount` ignores results for a token that is no longer current.
+  - Expiry (from the timer or from late activity) goes through `expireIfIdle`. That function re-reads storage, so another tab's recent activity keeps the session alive.
+  - A 401 is ignored when the request carried an older token than the current one.
+  - The OAuth callback never touches an existing session (Back button, stray link). It uses `router.replace`, and it only undoes the session it created itself, without blocking on the revoke. The no-pending message mentions another tab.
+  - `scroll` is captured and `wheel` counts as activity. The warning says "about to expire" instead of promising 5 minutes.
+  - The scheduled-toots store is reset whenever the session changes, and a list loaded under an old token is discarded.
+  - Upload errors show the instance's message. The landing-page FAQ no longer claims "totally secure". The README Security section states precisely when sessions end and what is stored.
+  - The spec's `src/utils/session.ts` is `src/utils/authSession.ts`. The separate `oauth_state` / `oauth_verifier` keys became a single `mastodon_oauth_pending` object.
+- **CC-05 is partial:** `useMastodonApi()` still creates one axios client per call. The auth store calls axios directly for `verify_credentials` and `/oauth/revoke`, to avoid a store → API → store import cycle. `verifyCredentials` and `updateMediaMetadata` still rethrow without `cause`.
+- **More accepted residuals:**
+  - Revocation is best effort: if the user is offline or the instance is down, the token stays valid until the user revokes it under *Authorized apps*. The README says so.
+  - If another tab switches account while a new toot is being typed, the typed text stays in the composer, now under the new account.
+  - Response validation (SEC-07, zod) and the CSP (SEC-03 part 1, WEB-04) are in Lot 3.
