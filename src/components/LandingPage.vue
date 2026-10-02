@@ -68,9 +68,9 @@ function handleCloseLoginForm() {
         </details>
         <details>
           <summary class="winky-sans-700">
-            Is it totally secure?
+            Is it secure?
           </summary>
-          <p>Yes, it is. All scheduled toots are stored on your account's instance. We don't store any goddamn thing!</p>
+          <p>Sign-in uses OAuth with protections against forged links, your session ends after 30 minutes of inactivity and its access is then revoked, and no server stores your data: your toots stay on your instance. The README's Security section has the details.</p>
         </details>
         <details>
           <summary class="winky-sans-700">
