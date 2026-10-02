@@ -3,6 +3,12 @@ import { useAuthStore } from '../stores/auth';
 import type { MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
 import { normalizeUrl } from '../utils/url';
 import { handleApiError } from '../utils/error';
+import { getNextPageUrl } from '../utils/linkHeader';
+
+/** Mastodon's maximum page size for scheduled statuses. */
+const SCHEDULED_PAGE_SIZE = 40;
+/** Safety cap: 10 pages × 40 = 400 toots, above Mastodon's 300 scheduled-toot limit. */
+const MAX_SCHEDULED_PAGES = 10;
 
 /**
  * Creates a composable for interacting with the Mastodon API.
@@ -79,10 +85,11 @@ export function useMastodonApi() {
   /**
    * Schedules a toot to be posted at a later time.
    * @param {ScheduledToot} toot - The toot data including content and scheduling information.
+   * @param {string} idempotencyKey - Unique key per draft; Mastodon ignores a resubmission with the same key for 1 hour.
    * @returns {Promise<MastodonStatus>} The scheduled toot data.
    * @throws {Error} If the instance URL is not set or the request fails.
    */
-  async function scheduleToot(toot: ScheduledToot): Promise<MastodonStatus> {
+  async function scheduleToot(toot: ScheduledToot, idempotencyKey: string): Promise<MastodonStatus> {
     if (!auth.instance) throw new Error('No instance URL set');
   
     try {
@@ -91,7 +98,7 @@ export function useMastodonApi() {
       }
   
       // Format the request payload according to Mastodon API specs
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         status: toot.status,
         scheduled_at: toot.scheduled_at,
         media_ids: toot.media_ids || [],
@@ -99,8 +106,6 @@ export function useMastodonApi() {
         sensitive: toot.sensitive || false,
         spoiler_text: toot.spoiler_text || '',
         language: toot.language || null,
-        // Add idempotency key to prevent duplicate posts
-        idempotency: Date.now().toString(),
       };
   
       // Add poll data if present
@@ -114,7 +119,29 @@ export function useMastodonApi() {
       }
   
       // Use the statuses endpoint with scheduled_at parameter
-      const response = await api.post(`${auth.instance}/api/v1/statuses`, payload);
+      const response = await api.post(`${auth.instance}/api/v1/statuses`, payload, {
+        headers: { 'Idempotency-Key': idempotencyKey },
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  }
+
+  /**
+   * Moves a scheduled toot to a new date. Mastodon only allows changing `scheduled_at` this way.
+   * @param {string} id - The ID of the scheduled toot.
+   * @param {string} scheduledAt - The new ISO 8601 date, at least 5 minutes in the future.
+   * @returns {Promise<MastodonStatus>} The updated scheduled toot.
+   * @throws {Error} If the instance URL is not set or the request fails.
+   */
+  async function rescheduleToot(id: string, scheduledAt: string): Promise<MastodonStatus> {
+    if (!auth.instance) throw new Error('No instance URL set');
+
+    try {
+      const response = await api.put(`${auth.instance}/api/v1/scheduled_statuses/${id}`, {
+        scheduled_at: scheduledAt,
+      });
       return response.data;
     } catch (error) {
       throw new Error(handleApiError(error));
@@ -217,21 +244,26 @@ export function useMastodonApi() {
   }
 
   /**
-   * Retrieves the list of scheduled toots from the Mastodon instance.
-   * @returns {Promise<Array>} The list of scheduled toots.
+   * Retrieves all scheduled toots, following Mastodon's Link-header pagination.
+   * @returns {Promise<MastodonStatus[]>} The list of scheduled toots.
    * @throws {Error} If the instance URL is not set or the request fails.
    */
-  async function getScheduledToots() {
+  async function getScheduledToots(): Promise<MastodonStatus[]> {
     if (!auth.instance) throw new Error('No instance URL set');
+    const instance = auth.instance;
+
     try {
-      const response = await api.get(`${auth.instance}/api/v1/scheduled_statuses`);
-      console.log('Scheduled toots response:', response.data);
-      // Log the first toot's poll data if it exists
-      if (response.data.length > 0) {
-        console.log('First toot poll data:', response.data[0].poll);
-        console.log('First toot params:', response.data[0].params);
+      const toots: MastodonStatus[] = [];
+      let url: string | null = `${instance}/api/v1/scheduled_statuses?limit=${SCHEDULED_PAGE_SIZE}`;
+
+      for (let page = 0; url && page < MAX_SCHEDULED_PAGES; page++) {
+        const response = await api.get<MastodonStatus[]>(url);
+        toots.push(...response.data);
+        const link = response.headers['link'];
+        url = getNextPageUrl(typeof link === 'string' ? link : null, instance);
       }
-      return response.data;
+
+      return toots;
     } catch (error) {
       console.error('Error fetching scheduled toots:', error);
       throw new Error(handleApiError(error));
@@ -279,9 +311,18 @@ export function useMastodonApi() {
     /**
      * Schedules a toot to be posted at a later time.
      * @param {ScheduledToot} toot - The toot data including content and scheduling information.
+     * @param {string} idempotencyKey - Unique key per draft, sent as the Idempotency-Key header.
      * @returns {Promise<MastodonStatus>} The scheduled toot data.
      */
     scheduleToot,
+
+    /**
+     * Moves a scheduled toot to a new date.
+     * @param {string} id - The ID of the scheduled toot.
+     * @param {string} scheduledAt - The new ISO 8601 date.
+     * @returns {Promise<MastodonStatus>} The updated scheduled toot.
+     */
+    rescheduleToot,
   
     /**
      * Sends a direct thank you notification to the user.
@@ -307,8 +348,8 @@ export function useMastodonApi() {
     updateMediaMetadata,
   
     /**
-     * Retrieves the list of scheduled toots from the Mastodon instance.
-     * @returns {Promise<Array>} The list of scheduled toots.
+     * Retrieves all scheduled toots from the Mastodon instance, across all pages.
+     * @returns {Promise<MastodonStatus[]>} The list of scheduled toots.
      */
     getScheduledToots,
   

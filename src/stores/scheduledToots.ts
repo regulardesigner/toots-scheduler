@@ -67,7 +67,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', {
         await api.deleteScheduledToot(id);
         
         // Then create a new one with the updated content
-        await api.scheduleToot(updatedToot);
+        await api.scheduleToot(updatedToot, crypto.randomUUID());
         
         // Refresh the list and clear edit mode
         await this.fetchScheduledToots();
