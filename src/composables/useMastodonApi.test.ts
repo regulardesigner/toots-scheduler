@@ -84,6 +84,16 @@ describe('useMastodonApi', () => {
     });
   });
 
+  describe('deleteScheduledToot', () => {
+    it('encodes the id in the path', async () => {
+      http.delete.mockResolvedValue({ data: {} });
+
+      await useMastodonApi().deleteScheduledToot('../apps');
+
+      expect(http.delete).toHaveBeenCalledWith('https://masto.example/api/v1/scheduled_statuses/..%2Fapps');
+    });
+  });
+
   describe('getScheduledToots', () => {
     it('follows the Link header across pages and concatenates the results', async () => {
       http.get

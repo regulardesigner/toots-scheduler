@@ -4,6 +4,9 @@ import type { MastodonStatus, ScheduledToot } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { isOnlyScheduleChange } from '../utils/isOnlyScheduleChange';
 
+/** Mastodon refuses scheduling less than 5 minutes ahead; past that point the original may publish mid-edit. */
+const EDIT_LOCK_MS = 5 * 60 * 1000;
+
 /** Outcome of an edit, so the UI can warn when a stale copy is left behind. */
 export interface UpdateTootResult {
   /** False when the new version was scheduled but the previous one could not be deleted. */
@@ -70,7 +73,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
    * @param {ScheduledToot} updated - The payload built from the edited form.
    * @param {string} idempotencyKey - The draft's idempotency key.
    * @returns {Promise<UpdateTootResult>} Whether the previous version was removed.
-   * @throws {Error} If the original no longer exists, or rescheduling/creating fails (the original is kept).
+   * @throws {Error} If the original is due within 5 minutes or no longer exists, or rescheduling/creating fails (the original is kept).
    */
   async function updateToot(
     original: MastodonStatus,
@@ -86,6 +89,10 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       if (updated.scheduled_at && isOnlyScheduleChange(original, updated)) {
         await api.rescheduleToot(original.id, updated.scheduled_at);
       } else {
+        const originalTime = original.scheduled_at ? new Date(original.scheduled_at).getTime() : NaN;
+        if (!(originalTime - Date.now() > EDIT_LOCK_MS)) {
+          throw new Error('This toot is about to be published and can no longer be edited.');
+        }
         // If the original was published meanwhile, recreating it would post the toot twice.
         if (!(await api.scheduledTootExists(original.id))) {
           throw new Error('This toot has already been published or deleted, so it can no longer be edited.');
@@ -95,7 +102,8 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
           await api.deleteScheduledToot(original.id);
         } catch (err) {
           console.error('Error deleting the previous version of an edited toot:', err);
-          previousVersionRemoved = false;
+          // The delete may have succeeded with its response lost: only warn if it is really still there.
+          previousVersionRemoved = !(await api.scheduledTootExists(original.id).catch(() => true));
         }
       }
 
