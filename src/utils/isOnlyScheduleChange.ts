@@ -1,8 +1,19 @@
 import type { MastodonStatus, PollParams, ScheduledToot } from '../types/mastodon';
 
-/** Mastodon echoes params as the client sent them, so booleans may come back as "true"/"false". */
-function toBoolean(value: unknown): boolean {
-  return value === true || value === 'true';
+/**
+ * Mastodon echoes params as the client sent them, so booleans may come back as strings.
+ * Returns null for any value we can't interpret with certainty.
+ */
+function parseBoolean(value: unknown): boolean | null {
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false' || value === null || value === undefined) return false;
+  return null;
+}
+
+function sameFlag(a: unknown, b: unknown): boolean {
+  const left = parseBoolean(a);
+  const right = parseBoolean(b);
+  return left !== null && right !== null && left === right;
 }
 
 function sameList(a: string[], b: string[]): boolean {
@@ -11,6 +22,7 @@ function sameList(a: string[], b: string[]): boolean {
 
 function samePoll(a: PollParams | null | undefined, b: PollParams | null | undefined): boolean {
   if (!a || !b) return !a && !b;
+  if (!Array.isArray(a.options) || !Array.isArray(b.options)) return false;
 
   const durationA = Number(a.expires_in);
   const durationB = Number(b.expires_in);
@@ -18,8 +30,8 @@ function samePoll(a: PollParams | null | undefined, b: PollParams | null | undef
 
   return sameList(a.options, b.options)
     && durationA === durationB
-    && toBoolean(a.multiple) === toBoolean(b.multiple)
-    && toBoolean(a.hide_totals) === toBoolean(b.hide_totals);
+    && sameFlag(a.multiple, b.multiple)
+    && sameFlag(a.hide_totals, b.hide_totals);
 }
 
 /**
@@ -43,7 +55,7 @@ export function isOnlyScheduleChange(original: MastodonStatus, updated: Schedule
     (params.text ?? '') === updated.status
     && params.visibility === updated.visibility
     && (params.language ?? null) === (updated.language ?? null)
-    && toBoolean(params.sensitive) === toBoolean(updated.sensitive)
+    && sameFlag(params.sensitive, updated.sensitive)
     && (params.spoiler_text ?? '') === (updated.spoiler_text ?? '')
     && sameList(originalMediaIds, updated.media_ids ?? [])
     && samePoll(params.poll, updated.poll)
