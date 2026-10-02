@@ -49,6 +49,18 @@ describe('useSessionTimeout', () => {
     vi.useRealTimers();
   });
 
+  it('does not sign out when another tab kept the session alive just before the deadline', async () => {
+    const auth = signInAndMount();
+    await vi.advanceTimersByTimeAsync(29 * MINUTE);
+    // Activity in another tab, storage event not delivered yet:
+    localStorage.setItem('mastodon_auth', JSON.stringify({ ...credentials, lastActivityAt: Date.now() }));
+
+    await vi.advanceTimersByTimeAsync(2 * MINUTE);
+
+    expect(auth.accessToken).toBe('token');
+    expect(http.post).not.toHaveBeenCalled();
+  });
+
   it('warns after 25 minutes and signs out, revoking the token, after 30', async () => {
     const auth = signInAndMount();
 

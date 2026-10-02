@@ -31,9 +31,8 @@ export function useSessionTimeout() {
 
   async function expire(): Promise<void> {
     clearTimers();
-    if (auth.accessToken) {
-      await auth.logout({ reason: 'inactivity' });
-    }
+    // Re-checks storage: activity in another tab may not have reached this tab yet.
+    await auth.expireIfIdle();
   }
 
   function extendSession(): void {
