@@ -70,7 +70,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
    * @param {ScheduledToot} updated - The payload built from the edited form.
    * @param {string} idempotencyKey - The draft's idempotency key.
    * @returns {Promise<UpdateTootResult>} Whether the previous version was removed.
-   * @throws {Error} If rescheduling or creating the new version fails (the original is kept).
+   * @throws {Error} If the original no longer exists, or rescheduling/creating fails (the original is kept).
    */
   async function updateToot(
     original: MastodonStatus,
@@ -86,6 +86,10 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       if (updated.scheduled_at && isOnlyScheduleChange(original, updated)) {
         await api.rescheduleToot(original.id, updated.scheduled_at);
       } else {
+        // If the original was published meanwhile, recreating it would post the toot twice.
+        if (!(await api.scheduledTootExists(original.id))) {
+          throw new Error('This toot has already been published or deleted, so it can no longer be edited.');
+        }
         await api.scheduleToot(updated, idempotencyKey);
         try {
           await api.deleteScheduledToot(original.id);

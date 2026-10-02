@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   scheduleToot: vi.fn(),
   rescheduleToot: vi.fn(),
   deleteScheduledToot: vi.fn(),
+  scheduledTootExists: vi.fn(),
 }));
 
 vi.mock('../composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
@@ -41,6 +42,7 @@ describe('scheduledToots store', () => {
     vi.resetAllMocks();
     setActivePinia(createPinia());
     api.getScheduledToots.mockResolvedValue([]);
+    api.scheduledTootExists.mockResolvedValue(true);
   });
 
   it('sorts toots by scheduled date', () => {
@@ -65,6 +67,7 @@ describe('scheduledToots store', () => {
       expect(api.deleteScheduledToot).not.toHaveBeenCalled();
       expect(result).toEqual({ previousVersionRemoved: true });
       expect(store.editingToot).toBeNull();
+      expect(store.error).toBe('');
     });
 
     it('creates the new version before deleting the original', async () => {
@@ -78,6 +81,7 @@ describe('scheduledToots store', () => {
       expect(calls).toEqual(['create', 'delete']);
       expect(api.scheduleToot).toHaveBeenCalledWith(expect.objectContaining({ status: 'Hello again' }), 'key-1');
       expect(api.deleteScheduledToot).toHaveBeenCalledWith('42');
+      expect(api.scheduledTootExists).toHaveBeenCalledWith('42');
     });
 
     it('keeps the original when creating the new version fails', async () => {
@@ -100,6 +104,34 @@ describe('scheduledToots store', () => {
 
       expect(result).toEqual({ previousVersionRemoved: false });
       expect(api.getScheduledToots).toHaveBeenCalled();
+      expect(store.error).toBe('');
+      expect(store.isLoading).toBe(false);
+    });
+
+    it('aborts without creating anything when the original was already published or deleted', async () => {
+      const store = useScheduledTootsStore();
+      store.setEditingToot(original);
+      api.scheduledTootExists.mockResolvedValue(false);
+
+      await expect(store.updateToot(original, makeUpdated({ status: 'Changed' }), 'key-1'))
+        .rejects.toThrow('This toot has already been published or deleted, so it can no longer be edited.');
+
+      expect(api.scheduleToot).not.toHaveBeenCalled();
+      expect(api.deleteScheduledToot).not.toHaveBeenCalled();
+      expect(store.editingToot).toEqual(original);
+    });
+
+    it('keeps everything as is when rescheduling fails', async () => {
+      const store = useScheduledTootsStore();
+      store.setEditingToot(original);
+      api.rescheduleToot.mockRejectedValue(new Error('The scheduled date must be in the future'));
+
+      await expect(store.updateToot(original, makeUpdated(), 'key-1')).rejects.toThrow('The scheduled date must be in the future');
+
+      expect(api.scheduleToot).not.toHaveBeenCalled();
+      expect(api.deleteScheduledToot).not.toHaveBeenCalled();
+      expect(store.editingToot).toEqual(original);
+      expect(store.isLoading).toBe(false);
     });
   });
 });
