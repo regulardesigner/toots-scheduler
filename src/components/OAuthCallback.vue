@@ -17,6 +17,14 @@ onMounted(async () => {
   // The authorization code is single-use: remove it from the address bar and history.
   window.history.replaceState(window.history.state, '', window.location.pathname);
 
+  // Visiting the callback again (Back button, bookmark, stray link) while signed in must not touch the session.
+  if (!pending && auth.accessToken) {
+    router.replace({ name: 'composer' });
+    return;
+  }
+
+  let createdToken: string | null = null;
+
   try {
     if (!pending) {
       throw new Error('Sign-in was started in another tab or has expired. Please sign in again.');
@@ -30,6 +38,7 @@ onMounted(async () => {
       pending.clientSecret,
       pending.codeVerifier,
     );
+    createdToken = tokenData.access_token;
 
     auth.completeLogin({
       instance: pending.instance,
@@ -39,13 +48,14 @@ onMounted(async () => {
     });
     auth.setAccount(await api.verifyCredentials());
 
-    router.push({ name: 'composer' });
+    router.replace({ name: 'composer' });
   } catch (err) {
     // A half-finished sign-in must not leave a stored session behind (the token is revoked).
-    if (auth.accessToken) void auth.logout(); // local clear is immediate; don't wait for the revoke
+    // Only undo the session this callback created; never sign out an existing one.
+    if (createdToken && auth.accessToken === createdToken) void auth.logout(); // local clear is immediate; don't wait for the revoke
     console.error('OAuth callback error:', err);
     toast.error(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
-    router.push({ name: 'home' });
+    router.replace({ name: 'home' });
   }
 });
 </script>
