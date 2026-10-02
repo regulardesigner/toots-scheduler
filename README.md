@@ -80,10 +80,15 @@ npm audit --omit=dev --audit-level=high
 
 Toot Scheduler is a static site with no backend. Here is what it does to protect your account:
 
-- **Sign-in:** OAuth 2.0 with a random `state`, which blocks forged sign-in links, and PKCE (S256) on instances running Mastodon 4.3 or later. Only HTTPS instances are accepted, and the app requests only the scopes it needs (`read:accounts read:statuses write:media write:statuses`).
-- **Where the token lives:** in your browser's `localStorage`, under a single `mastodon_auth` key. No server stores your token or your toots: everything stays on your instance.
-- **Session end:** after 30 minutes without activity you are signed out, even if you closed the tab, and the token is revoked on your instance (`POST /oauth/revoke`). Logging out revokes it too. Signing out in one tab signs out every tab.
-- **Known trade-off:** a script running on this page could read the token while you are signed in. That is the price of having no backend. The app never renders HTML coming from the API (`v-html` is forbidden by the linter), and no console output ships to production. Revoke the app at any time from your instance under *Preferences → Account → Authorized apps*.
+- **Sign-in:** OAuth 2.0 with a random `state`, which blocks forged sign-in links, plus PKCE (S256) on instances running Mastodon 4.3 or later. Older instances ignore PKCE and rely on `state` alone. Only HTTPS instances are accepted, and the app asks only for the scopes it needs (`read:accounts read:statuses write:media write:statuses`).
+- **What is stored, and where:** your access token and the app's own client registration on your instance (client id and secret, not your password) sit in this browser's `localStorage`, under a single `mastodon_auth` key. No server stores your token or your toots; everything stays on your instance.
+- **Session end:**
+  - After 30 minutes without activity you are signed out, and the token is revoked on your instance (`POST /oauth/revoke`). If you closed the tab, this happens the next time you open the app.
+  - Logging out revokes the token and signs out every open tab of this browser.
+  - If your instance rejects the token, the session ends too.
+  - Revocation is best effort: if you are offline or the instance is down, revoke the app yourself under *Preferences → Account → Authorized apps*.
+- **Upgrading to 0.14.0:** sessions saved by older versions are signed out once, and their token is revoked.
+- **Known trade-off:** while you are signed in, a script running on this page could read the token. That is the price of having no backend. The app never renders HTML coming from the API (`v-html` is forbidden by the linter), and the production build contains no console output.
 
 ## Project Structure
 
