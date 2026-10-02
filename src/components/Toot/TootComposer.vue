@@ -194,6 +194,8 @@ async function handleSubmit() {
   } catch (err) {
     console.error('Error scheduling toot:', err);
     error.value = err instanceof Error ? err.message : 'Failed to schedule toot. Please try again.';
+    // The request may have reached the instance despite the error: refresh so any created toot shows up.
+    void store.fetchScheduledToots();
   } finally {
     isSubmitting.value = false;
   }

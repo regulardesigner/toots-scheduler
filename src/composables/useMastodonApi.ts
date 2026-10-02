@@ -301,8 +301,10 @@ export function useMastodonApi() {
    * @throws {Error} If the request fails.
    */
   async function deleteScheduledToot(id: string): Promise<void> {
+    if (!auth.instance) throw new Error('No instance URL set');
+
     try {
-      await api.delete(`${auth.instance}/api/v1/scheduled_statuses/${id}`);
+      await api.delete(`${auth.instance}/api/v1/scheduled_statuses/${encodeURIComponent(id)}`);
     } catch (err) {
       console.error('Error deleting scheduled toot:', err);
       throw new Error(handleApiError(err));

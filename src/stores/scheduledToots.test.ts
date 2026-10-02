@@ -108,6 +108,29 @@ describe('scheduledToots store', () => {
       expect(store.isLoading).toBe(false);
     });
 
+    it('refuses a content edit when the original is due within 5 minutes', async () => {
+      const store = useScheduledTootsStore();
+      const soon = { ...original, scheduled_at: new Date(Date.now() + 2 * 60 * 1000).toISOString() };
+
+      await expect(store.updateToot(soon, makeUpdated({ status: 'Changed' }), 'key-1'))
+        .rejects.toThrow('This toot is about to be published and can no longer be edited.');
+
+      expect(api.scheduledTootExists).not.toHaveBeenCalled();
+      expect(api.scheduleToot).not.toHaveBeenCalled();
+      expect(api.deleteScheduledToot).not.toHaveBeenCalled();
+    });
+
+    it('treats the previous version as removed when it is gone after a failed delete', async () => {
+      const store = useScheduledTootsStore();
+      api.scheduledTootExists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      api.deleteScheduledToot.mockRejectedValue(new Error('Network Error'));
+
+      const result = await store.updateToot(original, makeUpdated({ status: 'Changed' }), 'key-1');
+
+      expect(result).toEqual({ previousVersionRemoved: true });
+      expect(api.scheduledTootExists).toHaveBeenCalledTimes(2);
+    });
+
     it('aborts without creating anything when the original was already published or deleted', async () => {
       const store = useScheduledTootsStore();
       store.setEditingToot(original);
