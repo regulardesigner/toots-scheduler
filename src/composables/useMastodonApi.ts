@@ -11,6 +11,9 @@ const SCHEDULED_PAGE_SIZE = 40;
 /** Safety cap: 10 pages × 40 = 400 toots, above Mastodon's 300 scheduled-toot limit. */
 const MAX_SCHEDULED_PAGES = 10;
 
+/** Large images on slow connections need far more than the default 10 s. */
+const MEDIA_UPLOAD_TIMEOUT_MS = 120000;
+
 /**
  * Creates a composable for interacting with the Mastodon API.
  * @returns {Object} An object containing functions for Mastodon API operations.
@@ -40,7 +43,7 @@ export function useMastodonApi() {
 
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -78,7 +81,7 @@ export function useMastodonApi() {
 
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -135,7 +138,7 @@ export function useMastodonApi() {
       });
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -155,7 +158,7 @@ export function useMastodonApi() {
       });
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -173,7 +176,7 @@ export function useMastodonApi() {
       return true;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) return false;
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -194,7 +197,7 @@ export function useMastodonApi() {
   
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -218,40 +221,24 @@ export function useMastodonApi() {
    * @returns {Promise<MastodonMediaAttachment>} The uploaded media attachment data.
    */
   async function uploadMedia(file: File, onProgress?: (progress: number) => void): Promise<MastodonMediaAttachment> {
+    if (!auth.instance) throw new Error('No instance URL set');
+
     const formData = new FormData();
     formData.append('file', file);
-  
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-  
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable && onProgress) {
-          const progress = (event.loaded / event.total) * 100;
-          onProgress(progress);
-        }
+
+    try {
+      const response = await api.post<MastodonMediaAttachment>(`${auth.instance}/api/v2/media`, formData, {
+        // Not JSON: the browser sets the multipart boundary itself.
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: MEDIA_UPLOAD_TIMEOUT_MS,
+        onUploadProgress: (event) => {
+          if (onProgress && event.total) onProgress((event.loaded / event.total) * 100);
+        },
       });
-  
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve(response);
-          } catch {
-            reject(new Error('Failed to parse response'));
-          }
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      });
-  
-      xhr.addEventListener('error', () => {
-        reject(new Error('Upload failed'));
-      });
-  
-      xhr.open('POST', `${auth.instance}/api/v2/media`);
-      xhr.setRequestHeader('Authorization', `Bearer ${auth.accessToken}`);
-      xhr.send(formData);
-    });
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error), { cause: error });
+    }
   }
 
   /**
@@ -300,7 +287,7 @@ export function useMastodonApi() {
       return toots;
     } catch (error) {
       console.error('Error fetching scheduled toots:', error);
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -317,7 +304,7 @@ export function useMastodonApi() {
       await api.delete(`${auth.instance}/api/v1/scheduled_statuses/${encodeURIComponent(id)}`);
     } catch (err) {
       console.error('Error deleting scheduled toot:', err);
-      throw new Error(handleApiError(err));
+      throw new Error(handleApiError(err), { cause: err });
     }
   }
 
