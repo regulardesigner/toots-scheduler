@@ -43,14 +43,26 @@ const spoilerText = ref('');
 const mediaAttachments = ref<MastodonMediaAttachment[]>([]);
 const pollData = ref<PollFormState>(createEmptyPoll());
 
-/**
- * One key per draft: a retry after a failure reuses it, so Mastodon never creates
- * the same toot twice. It is renewed once the draft has been scheduled or discarded.
- */
-const idempotencyKey = ref(crypto.randomUUID());
-
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
+
+/**
+ * Idempotency key of the last attempt. Mastodon returns the first result for a key it has
+ * seen in the last hour, so the key is reused only for an identical retry (same payload,
+ * same edited toot). Any change gets a new key: a possible duplicate is visible and fixable,
+ * whereas reusing a key could silently publish stale content or lose an edited toot.
+ */
+const idempotencyKey = ref(crypto.randomUUID());
+let lastAttemptFingerprint: string | null = null;
+
+function idempotencyKeyFor(toot: ScheduledToot): string {
+  const fingerprint = JSON.stringify({ editingId: store.editingToot?.id ?? null, toot });
+  if (fingerprint !== lastAttemptFingerprint) {
+    idempotencyKey.value = crypto.randomUUID();
+    lastAttemptFingerprint = fingerprint;
+  }
+  return idempotencyKey.value;
+}
 
 function handleShowMedia() {
   showMedia.value = !showMedia.value;
@@ -114,7 +126,7 @@ function resetForm() {
   showMedia.value = false;
   showPoll.value = false;
   pollData.value = createEmptyPoll();
-  idempotencyKey.value = crypto.randomUUID();
+  lastAttemptFingerprint = null;
 }
 
 function handleCancelEdit() {
@@ -164,19 +176,20 @@ async function handleSubmit() {
       poll: pollData.value,
     });
 
+    const key = idempotencyKeyFor(toot);
+
     if (store.editingToot) {
-      const result = await store.updateToot(store.editingToot, toot, idempotencyKey.value);
+      // updateToot refreshes the list and leaves edit mode itself.
+      const result = await store.updateToot(store.editingToot, toot, key);
       if (!result.previousVersionRemoved) {
         toast.warning('Your toot was updated, but the previous version could not be removed. Please delete it from the list.');
       }
     } else {
-      await api.scheduleToot(toot, idempotencyKey.value);
+      await api.scheduleToot(toot, key);
+      await store.fetchScheduledToots();
     }
-    
-    // Reset form and refresh toots
+
     resetForm();
-    store.setEditingToot(null);
-    await store.fetchScheduledToots();
     
   } catch (err) {
     console.error('Error scheduling toot:', err);

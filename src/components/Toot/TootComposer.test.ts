@@ -6,6 +6,7 @@ import type { MastodonStatus } from '../../types/mastodon';
 
 const api = vi.hoisted(() => ({
   scheduleToot: vi.fn(),
+  scheduledTootExists: vi.fn(),
   rescheduleToot: vi.fn(),
   deleteScheduledToot: vi.fn(),
   getScheduledToots: vi.fn(),
@@ -14,9 +15,8 @@ const api = vi.hoisted(() => ({
 
 vi.mock('../../composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
 vi.mock('../../stores/auth', () => ({ useAuthStore: () => ({ account: null, accessToken: null }) }));
-vi.mock('vue-toastification', () => ({
-  useToast: () => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() }),
-}));
+const toast = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() }));
+vi.mock('vue-toastification', () => ({ useToast: () => toast }));
 
 import TootComposer from './TootComposer.vue';
 import { useScheduledTootsStore } from '../../stores/scheduledToots';
@@ -33,12 +33,27 @@ async function fillForm(wrapper: VueWrapper, text = 'Hello'): Promise<void> {
   await wrapper.find('#scheduled-time').setValue('12:00');
 }
 
+function makeScheduledToot(overrides: Partial<MastodonStatus> = {}): MastodonStatus {
+  return {
+    id: '42',
+    content: '',
+    created_at: '',
+    visibility: 'public',
+    url: '',
+    media_attachments: [],
+    scheduled_at: '2030-01-01T12:00:00.000Z',
+    params: { text: 'Bonjour', visibility: 'public', language: 'fr', poll: null },
+    ...overrides,
+  };
+}
+
 describe('TootComposer', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     pinia = createPinia();
     setActivePinia(pinia);
     api.getScheduledToots.mockResolvedValue([]);
+    api.scheduledTootExists.mockResolvedValue(true);
   });
 
   it('sends a single request when the form is submitted twice quickly', async () => {
@@ -85,20 +100,81 @@ describe('TootComposer', () => {
   it('restores the language of the toot being edited', async () => {
     const wrapper = mountComposer();
     await flushPromises();
-    const toot: MastodonStatus = {
-      id: '42',
-      content: '',
-      created_at: '',
-      visibility: 'public',
-      url: '',
-      media_attachments: [],
-      scheduled_at: '2030-01-01T12:00:00.000Z',
-      params: { text: 'Bonjour', visibility: 'public', language: 'fr', poll: null },
-    };
+    const toot = makeScheduledToot();
 
     useScheduledTootsStore().setEditingToot(toot);
     await flushPromises();
 
     expect((wrapper.find('#language').element as HTMLSelectElement).value).toBe('fr');
+  });
+
+  it('renews the idempotency key when the content changes after a failure', async () => {
+    api.scheduleToot.mockRejectedValueOnce(new Error('Network Error')).mockResolvedValue({});
+    const wrapper = mountComposer();
+    await flushPromises();
+
+    await fillForm(wrapper, 'First version');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    await wrapper.find('textarea').setValue('Second version');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    const [firstKey, secondKey] = api.scheduleToot.mock.calls.map(call => call[1]);
+    expect(secondKey).not.toBe(firstKey);
+  });
+
+  it('never reuses a failed draft key when switching to editing another toot', async () => {
+    api.scheduleToot.mockRejectedValueOnce(new Error('Network Error')).mockResolvedValue({});
+    api.deleteScheduledToot.mockResolvedValue(undefined);
+    const wrapper = mountComposer();
+    await flushPromises();
+
+    await fillForm(wrapper, 'New toot');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    useScheduledTootsStore().setEditingToot(makeScheduledToot());
+    await flushPromises();
+    await wrapper.find('textarea').setValue('Bonjour !');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    const [newTootKey, editKey] = api.scheduleToot.mock.calls.map(call => call[1]);
+    expect(api.scheduleToot).toHaveBeenCalledTimes(2);
+    expect(editKey).not.toBe(newTootKey);
+  });
+
+  it('warns when the previous version of an edited toot could not be removed', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    api.deleteScheduledToot.mockRejectedValue(new Error('Network Error'));
+    const wrapper = mountComposer();
+    await flushPromises();
+
+    useScheduledTootsStore().setEditingToot(makeScheduledToot());
+    await flushPromises();
+    await wrapper.find('textarea').setValue('Bonjour !');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('previous version could not be removed'));
+  });
+
+  it('does not send a poll that was opened, filled in and closed again', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    const wrapper = mountComposer();
+    await flushPromises();
+    await fillForm(wrapper);
+
+    await wrapper.find('#poll').trigger('click');
+    const options = wrapper.findAll('.poll-option input');
+    await options[0].setValue('Yes');
+    await options[1].setValue('No');
+    await wrapper.find('#poll').trigger('click');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).toHaveBeenCalledTimes(1);
+    expect(api.scheduleToot.mock.calls[0][0].poll).toBeUndefined();
   });
 });
