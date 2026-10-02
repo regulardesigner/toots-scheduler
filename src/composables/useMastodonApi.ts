@@ -228,7 +228,8 @@ export function useMastodonApi() {
 
     try {
       const response = await api.post<MastodonMediaAttachment>(`${auth.instance}/api/v2/media`, formData, {
-        // Not JSON: the browser sets the multipart boundary itself.
+        // Overrides the client's JSON default (axios would serialize the FormData to JSON otherwise);
+        // in the browser axios then drops it so the browser sets the multipart boundary itself.
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: MEDIA_UPLOAD_TIMEOUT_MS,
         onUploadProgress: (event) => {

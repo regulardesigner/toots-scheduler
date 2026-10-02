@@ -69,4 +69,18 @@ describe('createApiClient', () => {
 
     expect(auth.handleUnauthorized).not.toHaveBeenCalled();
   });
+
+  it('ignores a 401 for a request sent with an older token', async () => {
+    const { api } = clientRespondingWith(401);
+    const send = api.defaults.adapter as AxiosAdapter;
+    api.defaults.adapter = async (config) => {
+      // The request already left with the old token; then another tab switches account.
+      auth.accessToken = 'new-token';
+      return send(config);
+    };
+
+    await expect(api.get('https://masto.example/api/v1/scheduled_statuses')).rejects.toThrow('401');
+
+    expect(auth.handleUnauthorized).not.toHaveBeenCalled();
+  });
 });
