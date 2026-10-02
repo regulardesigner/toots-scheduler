@@ -108,7 +108,8 @@ The Mastodon API has strict rules about scheduling. Always check these before im
   },
 }
 // Idempotency: send an `Idempotency-Key: <uuid>` request HEADER, not a body field.
-// One key per draft: reuse it on retry, renew it after success. Mastodon keeps keys for 1 hour.
+// Reuse a key only for an identical retry (same payload, same edited toot); any change gets a new key.
+// Mastodon keeps keys for 1 hour and returns the first result for a known key.
 ```
 
 ---
