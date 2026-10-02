@@ -3,7 +3,9 @@ import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
 import { SESSION_DURATION_MS, SESSION_WARNING_MS } from '../config/constants';
 
-const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'scroll'] as const;
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'scroll', 'wheel'] as const;
+/** Capture phase: `scroll` does not bubble, so scrolling inside an element would be missed otherwise. */
+const LISTENER_OPTIONS = { capture: true, passive: true } as const;
 
 /**
  * Ends the session after SESSION_DURATION_MS without activity, with a warning
@@ -40,7 +42,7 @@ export function useSessionTimeout() {
   }
 
   function showWarning(): void {
-    warningToastId = toast.warning('Your session will expire in 5 minutes. Click here to stay signed in.', {
+    warningToastId = toast.warning('Your session is about to expire. Click here to stay signed in.', {
       timeout: SESSION_WARNING_MS,
       closeOnClick: false,
       onClick: extendSession,
@@ -74,13 +76,13 @@ export function useSessionTimeout() {
 
   onMounted(() => {
     schedule();
-    ACTIVITY_EVENTS.forEach(name => window.addEventListener(name, handleActivity, { passive: true }));
+    ACTIVITY_EVENTS.forEach(name => window.addEventListener(name, handleActivity, LISTENER_OPTIONS));
     document.addEventListener('visibilitychange', handleVisibilityChange);
   });
 
   onUnmounted(() => {
     clearTimers();
-    ACTIVITY_EVENTS.forEach(name => window.removeEventListener(name, handleActivity));
+    ACTIVITY_EVENTS.forEach(name => window.removeEventListener(name, handleActivity, LISTENER_OPTIONS));
     document.removeEventListener('visibilitychange', handleVisibilityChange);
   });
 
