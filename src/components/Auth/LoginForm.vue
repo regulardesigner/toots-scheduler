@@ -56,14 +56,17 @@ async function handleLogin() {
     </h2>
     <form @submit.prevent="handleLogin">
       <div class="form-group">
-        <label for="instance">Enter your instance URL</label>
+        <label for="instance">Enter your instance address</label>
         <input
           id="instance"
           v-model="instance"
-          type="url"
-          placeholder="https://mastodon.social"
+          type="text"
+          inputmode="url"
+          autocapitalize="none"
+          autocomplete="url"
+          spellcheck="false"
+          placeholder="mastodon.social"
           required
-          pattern="https?://.*"
           :disabled="isLoading"
         >
       </div>
