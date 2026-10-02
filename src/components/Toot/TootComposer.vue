@@ -167,7 +167,7 @@ async function handleSubmit() {
         } : undefined,
       };
       
-      await store.updateToot(store.editingToot.id, updatedToot);
+      await store.updateToot(store.editingToot, updatedToot, crypto.randomUUID());
     } else {
       // Create the toot
       const toot: ScheduledToot = {
