@@ -1918,7 +1918,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   9. **Edit a toot deleted elsewhere:** open toot X in edit mode; in a second tab delete X; back in the first tab change the text and click **Update**. Expected: the "already been published or deleted" error, a `GET /scheduled_statuses/:id` answering 404, no POST, no new toot.
   10. **Identical retry after a failure:** edit the text, go **Offline**, click **Update** (fails); go back online and click **Update** again without changing anything. Expected: exactly one POST then one DELETE, count unchanged.
   11. **Date-only edit of a toot with a poll, and of one with a CW:** expected a `PUT`, not POST + DELETE. If you see POST + DELETE, nothing is lost, but note it (the comparison is stricter than this instance's echo format).
-  12. **Edit lock:** schedule a toot 6 minutes ahead, wait about a minute, then change its text and click **Update**. Expected: "This toot is about to be published and can no longer be edited." and no POST or DELETE is sent.
+  12. **Edit lock:** schedule a toot 6 minutes ahead, wait about a minute, then change its text and click **Update**. Expected: "This toot is about to be published and can no longer be edited.", no network request at all (no GET, POST or DELETE), and the toot publishes once with its original text.
   13. **Media after publication (complements check 4):** schedule the edited toot with an image about 6 minutes ahead and confirm the published post really carries the image and its alt text.
 
 **User Verification Required:**
@@ -1971,4 +1971,5 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-1-da
   - A content edit fails while the target day is at Mastodon's scheduled-toot limit (25 per day, 300 in total), because the new version is created before the old one is removed. The original is kept and the server's error is shown.
   - A date-only edit of a toot created outside this app with a null language or visibility is recreated (not rescheduled) with the form's values.
   - Deleting, from the list, the toot open in the composer leaves the composer in edit mode; the update is then refused with a clear message (UI rework in Lot 4).
+  - The 5-minute edit lock uses the browser clock. If the client clock runs more than ~5 minutes behind the server, the original can publish mid-edit, and the existence recheck after a failed DELETE then reads as "removed", leaving a silent duplicate.
   - The ContentArea checkbox state issue (Lot 4).
