@@ -101,7 +101,7 @@ describe('isOnlyScheduleChange', () => {
 
   it('is false when a flag has a value it cannot interpret', () => {
     const original = makeOriginal({ sensitive: '1' as unknown as boolean, spoiler_text: 'CW' });
-    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false }))).toBe(false);
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false, spoiler_text: 'CW' }))).toBe(false);
     expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(false);
   });
 
