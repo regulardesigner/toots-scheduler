@@ -1,94 +1,90 @@
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { onMounted, onUnmounted, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
+import { SESSION_DURATION_MS, SESSION_WARNING_MS } from '../config/constants';
 
-// For testing: 30 seconds total, with warning at 10 seconds before expiry
-const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes
-const WARNING_BEFORE = 5 * 60 * 1000;    // 5 minutes warning
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'scroll'] as const;
 
-// Production values (commented for reference):
-// const SESSION_DURATION = 60 * 60 * 1000; // 1 hour
-// const WARNING_BEFORE = 5 * 60 * 1000;    // 5 minutes warning
-
+/**
+ * Ends the session after SESSION_DURATION_MS without activity, with a warning
+ * SESSION_WARNING_MS before. Timers are computed from the persisted last activity,
+ * so activity in another tab counts too, and a closed tab is handled at the next start.
+ */
 export function useSessionTimeout() {
-  const router = useRouter();
   const toast = useToast();
   const auth = useAuthStore();
-  
-  const sessionTimer = ref<number | null>(null);
-  const warningTimer = ref<number | null>(null);
-  const warningToast = ref<any>(null);
 
-  function clearTimers() {
-    if (sessionTimer.value) {
-      window.clearTimeout(sessionTimer.value);
-      sessionTimer.value = null;
-    }
-    if (warningTimer.value) {
-      window.clearTimeout(warningTimer.value);
-      warningTimer.value = null;
-    }
-    if (warningToast.value) {
-      toast.dismiss(warningToast.value);
-      warningToast.value = null;
+  let warningTimer: number | undefined;
+  let expiryTimer: number | undefined;
+  let warningToastId: ReturnType<typeof toast.warning> | null = null;
+
+  function clearTimers(): void {
+    window.clearTimeout(warningTimer);
+    window.clearTimeout(expiryTimer);
+    if (warningToastId !== null) {
+      toast.dismiss(warningToastId);
+      warningToastId = null;
     }
   }
 
-  function startSessionTimer() {
+  async function expire(): Promise<void> {
     clearTimers();
-
-    // Set warning timer
-    warningTimer.value = window.setTimeout(() => {
-      warningToast.value = toast.warning(
-        "Your session will expire in 5 minutes. Click here to extend.",
-        {
-          timeout: WARNING_BEFORE,
-          closeOnClick: false,
-          onClick: extendSession
-        }
-      );
-    }, SESSION_DURATION - WARNING_BEFORE);
-
-    // Set logout timer
-    sessionTimer.value = window.setTimeout(async () => {
-      await auth.logout();
-      toast.info("You've been logged out due to inactivity");
-      router.push('/');
-    }, SESSION_DURATION);
-  }
-
-  function extendSession() {
-    toast.success("Session extended for 30 minutes");
-    startSessionTimer();
-  }
-
-  // Reset timer on user activity
-  function handleUserActivity() {
     if (auth.accessToken) {
-      startSessionTimer();
+      await auth.logout({ reason: 'inactivity' });
     }
   }
+
+  function extendSession(): void {
+    auth.recordActivity();
+    toast.success('Session extended for 30 minutes');
+  }
+
+  function showWarning(): void {
+    warningToastId = toast.warning('Your session will expire in 5 minutes. Click here to stay signed in.', {
+      timeout: SESSION_WARNING_MS,
+      closeOnClick: false,
+      onClick: extendSession,
+    });
+  }
+
+  function schedule(): void {
+    clearTimers();
+    if (!auth.accessToken || auth.lastActivityAt === null) return;
+
+    const remaining = auth.lastActivityAt + SESSION_DURATION_MS - Date.now();
+    if (remaining <= 0) {
+      void expire();
+      return;
+    }
+    warningTimer = window.setTimeout(showWarning, Math.max(0, remaining - SESSION_WARNING_MS));
+    expiryTimer = window.setTimeout(() => void expire(), remaining);
+  }
+
+  function handleActivity(): void {
+    // The store only writes (and so only reschedules) every ACTIVITY_WRITE_INTERVAL_MS.
+    auth.recordActivity();
+  }
+
+  function handleVisibilityChange(): void {
+    // Background tabs throttle timers: re-check as soon as the tab is visible again.
+    if (document.visibilityState === 'visible') schedule();
+  }
+
+  watch([() => auth.accessToken, () => auth.lastActivityAt], schedule);
 
   onMounted(() => {
-    if (auth.accessToken) {
-      startSessionTimer();
-    }
-
-    // Add activity listeners
-    window.addEventListener('mousemove', handleUserActivity);
-    window.addEventListener('keypress', handleUserActivity);
-    window.addEventListener('click', handleUserActivity);
+    schedule();
+    ACTIVITY_EVENTS.forEach(name => window.addEventListener(name, handleActivity, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
   });
 
   onUnmounted(() => {
     clearTimers();
-    window.removeEventListener('mousemove', handleUserActivity);
-    window.removeEventListener('keypress', handleUserActivity);
-    window.removeEventListener('click', handleUserActivity);
+    ACTIVITY_EVENTS.forEach(name => window.removeEventListener(name, handleActivity));
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
   });
 
   return {
-    extendSession
+    extendSession,
   };
-} 
+}
