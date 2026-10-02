@@ -114,6 +114,14 @@ export const useAuthStore = defineStore('auth', () => {
     const session = currentSession();
     if (!session) return;
 
+    // A timer that fired late (sleep, throttling) must not let activity revive an expired session.
+    if (isSessionExpired(session.lastActivityAt, now, SESSION_DURATION_MS)) {
+      void logout({ reason: 'inactivity' });
+      return;
+    }
+
+    if (session.lastActivityAt !== null && now - session.lastActivityAt < ACTIVITY_WRITE_INTERVAL_MS) return;
+
     // Another tab may have logged out or switched account before its storage event reached us:
     // never write back a session that is no longer the stored one.
     const stored = parseStoredAuth(localStorage.getItem(AUTH_STORAGE_KEY));
@@ -122,8 +130,6 @@ export const useAuthStore = defineStore('auth', () => {
       else clearLocalSession();
       return;
     }
-
-    if (session.lastActivityAt !== null && now - session.lastActivityAt < ACTIVITY_WRITE_INTERVAL_MS) return;
 
     lastActivityAt.value = now;
     writeStoredAuth({ ...session, lastActivityAt: now });

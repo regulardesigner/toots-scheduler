@@ -124,6 +124,18 @@ describe('auth store', () => {
   });
 
   describe('session lifecycle', () => {
+    it('ends instead of extending a session whose deadline already passed', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+
+      auth.recordActivity(NOW + 31 * MINUTE);
+      await flushPromises();
+
+      expect(auth.accessToken).toBeNull();
+      expect(auth.sessionEndReason).toBe('inactivity');
+      expect(http.post).toHaveBeenCalledWith('https://masto.example/oauth/revoke', expect.any(URLSearchParams), { timeout: 5000 });
+    });
+
     it('removes the legacy keys when a login completes', () => {
       localStorage.setItem('mastodon_token', 'old');
       const auth = useAuthStore();
