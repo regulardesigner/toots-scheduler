@@ -113,6 +113,16 @@ export const useAuthStore = defineStore('auth', () => {
   function recordActivity(now: number = Date.now()): void {
     const session = currentSession();
     if (!session) return;
+
+    // Another tab may have logged out or switched account before its storage event reached us:
+    // never write back a session that is no longer the stored one.
+    const stored = parseStoredAuth(localStorage.getItem(AUTH_STORAGE_KEY));
+    if (!stored || stored.accessToken !== session.accessToken) {
+      if (stored) applySession(stored);
+      else clearLocalSession();
+      return;
+    }
+
     if (session.lastActivityAt !== null && now - session.lastActivityAt < ACTIVITY_WRITE_INTERVAL_MS) return;
 
     lastActivityAt.value = now;
@@ -152,6 +162,26 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
+   * Loads the account for a session, unless the session changed meanwhile.
+   * Only a rejected token (401) ends the session; being offline must not.
+   * @param {StoredAuth} session - The session to verify.
+   */
+  async function loadAccount(session: StoredAuth): Promise<void> {
+    try {
+      const response = await axios.get(`${session.instance}/api/v1/accounts/verify_credentials`, {
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+        timeout: VERIFY_TIMEOUT_MS,
+      });
+      if (accessToken.value === session.accessToken) account.value = response.data;
+    } catch (error) {
+      if (accessToken.value !== session.accessToken) return;
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        await logout({ revoke: false, reason: 'unauthorized' });
+      }
+    }
+  }
+
+  /**
    * Restores the saved session. An expired one (including any pre-0.14.0 session) is
    * revoked and removed before its token is used for anything else.
    */
@@ -167,18 +197,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     applySession(session);
-    try {
-      const response = await axios.get(`${session.instance}/api/v1/accounts/verify_credentials`, {
-        headers: { Authorization: `Bearer ${session.accessToken}` },
-        timeout: VERIFY_TIMEOUT_MS,
-      });
-      account.value = response.data;
-    } catch (error) {
-      // Only a rejected token ends the session; being offline at startup must not.
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        await logout({ revoke: false, reason: 'unauthorized' });
-      }
-    }
+    await loadAccount(session);
   }
 
   /**
@@ -193,7 +212,12 @@ export const useAuthStore = defineStore('auth', () => {
       clearLocalSession();
       return;
     }
+    const switchedAccount = session.accessToken !== accessToken.value;
     applySession(session);
+    if (switchedAccount) {
+      account.value = null;
+      void loadAccount(session);
+    }
   }
 
   window.addEventListener('storage', handleStorageEvent);

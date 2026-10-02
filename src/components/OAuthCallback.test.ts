@@ -74,6 +74,20 @@ describe('OAuthCallback', () => {
     expect(toast.error).toHaveBeenCalledWith('Sign-in was started in another tab or has expired. Please sign in again.');
   });
 
+  it('signs out again, revoking the new token, when loading the account fails', async () => {
+    savePendingLogin(pending);
+    visitCallback('?code=abc&state=state-123');
+    api.verifyCredentials.mockRejectedValue(new Error('Network Error'));
+
+    mount(OAuthCallback);
+    await flushPromises();
+
+    expect(useAuthStore().accessToken).toBeNull();
+    expect(localStorage.getItem('mastodon_auth')).toBeNull();
+    expect(toast.error).toHaveBeenCalledWith('Network Error');
+    expect(router.push).toHaveBeenCalledWith({ name: 'home' });
+  });
+
   it('explains a cancelled authorization', async () => {
     savePendingLogin(pending);
     visitCallback('?error=access_denied&state=state-123');

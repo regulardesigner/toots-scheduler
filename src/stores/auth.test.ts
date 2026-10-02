@@ -124,6 +124,38 @@ describe('auth store', () => {
   });
 
   describe('session lifecycle', () => {
+    it('removes the legacy keys when a login completes', () => {
+      localStorage.setItem('mastodon_token', 'old');
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      expect(localStorage.getItem('mastodon_token')).toBeNull();
+    });
+
+    it('never brings back a session that another tab already removed', () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      localStorage.removeItem('mastodon_auth'); // logout in another tab, storage event not delivered yet
+
+      auth.recordActivity(NOW + 31 * 1000);
+
+      expect(localStorage.getItem('mastodon_auth')).toBeNull();
+      expect(auth.accessToken).toBeNull();
+    });
+
+    it('ignores a startup verification that finishes after a logout', async () => {
+      storeSession(NOW - MINUTE);
+      let answer!: (value: unknown) => void;
+      http.get.mockReturnValue(new Promise(resolve => { answer = resolve; }));
+      const auth = useAuthStore();
+
+      await auth.logout();
+      answer({ data: { id: '1', acct: 'me' } });
+      await flushPromises();
+
+      expect(auth.account).toBeNull();
+      expect(auth.accessToken).toBeNull();
+    });
+
     it('persists a completed login with the current time as last activity', () => {
       const auth = useAuthStore();
       auth.completeLogin(credentials);
@@ -180,6 +212,36 @@ describe('auth store', () => {
   });
 
   describe('other tabs', () => {
+    it('clears the session when another tab clears all storage', () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+
+      window.dispatchEvent(new StorageEvent('storage', { key: null, newValue: null }));
+
+      expect(auth.accessToken).toBeNull();
+    });
+
+    it('reloads the account when another tab signs in to a different account', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      auth.setAccount({ id: '1', username: 'old', acct: 'old', display_name: 'Old', avatar: '' });
+      http.get.mockResolvedValue({ data: { id: '2', acct: 'new' } });
+
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'mastodon_auth',
+        newValue: JSON.stringify({ ...credentials, accessToken: 'other-token', lastActivityAt: NOW }),
+      }));
+      expect(auth.account).toBeNull();
+      await flushPromises();
+
+      expect(auth.accessToken).toBe('other-token');
+      expect(http.get).toHaveBeenCalledWith('https://masto.example/api/v1/accounts/verify_credentials', {
+        headers: { Authorization: 'Bearer other-token' },
+        timeout: 10000,
+      });
+      expect(auth.account).toEqual({ id: '2', acct: 'new' });
+    });
+
     it('logs this tab out when another tab removed the session', () => {
       const auth = useAuthStore();
       auth.completeLogin(credentials);
