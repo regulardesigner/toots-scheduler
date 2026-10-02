@@ -1,45 +1,40 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useAuthStore } from '../../stores/auth';
 import { useMastodonApi } from '../../composables/useMastodonApi';
+import { normalizeUrl } from '../../utils/url';
+import { createPkcePair, createRandomToken } from '../../utils/pkce';
+import { buildAuthorizeUrl, savePendingLogin } from '../../utils/oauthFlow';
 
 const emit = defineEmits<{
   (e: 'close-child-modal'): void;
 }>();
 
 const instance = ref('');
-const auth = useAuthStore();
 const api = useMastodonApi();
 const error = ref('');
 const isLoading = ref(false);
-
-import { normalizeUrl } from '../../utils/url';
 
 async function handleLogin() {
   try {
     error.value = '';
     isLoading.value = true;
-    
-    // Normalize and validate the instance URL
-    const normalizedUrl = normalizeUrl(instance.value);
-    
-    // Store the instance URL
-    auth.setInstance(normalizedUrl);
-    
-    // Register the application with the instance
-    const appData = await api.registerApplication(normalizedUrl);
-    auth.setClientCredentials(appData.client_id, appData.client_secret);
-    
-    // Redirect to Mastodon OAuth page
-    const params = new URLSearchParams({
-      client_id: appData.client_id,
-      redirect_uri: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
-      response_type: 'code',
-      scope: 'read:accounts read:statuses write:media write:statuses',
+
+    const instanceUrl = normalizeUrl(instance.value);
+    const appData = await api.registerApplication(instanceUrl);
+    const state = createRandomToken();
+    const { verifier, challenge } = await createPkcePair();
+
+    // Kept for this tab only, until the instance redirects back to /oauth/callback.
+    savePendingLogin({
+      instance: instanceUrl,
+      clientId: appData.client_id,
+      clientSecret: appData.client_secret,
+      state,
+      codeVerifier: verifier,
     });
 
     emit('close-child-modal');
-    window.location.href = `${normalizedUrl}/oauth/authorize?${params.toString()}`;
+    window.location.assign(buildAuthorizeUrl(instanceUrl, appData.client_id, state, challenge));
   } catch (err) {
     console.error('Login error:', err);
     error.value = err instanceof Error ? err.message : 'Failed to connect to Mastodon instance. Please check the URL and try again.';

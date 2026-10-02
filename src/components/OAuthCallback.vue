@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
 import { useMastodonApi } from '../composables/useMastodonApi';
+import { readAuthorizationCode, takePendingLogin } from '../utils/oauthFlow';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -11,29 +12,33 @@ const api = useMastodonApi();
 const toast = useToast();
 
 onMounted(async () => {
+  const search = window.location.search;
+  const pending = takePendingLogin();
+  // The authorization code is single-use: remove it from the address bar and history.
+  window.history.replaceState(window.history.state, '', window.location.pathname);
+
   try {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-
-    if (!code) {
-      throw new Error('No authorization code found');
+    if (!pending) {
+      throw new Error('Sign-in was started in another tab or has expired. Please sign in again.');
     }
 
-    if (!auth.instance || !auth.clientId || !auth.clientSecret) {
-      throw new Error('Missing authentication information');
-    }
+    const code = readAuthorizationCode(search, pending.state);
+    const tokenData = await api.getAccessToken(
+      pending.instance,
+      code,
+      pending.clientId,
+      pending.clientSecret,
+      pending.codeVerifier,
+    );
 
-    // Exchange the code for an access token
-    const tokenData = await api.getAccessToken(code, auth.clientId, auth.clientSecret);
+    auth.completeLogin({
+      instance: pending.instance,
+      clientId: pending.clientId,
+      clientSecret: pending.clientSecret,
+      accessToken: tokenData.access_token,
+    });
+    auth.setAccount(await api.verifyCredentials());
 
-    // Store the access token
-    auth.setAccessToken(tokenData.access_token);
-
-    // Get user account information
-    const accountData = await api.verifyCredentials();
-    auth.setAccount(accountData);
-
-    // Redirect to composer
     router.push({ name: 'composer' });
   } catch (err) {
     console.error('OAuth callback error:', err);
