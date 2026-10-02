@@ -54,13 +54,18 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
    * Loads all scheduled toots from the instance.
    */
   async function fetchScheduledToots(): Promise<void> {
+    // A list loaded for a previous session must not overwrite the current one.
+    const token = auth.accessToken;
     try {
       setLoading(true);
       setError('');
       const api = useMastodonApi();
-      setToots(await api.getScheduledToots());
+      const loaded = await api.getScheduledToots();
+      if (auth.accessToken !== token) return;
+      setToots(loaded);
     } catch (err) {
       console.error('Error fetching scheduled toots:', err);
+      if (auth.accessToken !== token) return;
       setError(err instanceof Error ? err.message : 'Failed to fetch scheduled toots');
     } finally {
       setLoading(false);
