@@ -1915,12 +1915,17 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   6. **Closed poll:** open the poll section, type two options, close it, add an image, schedule. Expected: success, and the toot has media and no poll.
   7. **Language:** schedule a toot in Français, then click **Edit**. Expected: the Language select shows Français.
   8. *(Optional, if the account has more than 20 scheduled toots)* the counter shows the real total, and `GET …scheduled_statuses?limit=40` is followed by a `max_id=` request.
+  9. **Edit a toot deleted elsewhere:** open toot X in edit mode; in a second tab delete X; back in the first tab change the text and click **Update**. Expected: the "already been published or deleted" error, a `GET /scheduled_statuses/:id` answering 404, no POST, no new toot.
+  10. **Identical retry after a failure:** edit the text, go **Offline**, click **Update** (fails); go back online and click **Update** again without changing anything. Expected: exactly one POST then one DELETE, count unchanged.
+  11. **Date-only edit of a toot with a poll, and of one with a CW:** expected a `PUT`, not POST + DELETE. If you see POST + DELETE, nothing is lost, but note it (the comparison is stricter than this instance's echo format).
+  12. **Edit lock:** schedule a toot 6 minutes ahead, wait about a minute, then change its text and click **Update**. Expected: "This toot is about to be published and can no longer be edited." and no POST or DELETE is sent.
+  13. **Media after publication (complements check 4):** schedule the edited toot with an image about 6 minutes ahead and confirm the published post really carries the image and its alt text.
 
 **User Verification Required:**
 Before marking this task complete, you MUST call AskUserQuestion:
 ```yaml
 AskUserQuestion:
-  question: "On your Mastodon instance, do the 7 Lot 1 checks pass (double click, date-only edit, content edit, edit with media, offline failure, closed poll, language)?"
+  question: "On your Mastodon instance, do the Lot 1 checks pass (1–7 and 9–13; 8 if you have more than 20 toots)?"
   header: "Verification"
   options:
     - label: "All checks pass"
@@ -1930,7 +1935,7 @@ AskUserQuestion:
 ```
 
 ```json:metadata
-{"files": [], "verifyCommand": "", "acceptanceCriteria": ["user confirms the 7 checks on a real instance"], "requiresUserVerification": true, "userVerificationPrompt": "On your Mastodon instance, do the 7 Lot 1 checks pass (double click, date-only edit, content edit, edit with media, offline failure, closed poll, language)?"}
+{"files": [], "verifyCommand": "", "acceptanceCriteria": ["user confirms the 7 checks on a real instance"], "requiresUserVerification": true, "userVerificationPrompt": "On your Mastodon instance, do the Lot 1 checks pass (1–7 and 9–13; 8 if you have more than 20 toots)?"}
 ```
 
 ---
@@ -1954,3 +1959,16 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-1-da
   - Same-origin filtering of the `next` link, so the token is never sent to a host named by the server (web-security §4).
   - The rejection of a single-option poll, which Mastodon would reject anyway, with a worse error message.
 - **Known limitation, kept for Lot 4 (UI):** the media/poll checkboxes in `ContentArea` keep their own local `checked` state. When editing a toot with a poll, the poll checkbox looks unchecked, and clicking it now closes and clears the poll. Lot 4 already plans to rework those controls.
+- **Hardening beyond the plan (from task and final reviews):**
+  - `isOnlyScheduleChange` treats string or uninterpretable booleans, a null visibility, non-numeric poll durations and option-less polls as changes (it fails closed toward recreate).
+  - `getNextPageUrl` returns the normalized href. Pagination also stops on a repeated URL or an empty page.
+  - `rescheduleToot` and `deleteScheduledToot` encode the id.
+  - `updateToot` refuses a content edit less than 5 minutes before publication, refuses to recreate a toot that no longer exists (`scheduledTootExists`), and rechecks existence after a failed DELETE before warning.
+  - Idempotency key: the spec says "one key per draft, renewed after success/reset". The implementation instead reuses the key only for an identical retry (same payload and same edited toot id); any change gets a new key. Reason: reusing a key after a change would make Mastodon return the earlier result, which could publish stale content or lose an edit.
+  - After a failed submit the list is refreshed, so a toot created despite a lost response shows up.
+- **Known residuals (accepted):**
+  - If a POST succeeds but its response is lost, and the user changes the payload before retrying, two copies exist. Both are visible in the refreshed list and can be deleted.
+  - A content edit fails while the target day is at Mastodon's scheduled-toot limit (25 per day, 300 in total), because the new version is created before the old one is removed. The original is kept and the server's error is shown.
+  - A date-only edit of a toot created outside this app with a null language or visibility is recreated (not rescheduled) with the form's values.
+  - Deleting, from the list, the toot open in the composer leaves the composer in edit mode; the update is then refused with a clear message (UI rework in Lot 4).
+  - The ContentArea checkbox state issue (Lot 4).

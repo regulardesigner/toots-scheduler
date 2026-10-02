@@ -59,6 +59,7 @@
 **Design :**
 - `buildScheduledToot(form: ComposerForm): ScheduledToot`, une fonction pure. Elle inclut `poll` **uniquement si** `form.showPoll` et au moins 2 options non vides, et n'inclut jamais `poll` et `media_ids` ensemble. `spoiler_text` n'est rempli que si `sensitive`.
 - `scheduleToot(toot, idempotencyKey)` : header `Idempotency-Key`, suppression du champ `idempotency` du body. La clé est un `crypto.randomUUID()` généré à l'ouverture du brouillon, puis régénéré après un succès ou un `resetForm`.
+  *Implémenté (0.13.2) : la clé n'est réutilisée que pour un nouvel essai identique (empreinte du contenu et du toot édité) ; voir les notes de relecture du plan Lot 1.*
 - Édition (D3) : si seul `scheduled_at` diffère, `PUT /api/v1/scheduled_statuses/:id`. Sinon, `scheduleToot(new)`, et `deleteScheduledToot(old)` **seulement après succès**. Si la suppression échoue, toast d'avertissement « l'ancienne version existe encore ».
 - `getScheduledToots()` : `limit=40`, suit le header `Link rel="next"` jusqu'à épuisement (plafond : 10 pages).
 - Bouton submit : prop `isSubmitting`, avec `:disabled` et le libellé « Scheduling… ».
