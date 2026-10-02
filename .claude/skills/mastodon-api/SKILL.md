@@ -106,8 +106,9 @@ The Mastodon API has strict rules about scheduling. Always check these before im
     multiple?: boolean,
     hide_totals?: boolean,
   },
-  idempotency: string,                     // Use Date.now().toString() to prevent duplicates
 }
+// Idempotency: send an `Idempotency-Key: <uuid>` request HEADER, not a body field.
+// One key per draft: reuse it on retry, renew it after success. Mastodon keeps keys for 1 hour.
 ```
 
 ---

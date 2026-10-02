@@ -186,7 +186,7 @@ async function handleSubmit() {
         } : undefined,
       };
 
-      await api.scheduleToot(toot);
+      await api.scheduleToot(toot, crypto.randomUUID());
     }
     
     // Reset form and refresh toots
