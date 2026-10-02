@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { createApiClient } from '../utils/api';
 import { useAuthStore } from '../stores/auth';
 import type { MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
@@ -144,6 +145,24 @@ export function useMastodonApi() {
       });
       return response.data;
     } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  }
+
+  /**
+   * Tells whether a scheduled toot still exists, i.e. has not been published or deleted meanwhile.
+   * @param {string} id - The ID of the scheduled toot.
+   * @returns {Promise<boolean>} False when the instance answers 404.
+   * @throws {Error} If the instance URL is not set or the request fails for another reason.
+   */
+  async function scheduledTootExists(id: string): Promise<boolean> {
+    if (!auth.instance) throw new Error('No instance URL set');
+
+    try {
+      await api.get(`${auth.instance}/api/v1/scheduled_statuses/${encodeURIComponent(id)}`);
+      return true;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) return false;
       throw new Error(handleApiError(error));
     }
   }
@@ -328,6 +347,13 @@ export function useMastodonApi() {
      * @returns {Promise<MastodonStatus>} The updated scheduled toot.
      */
     rescheduleToot,
+
+    /**
+     * Tells whether a scheduled toot still exists.
+     * @param {string} id - The ID of the scheduled toot.
+     * @returns {Promise<boolean>} False when it was published or deleted.
+     */
+    scheduledTootExists,
   
     /**
      * Sends a direct thank you notification to the user.

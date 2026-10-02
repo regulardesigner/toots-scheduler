@@ -63,6 +63,27 @@ describe('useMastodonApi', () => {
     });
   });
 
+  describe('scheduledTootExists', () => {
+    it('is true when the scheduled status is found', async () => {
+      http.get.mockResolvedValue({ data: { id: '42' } });
+
+      await expect(useMastodonApi().scheduledTootExists('42')).resolves.toBe(true);
+      expect(http.get).toHaveBeenCalledWith('https://masto.example/api/v1/scheduled_statuses/42');
+    });
+
+    it('is false on a 404 (already published or deleted)', async () => {
+      http.get.mockRejectedValue({ isAxiosError: true, response: { status: 404, data: { error: 'Record not found' } } });
+
+      await expect(useMastodonApi().scheduledTootExists('42')).resolves.toBe(false);
+    });
+
+    it('throws on any other error', async () => {
+      http.get.mockRejectedValue({ isAxiosError: true, response: { status: 500, data: { error: 'Boom' } } });
+
+      await expect(useMastodonApi().scheduledTootExists('42')).rejects.toThrow('Boom');
+    });
+  });
+
   describe('getScheduledToots', () => {
     it('follows the Link header across pages and concatenates the results', async () => {
       http.get
