@@ -21,11 +21,13 @@ export function normalizeUrl(input: string, allowLocalHttp: boolean = import.met
     throw new Error('Invalid URL format');
   }
 
-  if (!parsed.hostname || parsed.username || parsed.password) {
+  // A real instance host has a dot; this also catches mistyped schemes like "https:/host".
+  const isLocalHost = LOCAL_HOSTS.has(parsed.hostname);
+  if (!parsed.hostname || parsed.username || parsed.password || (!parsed.hostname.includes('.') && !isLocalHost)) {
     throw new Error('Invalid URL format');
   }
 
-  const isLocalHttp = parsed.protocol === 'http:' && allowLocalHttp && LOCAL_HOSTS.has(parsed.hostname);
+  const isLocalHttp = parsed.protocol === 'http:' && allowLocalHttp && isLocalHost;
   if (parsed.protocol !== 'https:' && !isLocalHttp) {
     throw new Error('The instance address must use https://');
   }

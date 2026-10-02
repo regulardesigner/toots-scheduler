@@ -38,4 +38,22 @@ describe('normalizeUrl', () => {
     expect(() => normalizeUrl('ftp://mastodon.social')).toThrow('The instance address must use https://');
     expect(() => normalizeUrl('https://user:pass@mastodon.social')).toThrow('Invalid URL format');
   });
+
+  it('refuses a host without a dot, such as a mistyped scheme', () => {
+    expect(() => normalizeUrl('https:/mastodon.social')).toThrow('Invalid URL format');
+    expect(() => normalizeUrl('https:\\\\mastodon.social')).toThrow('Invalid URL format');
+    expect(() => normalizeUrl('mastodon')).toThrow('Invalid URL format');
+  });
+
+  it('normalizes case, the default port and international domains', () => {
+    expect(normalizeUrl('HTTPS://MASTO.EXAMPLE')).toBe('https://masto.example');
+    expect(normalizeUrl('mastodon.social:443')).toBe('https://mastodon.social');
+    expect(normalizeUrl('münchen.social')).toBe('https://xn--mnchen-3ya.social');
+  });
+
+  it('allows every local host form when local http is allowed', () => {
+    expect(normalizeUrl('http://127.0.0.1:3000', true)).toBe('http://127.0.0.1:3000');
+    expect(normalizeUrl('http://[::1]:3000', true)).toBe('http://[::1]:3000');
+    expect(normalizeUrl('localhost:3000', true)).toBe('https://localhost:3000');
+  });
 });
