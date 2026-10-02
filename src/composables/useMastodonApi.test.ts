@@ -42,6 +42,35 @@ describe('useMastodonApi', () => {
     });
   });
 
+  describe('uploadMedia', () => {
+    it('posts the file as multipart through the API client and reports progress', async () => {
+      http.post.mockResolvedValue({ data: { id: 'm1' } });
+      const onProgress = vi.fn();
+      const file = new File(['x'], 'cat.png', { type: 'image/png' });
+
+      const media = await useMastodonApi().uploadMedia(file, onProgress);
+
+      const [url, body, config] = http.post.mock.calls[0];
+      expect(url).toBe('https://masto.example/api/v2/media');
+      expect((body as FormData).get('file')).toBeInstanceOf(File);
+      expect(config).toMatchObject({ headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
+      config.onUploadProgress({ loaded: 50, total: 200 });
+      expect(onProgress).toHaveBeenCalledWith(25);
+      expect(media).toEqual({ id: 'm1' });
+    });
+
+    it('keeps the original error as the cause', async () => {
+      const original = { isAxiosError: true, message: 'Request failed', response: { status: 422, data: { error: 'File type not supported' } } };
+      http.post.mockRejectedValue(original);
+
+      const error = await useMastodonApi().uploadMedia(new File(['x'], 'a.pdf')).catch((e: Error) => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe('File type not supported');
+      expect((error as Error).cause).toBe(original);
+    });
+  });
+
   describe('rescheduleToot', () => {
     it('PUTs only the new date to the scheduled status', async () => {
       http.put.mockResolvedValue({ data: { id: '42' } });
