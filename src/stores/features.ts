@@ -26,7 +26,7 @@ export const useFeaturesStore = defineStore('features', () => {
         },
         {
           id: 'logout-everywhere',
-          title: '🚪 Log Out Everywhere at Once',
+          title: '🚪 Log Out of Every Tab at Once',
           description: 'Logging out revokes the app\'s access on your instance and signs you out in every open tab of this browser.'
         },
       ],
