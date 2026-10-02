@@ -45,6 +45,8 @@ export function createApiClient() {
       && error.response?.status === 401
       && auth.instance
       && isInstanceUrl(error.config?.url, auth.instance)
+      // A request sent with an older token (e.g. another tab switched account) says nothing about the current one.
+      && error.config?.headers?.Authorization === `Bearer ${auth.accessToken}`
     ) {
       await auth.handleUnauthorized();
     }
