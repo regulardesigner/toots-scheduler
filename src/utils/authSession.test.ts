@@ -43,8 +43,9 @@ describe('authSession', () => {
       expect(isSessionExpired(NaN, 0, 30 * MINUTE)).toBe(true);
     });
 
-    it('does not expire when the clock moved backwards', () => {
-      expect(isSessionExpired(10 * MINUTE, 0, 30 * MINUTE)).toBe(false);
+    it('tolerates a small clock skew but not an activity time far in the future', () => {
+      expect(isSessionExpired(2 * MINUTE, 0, 30 * MINUTE)).toBe(false);
+      expect(isSessionExpired(10 * MINUTE, 0, 30 * MINUTE)).toBe(true);
     });
   });
 

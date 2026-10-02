@@ -6,6 +6,9 @@ export const AUTH_STORAGE_KEY = 'mastodon_auth';
 /** Keys used before 0.14.0, one value each and no activity time. */
 const LEGACY_KEYS = ['mastodon_token', 'mastodon_instance', 'mastodon_client_id', 'mastodon_client_secret'] as const;
 
+/** An activity time this far in the future can't be trusted (clock corrected, or tampering). */
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
+
 /** A signed-in session as persisted in localStorage. */
 export interface StoredAuth {
   instance: string;
@@ -93,7 +96,8 @@ export function clearStoredAuth(): void {
 
 /**
  * Tells whether a session must end for inactivity. A session without a recorded
- * activity (legacy or corrupted) is expired; a clock moved backwards is not.
+ * activity (legacy or corrupted) is expired, and so is one more than 5 minutes in the future;
+ * a smaller clock skew is tolerated.
  * @param {number | null} lastActivityAt - Epoch ms of the last activity.
  * @param {number} now - Current epoch ms.
  * @param {number} duration - Allowed inactivity in ms.
@@ -101,5 +105,6 @@ export function clearStoredAuth(): void {
  */
 export function isSessionExpired(lastActivityAt: number | null, now: number, duration: number): boolean {
   if (lastActivityAt === null || !Number.isFinite(lastActivityAt)) return true;
+  if (lastActivityAt - now > MAX_CLOCK_SKEW_MS) return true;
   return now - lastActivityAt >= duration;
 }
