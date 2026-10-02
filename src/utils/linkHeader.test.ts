@@ -27,4 +27,25 @@ describe('getNextPageUrl', () => {
   it('returns null for a malformed URL', () => {
     expect(getNextPageUrl('<not a url>; rel="next"', ORIGIN)).toBeNull();
   });
+
+  it('returns the normalized URL that was checked', () => {
+    expect(getNextPageUrl('<https://MASTO.example/api/v1/scheduled_statuses?max_id=7>; rel="next"', ORIGIN))
+      .toBe('https://masto.example/api/v1/scheduled_statuses?max_id=7');
+    expect(getNextPageUrl('< https://masto.example/x >; rel="next"', ORIGIN)).toBe('https://masto.example/x');
+  });
+
+  it('accepts an unquoted rel=next', () => {
+    expect(getNextPageUrl('<https://masto.example/x>; rel=next', ORIGIN)).toBe('https://masto.example/x');
+  });
+
+  it('refuses a scheme downgrade, userinfo tricks and relative links', () => {
+    expect(getNextPageUrl('<http://masto.example/x>; rel="next"', ORIGIN)).toBeNull();
+    expect(getNextPageUrl('<https://masto.example@evil.example/x>; rel="next"', ORIGIN)).toBeNull();
+    expect(getNextPageUrl('</api/v1/scheduled_statuses?max_id=7>; rel="next"', ORIGIN)).toBeNull();
+  });
+
+  it('stops at the first next link when it is off-origin', () => {
+    const header = '<https://evil.example/x>; rel="next", <https://masto.example/y>; rel="next"';
+    expect(getNextPageUrl(header, ORIGIN)).toBeNull();
+  });
 });
