@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import type { PollFormState } from '../../types/mastodon';
 
 interface PollSectionProps {
-  modelValue?: {
-    options: string[];
-    expiresIn: number;
-    multiple: boolean;
-    hideTotals: boolean;
-  };
+  modelValue?: PollFormState;
 }
 
 const props = withDefaults(defineProps<PollSectionProps>(), {
@@ -105,7 +101,7 @@ watch([pollOptions, pollExpiresIn, pollMultiple, pollHideTotals], () => {
     <div class="poll-settings">
       <label>
         Poll Duration:
-        <select v-model="pollExpiresIn">
+        <select v-model.number="pollExpiresIn">
           <option value="300">5 minutes</option>
           <option value="3600">1 hour</option>
           <option value="21600">6 hours</option>
