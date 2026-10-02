@@ -1,0 +1,75 @@
+{
+  "planPath": "docs/superpowers/plans/2026-10-02-lot-1-data-integrity.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: Shared poll types and the `buildScheduledToot` payload builder",
+      "status": "pending",
+      "description": "**Goal:** A pure, tested function turns the composer state into the API payload, and only sends a poll that is open, valid and not combined with media.\n\n**Files:** - Modify: `src/types/mastodon.ts`\n- Modify: `src/components/Toot/TootCard.vue` (import line and `poll` prop)\n- Create: `src/utils/buildScheduledToot.ts`\n- Test: `src/utils/buildScheduledToot.test.ts`\n\n**Acceptance Criteria:**\n- [ ] `PollParams` and `PollFormState` are exported from `src/types/mastodon.ts`, and no inline poll object type remains in that file\n- [ ] `MastodonStatus.params.poll` is typed `PollParams | null` (the API returns `null`)\n- [ ] `buildScheduledToot` passes the 7 tests below (closed poll ignored, trimmed options, numeric `expires_in`, single option rejected, poll + media rejected)\n- [ ] `npm run typecheck` exits 0\n\n**Verify:** `npx vitest run src/utils/buildScheduledToot.test.ts` → `Tests  7 passed (7)`\n\n**Steps:** see docs/superpowers/plans/2026-10-02-lot-1-data-integrity.md § Task 1: Shared poll types and the `buildScheduledToot` payload builder\n\n```json:metadata\n{\"files\": [\"src/types/mastodon.ts\", \"src/components/Toot/TootCard.vue\", \"src/utils/buildScheduledToot.ts\", \"src/utils/buildScheduledToot.test.ts\"], \"verifyCommand\": \"npx vitest run src/utils/buildScheduledToot.test.ts\", \"acceptanceCriteria\": [\"PollParams and PollFormState exported, no inline poll types left\", \"params.poll typed PollParams | null\", \"7 buildScheduledToot tests pass\", \"typecheck exits 0\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: `isOnlyScheduleChange`, null-safe detection of date-only edits",
+      "status": "pending",
+      "description": "**Goal:** A pure, tested function decides whether an edit can use `PUT` (date only) or must recreate the toot.\n\n**Files:** - Create: `src/utils/isOnlyScheduleChange.ts`\n- Test: `src/utils/isOnlyScheduleChange.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Returns true when only `scheduled_at` differs, including when the API returned `null` for unset params\n- [ ] Returns false when text, visibility, language, sensitivity, media or poll changed, or when `params` is missing\n- [ ] Poll comparison normalizes `expires_in` to a number and `multiple`/`hide_totals` to booleans\n- [ ] Falls back to `media_attachments` ids when `params.media_ids` is missing\n\n**Verify:** `npx vitest run src/utils/isOnlyScheduleChange.test.ts` → `Tests  11 passed (11)`\n\n**Steps:** see docs/superpowers/plans/2026-10-02-lot-1-data-integrity.md § Task 2: `isOnlyScheduleChange`, null-safe detection of date-only edits\n\n```json:metadata\n{\"files\": [\"src/utils/isOnlyScheduleChange.ts\", \"src/utils/isOnlyScheduleChange.test.ts\"], \"verifyCommand\": \"npx vitest run src/utils/isOnlyScheduleChange.test.ts\", \"acceptanceCriteria\": [\"true for date-only change incl. null params\", \"false for any content change or missing params\", \"poll normalized before comparison\", \"media_attachments fallback\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        0
+      ]
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: `getNextPageUrl`, a same-origin Link-header parser",
+      "status": "pending",
+      "description": "**Goal:** A pure, tested function extracts the `rel=\"next\"` URL of a Mastodon `Link` header, and refuses any URL outside the instance origin, so the token is never sent elsewhere.\n\n**Files:** - Create: `src/utils/linkHeader.ts`\n- Test: `src/utils/linkHeader.test.ts`\n\n**Acceptance Criteria:**\n- [ ] Returns the next URL from a header with `next` and `prev` links\n- [ ] Returns `null` when there is no next link, no header, a malformed URL, or a URL on another origin (including a prefix lookalike such as `https://masto.example.evil.example`)\n\n**Verify:** `npx vitest run src/utils/linkHeader.test.ts` → `Tests  5 passed (5)`\n\n**Steps:** see docs/superpowers/plans/2026-10-02-lot-1-data-integrity.md § Task 3: `getNextPageUrl`, a same-origin Link-header parser\n\n```json:metadata\n{\"files\": [\"src/utils/linkHeader.ts\", \"src/utils/linkHeader.test.ts\"], \"verifyCommand\": \"npx vitest run src/utils/linkHeader.test.ts\", \"acceptanceCriteria\": [\"returns rel=next URL\", \"null for no next / no header / malformed / other origin\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "subject": "Task 4: API layer: Idempotency-Key header, `rescheduleToot`, full pagination",
+      "status": "pending",
+      "description": "**Goal:** `useMastodonApi` sends a real `Idempotency-Key` header, can reschedule in place, and returns **all** scheduled toots.\n\n**Files:** - Modify: `src/composables/useMastodonApi.ts` (imports; `scheduleToot`; new `rescheduleToot`; `getScheduledToots`; returned object)\n- Test: `src/composables/useMastodonApi.test.ts`\n- Modify (interim): `src/stores/scheduledToots.ts:70`, `src/components/Toot/TootComposer.vue:189`\n- Modify: `.claude/skills/mastodon-api/SKILL.md:109`\n\n**Acceptance Criteria:**\n- [ ] `scheduleToot(toot, idempotencyKey)` sends `{ headers: { 'Idempotency-Key': idempotencyKey } }` and no `idempotency` body field\n- [ ] `rescheduleToot(id, scheduledAt)` does `PUT {instance}/api/v1/scheduled_statuses/{id}` with `{ scheduled_at }`\n- [ ] `getScheduledToots()` requests `?limit=40`, follows same-origin `rel=\"next\"` links, stops after 10 pages, and never follows another origin\n- [ ] The 3 debug `console.log` dumps of API responses in `getScheduledToots` are gone\n- [ ] The mastodon-api skill no longer recommends a body `idempotency` field\n- [ ] `npm run typecheck` exits 0 and `npm test` passes\n\n**Verify:** `npx vitest run src/composables/useMastodonApi.test.ts` → `Tests  5 passed (5)`\n\n**Steps:** see docs/superpowers/plans/2026-10-02-lot-1-data-integrity.md § Task 4: API layer: Idempotency-Key header, `rescheduleToot`, full pagination\n\n```json:metadata\n{\"files\": [\"src/composables/useMastodonApi.ts\", \"src/composables/useMastodonApi.test.ts\", \"src/stores/scheduledToots.ts\", \"src/components/Toot/TootComposer.vue\", \".claude/skills/mastodon-api/SKILL.md\"], \"verifyCommand\": \"npx vitest run src/composables/useMastodonApi.test.ts\", \"acceptanceCriteria\": [\"Idempotency-Key header, no body field\", \"rescheduleToot PUTs scheduled_at\", \"pagination limit=40, same-origin next only, max 10 pages\", \"debug response dumps removed\", \"skill doc corrected\", \"typecheck and tests pass\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        2
+      ]
+    },
+    {
+      "id": 4,
+      "subject": "Task 5: Setup store with a safe `updateToot` (create-then-delete, PUT for date-only)",
+      "status": "pending",
+      "description": "**Goal:** Editing a scheduled toot can no longer lose it. The store follows the project's setup-store convention.\n\n**Files:** - Rewrite: `src/stores/scheduledToots.ts`\n- Test: `src/stores/scheduledToots.test.ts`\n- Modify (interim): `src/components/Toot/TootComposer.vue:170`\n\n**Acceptance Criteria:**\n- [ ] The store uses `defineStore('scheduledToots', () => { … })` and keeps the same public API used by components: `toots`, `isLoading`, `error`, `editingToot`, `count`, `sortedToots`, `setToots`, `setLoading`, `setError`, `setEditingToot`, `fetchScheduledToots`, `updateToot`\n- [ ] `updateToot(original, updated, idempotencyKey)` calls `rescheduleToot` (and nothing else) for a date-only change\n- [ ] For any other change it calls `scheduleToot` **before** `deleteScheduledToot`, and never deletes when creation fails\n- [ ] It returns `{ previousVersionRemoved: false }` (without throwing) when the deletion fails after a successful creation\n- [ ] `npm run typecheck` exits 0 and `npm test` passes\n\n**Verify:** `npx vitest run src/stores/scheduledToots.test.ts` → `Tests  5 passed (5)`\n\n**Steps:** see docs/superpowers/plans/2026-10-02-lot-1-data-integrity.md § Task 5: Setup store with a safe `updateToot` (create-then-delete, PUT for date-only)\n\n```json:metadata\n{\"files\": [\"src/stores/scheduledToots.ts\", \"src/stores/scheduledToots.test.ts\", \"src/components/Toot/TootComposer.vue\"], \"verifyCommand\": \"npx vitest run src/stores/scheduledToots.test.ts\", \"acceptanceCriteria\": [\"setup store with unchanged public API\", \"date-only edit uses rescheduleToot only\", \"create before delete; no delete on failed create\", \"previousVersionRemoved false on failed delete\", \"typecheck and tests pass\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "subject": "Task 6: Composer wiring: one idempotency key per draft, locked submit, poll and language fixes",
+      "status": "pending",
+      "description": "**Goal:** The composer uses `buildScheduledToot` and the safe store, ignores double submits, reuses its idempotency key on retry, never sends a closed poll, and restores the language when editing.\n\n**Files:** - Modify: `src/components/Toot/PollSection.vue` (props type, `v-model.number`)\n- Test: `src/components/Toot/PollSection.test.ts`\n- Modify: `src/components/ControlsBar.vue` (`isSubmitting` prop, disabled button, label)\n- Test: `src/components/ControlsBar.test.ts`\n- Modify: `src/components/Toot/TootComposer.vue` (whole `<script setup>` block, plus 2 template attributes)\n- Test: `src/components/Toot/TootComposer.test.ts`\n\n**Acceptance Criteria:**\n- [ ] `PollSection` emits `expiresIn` as a number\n- [ ] `ControlsBar` disables the submit button while `isSubmitting` is true, showing `Scheduling…` or `Updating…`\n- [ ] Two quick submits produce **one** `scheduleToot` call\n- [ ] A retry after a failure reuses the idempotency key, and the next draft gets a new one\n- [ ] Editing a toot whose `params.language` is `fr` selects `fr`\n- [ ] Closing the poll section clears the poll, so it can't be sent later\n- [ ] `npm run lint` (0 errors), `npm run typecheck`, `npm test` and `npm run build` pass\n\n**Verify:** `npm test` → `Tests  47 passed (47)`\n\n**Steps:** see docs/superpowers/plans/2026-10-02-lot-1-data-integrity.md § Task 6: Composer wiring: one idempotency key per draft, locked submit, poll and language fixes\n\n```json:metadata\n{\"files\": [\"src/components/Toot/PollSection.vue\", \"src/components/Toot/PollSection.test.ts\", \"src/components/ControlsBar.vue\", \"src/components/ControlsBar.test.ts\", \"src/components/Toot/TootComposer.vue\", \"src/components/Toot/TootComposer.test.ts\"], \"verifyCommand\": \"npm test\", \"acceptanceCriteria\": [\"PollSection emits numeric expiresIn\", \"ControlsBar disabled + label while submitting\", \"double submit -> one scheduleToot call\", \"idempotency key reused on retry, renewed after success\", \"edit restores params.language\", \"closing poll clears it\", \"lint 0 errors, typecheck, tests (47), build pass\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "subject": "Task 7: Release 0.13.2",
+      "status": "pending",
+      "description": "**Goal:** Version 0.13.2, with user-facing \"What's New\" entries for the four data-integrity fixes.\n\n**Files:** - Modify: `package.json`, `package-lock.json` (version)\n- Modify: `src/stores/features.ts` (prepend a `FeatureGroup`)\n\n**Acceptance Criteria:**\n- [ ] `package.json` version is `0.13.2`, matching the first `FeatureGroup.version`\n- [ ] The 4 feature ids are unique across `features`\n- [ ] lint (0 errors), typecheck, test and build pass\n\n**Verify:** `node -e \"console.log(require('./package.json').version)\"` → `0.13.2`\n\n**Steps:** see docs/superpowers/plans/2026-10-02-lot-1-data-integrity.md § Task 7: Release 0.13.2\n\n```json:metadata\n{\"files\": [\"package.json\", \"package-lock.json\", \"src/stores/features.ts\"], \"verifyCommand\": \"node -e \\\"console.log(require('./package.json').version)\\\"\", \"acceptanceCriteria\": [\"version 0.13.2 in package.json and features store\", \"4 unique feature ids\", \"lint, typecheck, test, build pass\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        5
+      ]
+    },
+    {
+      "id": 7,
+      "subject": "Task 8: User verification on a real Mastodon instance",
+      "status": "pending",
+      "description": "**Goal:** The user confirms on a real instance that toots can no longer be lost or duplicated. Unit tests mock the API, so they cannot prove the actual Mastodon behaviors: media reuse on create-then-delete, idempotency, PUT, and the CORS exposure of `Link`.\n\n**Files:** none (manual check)\n\n**Acceptance Criteria:**\n- [ ] The user ran the checklist below and selected \"All checks pass\"\n\n**Verify:** the user's answer to the AskUserQuestion below\n\n**Steps:** see docs/superpowers/plans/2026-10-02-lot-1-data-integrity.md § Task 8: User verification on a real Mastodon instance\n\n**User Verification Required:**\nBefore marking this task complete, you MUST call AskUserQuestion:\n```yaml\nAskUserQuestion:\n  question: \"On your Mastodon instance, do the 7 Lot 1 checks pass (double click, date-only edit, content edit, edit with media, offline failure, closed poll, language)?\"\n  header: \"Verification\"\n  options:\n    - label: \"All checks pass\"\n      description: \"No loss, no duplicate, behavior as expected: Lot 1 can be closed\"\n    - label: \"A check fails\"\n      description: \"Tell me which number and what you saw; the task goes back to fixing, then re-verification\"\n```\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"\", \"acceptanceCriteria\": [\"user confirms the 7 checks on a real instance\"], \"requiresUserVerification\": true, \"userVerificationPrompt\": \"On your Mastodon instance, do the 7 Lot 1 checks pass (double click, date-only edit, content edit, edit with media, offline failure, closed poll, language)?\"}\n```",
+      "blockedBy": [
+        6
+      ]
+    }
+  ],
+  "lastUpdated": "2026-10-02T08:17:39.055003+00:00"
+}
