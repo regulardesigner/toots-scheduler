@@ -2,7 +2,7 @@ import axios from 'axios';
 import { createApiClient } from '../utils/api';
 import { useAuthStore } from '../stores/auth';
 import type { MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
-import { normalizeUrl } from '../utils/url';
+import { getRedirectUri, OAUTH_SCOPES } from '../config/constants';
 import { handleApiError } from '../utils/error';
 import { getNextPageUrl } from '../utils/linkHeader';
 
@@ -21,24 +21,23 @@ export function useMastodonApi() {
 
   /**
    * Registers a new application with the Mastodon instance.
-   * @param {string} instanceUrl - The URL of the Mastodon instance.
-   * @returns {Promise<Object>} The application data containing client_id and client_secret.
+   * @param {string} instanceUrl - The origin of the Mastodon instance (already normalized).
+   * @returns {Promise<{ client_id: string; client_secret: string }>} The app credentials.
    * @throws {Error} If the registration fails or the response is invalid.
    */
-  async function registerApplication(instanceUrl: string) {
+  async function registerApplication(instanceUrl: string): Promise<{ client_id: string; client_secret: string }> {
     try {
-      const normalizedUrl = normalizeUrl(instanceUrl);
-      const response = await api.post(`${normalizedUrl}/api/v1/apps`, {
+      const response = await api.post(`${instanceUrl}/api/v1/apps`, {
         client_name: 'Toot Scheduler',
-        redirect_uris: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
-        scopes: 'read:accounts read:statuses write:media write:statuses',
-        website: window.location.origin + import.meta.env.BASE_URL
+        redirect_uris: getRedirectUri(),
+        scopes: OAUTH_SCOPES,
+        website: window.location.origin + import.meta.env.BASE_URL,
       });
-  
-      if (!response.data.client_id || !response.data.client_secret) {
+
+      if (!response.data?.client_id || !response.data?.client_secret) {
         throw new Error('Invalid response from server');
       }
-  
+
       return response.data;
     } catch (error) {
       throw new Error(handleApiError(error));
@@ -46,26 +45,37 @@ export function useMastodonApi() {
   }
 
   /**
-   * Gets an access token from the Mastodon instance using the authorization code.
+   * Exchanges the authorization code for an access token, proving PKCE possession with the verifier.
+   * @param {string} instanceUrl - The instance origin the login started with.
    * @param {string} code - The authorization code.
    * @param {string} clientId - The client ID.
    * @param {string} clientSecret - The client secret.
-   * @returns {Promise<Object>} The access token data.
-   * @throws {Error} If the instance URL is not set or the request fails.
+   * @param {string} codeVerifier - The PKCE verifier matching the challenge sent to /oauth/authorize.
+   * @returns {Promise<{ access_token: string }>} The access token data.
+   * @throws {Error} If the request fails or no token is returned.
    */
-  async function getAccessToken(code: string, clientId: string, clientSecret: string) {
-    if (!auth.instance) throw new Error('No instance URL set');
-  
+  async function getAccessToken(
+    instanceUrl: string,
+    code: string,
+    clientId: string,
+    clientSecret: string,
+    codeVerifier: string,
+  ): Promise<{ access_token: string }> {
     try {
-      const response = await api.post(`${auth.instance}/oauth/token`, {
+      const response = await api.post(`${instanceUrl}/oauth/token`, {
         grant_type: 'authorization_code',
         code,
         client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
-        scope: 'read:accounts read:statuses write:media write:statuses'
+        redirect_uri: getRedirectUri(),
+        code_verifier: codeVerifier,
+        scope: OAUTH_SCOPES,
       });
-  
+
+      if (!response.data?.access_token) {
+        throw new Error('Invalid response from server');
+      }
+
       return response.data;
     } catch (error) {
       throw new Error(handleApiError(error));
@@ -314,17 +324,19 @@ export function useMastodonApi() {
   return {
     /**
      * Registers a new application with the Mastodon instance.
-     * @param {string} instanceUrl - The URL of the Mastodon instance.
-     * @returns {Promise<Object>} The application data containing client_id and client_secret.
+     * @param {string} instanceUrl - The origin of the Mastodon instance.
+     * @returns {Promise<{ client_id: string; client_secret: string }>} The app credentials.
      */
     registerApplication,
   
     /**
-     * Gets an access token from the Mastodon instance using the authorization code.
+     * Exchanges the authorization code (and PKCE verifier) for an access token.
+     * @param {string} instanceUrl - The instance origin.
      * @param {string} code - The authorization code.
      * @param {string} clientId - The client ID.
      * @param {string} clientSecret - The client secret.
-     * @returns {Promise<Object>} The access token data.
+     * @param {string} codeVerifier - The PKCE verifier.
+     * @returns {Promise<{ access_token: string }>} The access token data.
      */
     getAccessToken,
   
