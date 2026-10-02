@@ -212,6 +212,21 @@ describe('auth store', () => {
   });
 
   describe('other tabs', () => {
+    it('reloads the account when activity reveals another tab switched account', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      auth.setAccount({ id: '1', username: 'old', acct: 'old', display_name: 'Old', avatar: '' });
+      localStorage.setItem('mastodon_auth', JSON.stringify({ ...credentials, accessToken: 'other-token', lastActivityAt: NOW }));
+      http.get.mockResolvedValue({ data: { id: '2', acct: 'new' } });
+
+      auth.recordActivity(NOW + 31 * 1000);
+      expect(auth.account).toBeNull();
+      await flushPromises();
+
+      expect(auth.accessToken).toBe('other-token');
+      expect(auth.account).toEqual({ id: '2', acct: 'new' });
+    });
+
     it('clears the session when another tab clears all storage', () => {
       const auth = useAuthStore();
       auth.completeLogin(credentials);

@@ -42,7 +42,7 @@ onMounted(async () => {
     router.push({ name: 'composer' });
   } catch (err) {
     // A half-finished sign-in must not leave a stored session behind (the token is revoked).
-    if (auth.accessToken) await auth.logout();
+    if (auth.accessToken) void auth.logout(); // local clear is immediate; don't wait for the revoke
     console.error('OAuth callback error:', err);
     toast.error(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
     router.push({ name: 'home' });

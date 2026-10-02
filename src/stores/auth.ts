@@ -118,7 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
     // never write back a session that is no longer the stored one.
     const stored = parseStoredAuth(localStorage.getItem(AUTH_STORAGE_KEY));
     if (!stored || stored.accessToken !== session.accessToken) {
-      if (stored) applySession(stored);
+      if (stored) adoptSession(stored);
       else clearLocalSession();
       return;
     }
@@ -182,6 +182,19 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
+   * Switches this tab to the session another tab stored, reloading the account if it changed.
+   * @param {StoredAuth} session - The stored session.
+   */
+  function adoptSession(session: StoredAuth): void {
+    const switchedAccount = session.accessToken !== accessToken.value;
+    applySession(session);
+    if (switchedAccount) {
+      account.value = null;
+      void loadAccount(session);
+    }
+  }
+
+  /**
    * Restores the saved session. An expired one (including any pre-0.14.0 session) is
    * revoked and removed before its token is used for anything else.
    */
@@ -212,12 +225,7 @@ export const useAuthStore = defineStore('auth', () => {
       clearLocalSession();
       return;
     }
-    const switchedAccount = session.accessToken !== accessToken.value;
-    applySession(session);
-    if (switchedAccount) {
-      account.value = null;
-      void loadAccount(session);
-    }
+    adoptSession(session);
   }
 
   window.addEventListener('storage', handleStorageEvent);
