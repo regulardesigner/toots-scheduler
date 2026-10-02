@@ -53,6 +53,14 @@ describe('useMastodonApi', () => {
         { scheduled_at: '2030-02-01T09:00:00.000Z' },
       );
     });
+
+    it('encodes the id in the path', async () => {
+      http.put.mockResolvedValue({ data: {} });
+
+      await useMastodonApi().rescheduleToot('../apps', '2030-02-01T09:00:00.000Z');
+
+      expect(http.put.mock.calls[0][0]).toBe('https://masto.example/api/v1/scheduled_statuses/..%2Fapps');
+    });
   });
 
   describe('getScheduledToots', () => {
@@ -86,14 +94,48 @@ describe('useMastodonApi', () => {
     });
 
     it('stops after 10 pages even if the server keeps announcing more', async () => {
-      http.get.mockResolvedValue({
-        data: [{ id: 'x' }],
-        headers: { link: '<https://masto.example/api/v1/scheduled_statuses?max_id=x>; rel="next"' },
+      let page = 0;
+      http.get.mockImplementation(async () => {
+        page++;
+        return {
+          data: [{ id: `id-${page}` }],
+          headers: { link: `<https://masto.example/api/v1/scheduled_statuses?max_id=${page}>; rel="next"` },
+        };
       });
 
       await useMastodonApi().getScheduledToots();
 
       expect(http.get).toHaveBeenCalledTimes(10);
+    });
+
+    it('stops when the server links back to a page it already returned', async () => {
+      http.get.mockResolvedValue({
+        data: [{ id: '1' }],
+        headers: { link: '<https://masto.example/api/v1/scheduled_statuses?limit=40>; rel="next"' },
+      });
+
+      const toots = await useMastodonApi().getScheduledToots();
+
+      expect(http.get).toHaveBeenCalledTimes(1);
+      expect(toots).toHaveLength(1);
+    });
+
+    it('stops on an empty page', async () => {
+      http.get
+        .mockResolvedValueOnce({ data: [{ id: '1' }], headers: { link: '<https://masto.example/api/v1/scheduled_statuses?max_id=1>; rel="next"' } })
+        .mockResolvedValueOnce({ data: [], headers: { link: '<https://masto.example/api/v1/scheduled_statuses?max_id=0>; rel="next"' } });
+
+      await useMastodonApi().getScheduledToots();
+
+      expect(http.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('fails as a whole when a later page fails, so no toot is silently hidden', async () => {
+      http.get
+        .mockResolvedValueOnce({ data: [{ id: '1' }], headers: { link: '<https://masto.example/api/v1/scheduled_statuses?max_id=1>; rel="next"' } })
+        .mockRejectedValueOnce(new Error('Network Error'));
+
+      await expect(useMastodonApi().getScheduledToots()).rejects.toThrow('Network Error');
     });
   });
 });

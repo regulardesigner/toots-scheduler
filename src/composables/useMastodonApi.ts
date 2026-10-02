@@ -139,7 +139,7 @@ export function useMastodonApi() {
     if (!auth.instance) throw new Error('No instance URL set');
 
     try {
-      const response = await api.put(`${auth.instance}/api/v1/scheduled_statuses/${id}`, {
+      const response = await api.put(`${auth.instance}/api/v1/scheduled_statuses/${encodeURIComponent(id)}`, {
         scheduled_at: scheduledAt,
       });
       return response.data;
@@ -254,10 +254,15 @@ export function useMastodonApi() {
 
     try {
       const toots: MastodonStatus[] = [];
+      const visited = new Set<string>();
       let url: string | null = `${instance}/api/v1/scheduled_statuses?limit=${SCHEDULED_PAGE_SIZE}`;
 
-      for (let page = 0; url && page < MAX_SCHEDULED_PAGES; page++) {
+      // Stop on the page cap, on a URL already visited or on an empty page, so a buggy
+      // instance can neither loop nor duplicate toots.
+      while (url && !visited.has(url) && visited.size < MAX_SCHEDULED_PAGES) {
+        visited.add(url);
         const response = await api.get<MastodonStatus[]>(url);
+        if (response.data.length === 0) break;
         toots.push(...response.data);
         const link = response.headers['link'];
         url = getNextPageUrl(typeof link === 'string' ? link : null, instance);
