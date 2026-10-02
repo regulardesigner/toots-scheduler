@@ -74,4 +74,53 @@ describe('isOnlyScheduleChange', () => {
   it('is false when the original has no params', () => {
     expect(isOnlyScheduleChange({ ...makeOriginal(), params: undefined }, makeUpdated())).toBe(false);
   });
+
+  it('is false when the API returned a null visibility (account default)', () => {
+    expect(isOnlyScheduleChange(makeOriginal({ visibility: null as unknown as 'public' }), makeUpdated())).toBe(false);
+  });
+
+  it('is false when the API returned a null language and the form sends one', () => {
+    expect(isOnlyScheduleChange(makeOriginal({ language: null as unknown as string }), makeUpdated())).toBe(false);
+  });
+
+  it('is false when only the content warning text changed', () => {
+    const original = makeOriginal({ sensitive: true, spoiler_text: 'CW' });
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'Other CW' }))).toBe(false);
+  });
+
+  it('is false when the media order changed', () => {
+    const original = makeOriginal({ media_ids: ['m1', 'm2'] });
+    expect(isOnlyScheduleChange(original, makeUpdated({ media_ids: ['m2', 'm1'] }))).toBe(false);
+  });
+
+  it('reads the sensitive flag when the API sends it back as a string', () => {
+    const original = makeOriginal({ sensitive: 'true' as unknown as boolean, spoiler_text: 'CW' });
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false }))).toBe(false);
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(true);
+  });
+
+  describe('poll changes', () => {
+    const basePoll = { options: ['Yes', 'No'], expires_in: 3600, multiple: false, hide_totals: false };
+
+    it.each([
+      ['option text', { ...basePoll, options: ['Yes', 'Maybe'] }],
+      ['option order', { ...basePoll, options: ['No', 'Yes'] }],
+      ['duration', { ...basePoll, expires_in: 86400 }],
+      ['multiple choice', { ...basePoll, multiple: true }],
+      ['hidden totals', { ...basePoll, hide_totals: true }],
+    ])('is false when the %s changed', (_label, poll) => {
+      expect(isOnlyScheduleChange(makeOriginal({ poll: basePoll }), makeUpdated({ poll }))).toBe(false);
+    });
+
+    it('reads poll flags sent back as strings', () => {
+      const original = makeOriginal({ poll: { ...basePoll, multiple: 'true' as unknown as boolean } });
+      expect(isOnlyScheduleChange(original, makeUpdated({ poll: basePoll }))).toBe(false);
+      expect(isOnlyScheduleChange(original, makeUpdated({ poll: { ...basePoll, multiple: true } }))).toBe(true);
+    });
+
+    it('is false when a poll duration is not a number', () => {
+      const original = makeOriginal({ poll: { ...basePoll, expires_in: 'abc' as unknown as number } });
+      expect(isOnlyScheduleChange(original, makeUpdated({ poll: { ...basePoll, expires_in: NaN } }))).toBe(false);
+    });
+  });
 });
