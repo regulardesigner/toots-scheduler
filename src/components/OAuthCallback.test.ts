@@ -3,7 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 
 const api = vi.hoisted(() => ({ getAccessToken: vi.fn(), verifyCredentials: vi.fn() }));
-const router = vi.hoisted(() => ({ push: vi.fn() }));
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 const toast = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), warning: vi.fn(), info: vi.fn() }));
 
 vi.mock('../composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
@@ -27,6 +27,12 @@ function visitCallback(query: string): void {
   window.history.replaceState(null, '', `/oauth/callback${query}`);
 }
 
+function storeExistingSession(): void {
+  localStorage.setItem('mastodon_auth', JSON.stringify({
+    instance: 'https://masto.example', clientId: 'old-id', clientSecret: 'old-secret', accessToken: 'existing-token', lastActivityAt: Date.now(),
+  }));
+}
+
 describe('OAuthCallback', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -46,7 +52,7 @@ describe('OAuthCallback', () => {
 
     expect(api.getAccessToken).toHaveBeenCalledWith('https://masto.example', 'abc', 'client-id', 'client-secret', 'verifier-456');
     expect(useAuthStore().accessToken).toBe('token');
-    expect(router.push).toHaveBeenCalledWith({ name: 'composer' });
+    expect(router.replace).toHaveBeenCalledWith({ name: 'composer' });
     expect(window.location.search).toBe('');
     expect(sessionStorage.length).toBe(0);
   });
@@ -60,7 +66,7 @@ describe('OAuthCallback', () => {
 
     expect(api.getAccessToken).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith('This sign-in link is invalid or has expired. Please sign in again.');
-    expect(router.push).toHaveBeenCalledWith({ name: 'home' });
+    expect(router.replace).toHaveBeenCalledWith({ name: 'home' });
     expect(useAuthStore().accessToken).toBeNull();
   });
 
@@ -85,7 +91,7 @@ describe('OAuthCallback', () => {
     expect(useAuthStore().accessToken).toBeNull();
     expect(localStorage.getItem('mastodon_auth')).toBeNull();
     expect(toast.error).toHaveBeenCalledWith('Network Error');
-    expect(router.push).toHaveBeenCalledWith({ name: 'home' });
+    expect(router.replace).toHaveBeenCalledWith({ name: 'home' });
   });
 
   it('explains a cancelled authorization', async () => {
@@ -96,6 +102,34 @@ describe('OAuthCallback', () => {
     await flushPromises();
 
     expect(toast.error).toHaveBeenCalledWith('You cancelled the authorization on your instance.');
-    expect(router.push).toHaveBeenCalledWith({ name: 'home' });
+    expect(router.replace).toHaveBeenCalledWith({ name: 'home' });
+  });
+
+  it('leaves an existing session alone when the callback is visited again (Back button)', async () => {
+    storeExistingSession();
+    const auth = useAuthStore();
+    visitCallback('');
+
+    mount(OAuthCallback);
+    await flushPromises();
+
+    expect(auth.accessToken).toBe('existing-token');
+    expect(localStorage.getItem('mastodon_auth')).not.toBeNull();
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(router.replace).toHaveBeenCalledWith({ name: 'composer' });
+  });
+
+  it('never signs out an existing session on a forged callback', async () => {
+    storeExistingSession();
+    const auth = useAuthStore();
+    savePendingLogin(pending);
+    visitCallback('?code=abc&state=forged');
+
+    mount(OAuthCallback);
+    await flushPromises();
+
+    expect(api.getAccessToken).not.toHaveBeenCalled();
+    expect(auth.accessToken).toBe('existing-token');
+    expect(localStorage.getItem('mastodon_auth')).not.toBeNull();
   });
 });
