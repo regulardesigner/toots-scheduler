@@ -76,6 +76,15 @@ npm test            # Vitest
 npm audit --omit=dev --audit-level=high
 ```
 
+## Security
+
+Toot Scheduler is a static site with no backend. Here is what it does to protect your account:
+
+- **Sign-in:** OAuth 2.0 with a random `state`, which blocks forged sign-in links, and PKCE (S256) on instances running Mastodon 4.3 or later. Only HTTPS instances are accepted, and the app requests only the scopes it needs (`read:accounts read:statuses write:media write:statuses`).
+- **Where the token lives:** in your browser's `localStorage`, under a single `mastodon_auth` key. No server stores your token or your toots: everything stays on your instance.
+- **Session end:** after 30 minutes without activity you are signed out, even if you closed the tab, and the token is revoked on your instance (`POST /oauth/revoke`). Logging out revokes it too. Signing out in one tab signs out every tab.
+- **Known trade-off:** a script running on this page could read the token while you are signed in. That is the price of having no backend. The app never renders HTML coming from the API (`v-html` is forbidden by the linter), and no console output ships to production. Revoke the app at any time from your instance under *Preferences → Account → Authorized apps*.
+
 ## Project Structure
 
 The project follows a standard Vue.js project structure with the following key directories:
