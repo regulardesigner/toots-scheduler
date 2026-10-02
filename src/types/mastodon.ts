@@ -1,3 +1,19 @@
+/** Poll parameters as sent to and returned by the Mastodon API. */
+export interface PollParams {
+  options: string[];
+  expires_in: number;
+  multiple?: boolean;
+  hide_totals?: boolean;
+}
+
+/** Poll state as edited in the composer (PollSection v-model). */
+export interface PollFormState {
+  options: string[];
+  expiresIn: number;
+  multiple: boolean;
+  hideTotals: boolean;
+}
+
 export interface MastodonStatus {
   id: string;
   content: string;
@@ -8,12 +24,7 @@ export interface MastodonStatus {
   scheduled_at?: string;
   spoiler_text?: string;
   language?: string;
-  poll?: {
-    options: string[];
-    expires_in: number;
-    multiple?: boolean;
-    hide_totals?: boolean;
-  };
+  poll?: PollParams;
   params?: {
     text: string;
     media_ids?: string[];
@@ -22,12 +33,7 @@ export interface MastodonStatus {
     sensitive?: boolean;
     spoiler_text?: string;
     language?: string;
-    poll?: {
-      options: string[];
-      expires_in: number;
-      multiple?: boolean;
-      hide_totals?: boolean;
-    };
+    poll?: PollParams | null;
   };
   status?: string;
 }
@@ -56,10 +62,5 @@ export interface ScheduledToot {
   sensitive?: boolean;
   spoiler_text?: string;
   language?: string;
-  poll?: {
-    options: string[];
-    expires_in: number;
-    multiple?: boolean;
-    hide_totals?: boolean;
-  };
+  poll?: PollParams;
 } 
