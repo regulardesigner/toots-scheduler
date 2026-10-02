@@ -193,5 +193,21 @@ describe('scheduledToots store', () => {
       expect(store.toots).toEqual([]);
       expect(api.getScheduledToots).toHaveBeenCalled();
     });
+
+    it('discards a list that finishes loading after the session changed', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      const store = useScheduledTootsStore();
+      let answer!: (toots: MastodonStatus[]) => void;
+      api.getScheduledToots.mockReturnValueOnce(new Promise(resolve => { answer = resolve; }));
+
+      const loading = store.fetchScheduledToots();
+      auth.accessToken = null;
+      await nextTick();
+      answer([original]);
+      await loading;
+
+      expect(store.toots).toEqual([]);
+    });
   });
 });
