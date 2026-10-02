@@ -116,7 +116,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     // A timer that fired late (sleep, throttling) must not let activity revive an expired session.
     if (isSessionExpired(session.lastActivityAt, now, SESSION_DURATION_MS)) {
-      void logout({ reason: 'inactivity' });
+      void expireIfIdle(now);
       return;
     }
 
@@ -201,6 +201,21 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
+   * Ends the session for inactivity, unless another tab kept it alive meanwhile
+   * (its storage event may not have reached this tab yet).
+   * @param {number} [now] - Current epoch ms.
+   */
+  async function expireIfIdle(now: number = Date.now()): Promise<void> {
+    if (!accessToken.value) return;
+    const stored = parseStoredAuth(localStorage.getItem(AUTH_STORAGE_KEY));
+    if (stored && !isSessionExpired(stored.lastActivityAt, now, SESSION_DURATION_MS)) {
+      adoptSession(stored);
+      return;
+    }
+    await logout({ reason: 'inactivity' });
+  }
+
+  /**
    * Restores the saved session. An expired one (including any pre-0.14.0 session) is
    * revoked and removed before its token is used for anything else.
    */
@@ -248,6 +263,7 @@ export const useAuthStore = defineStore('auth', () => {
     completeLogin,
     setAccount,
     recordActivity,
+    expireIfIdle,
     logout,
     handleUnauthorized,
     acknowledgeSessionEnd,

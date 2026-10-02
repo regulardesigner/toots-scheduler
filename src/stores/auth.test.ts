@@ -224,6 +224,20 @@ describe('auth store', () => {
   });
 
   describe('other tabs', () => {
+    it('does not expire a session that another tab kept alive', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      // Another tab recorded activity; its storage event has not reached us yet.
+      localStorage.setItem('mastodon_auth', JSON.stringify({ ...credentials, lastActivityAt: NOW + 29 * MINUTE }));
+
+      auth.recordActivity(NOW + 31 * MINUTE);
+      await flushPromises();
+
+      expect(auth.accessToken).toBe('token');
+      expect(auth.lastActivityAt).toBe(NOW + 29 * MINUTE);
+      expect(http.post).not.toHaveBeenCalled();
+    });
+
     it('reloads the account when activity reveals another tab switched account', async () => {
       const auth = useAuthStore();
       auth.completeLogin(credentials);
