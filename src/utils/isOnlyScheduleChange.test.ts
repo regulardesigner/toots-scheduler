@@ -99,6 +99,12 @@ describe('isOnlyScheduleChange', () => {
     expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(true);
   });
 
+  it('is false when a flag has a value it cannot interpret', () => {
+    const original = makeOriginal({ sensitive: '1' as unknown as boolean, spoiler_text: 'CW' });
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false }))).toBe(false);
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(false);
+  });
+
   describe('poll changes', () => {
     const basePoll = { options: ['Yes', 'No'], expires_in: 3600, multiple: false, hide_totals: false };
 
@@ -116,6 +122,11 @@ describe('isOnlyScheduleChange', () => {
       const original = makeOriginal({ poll: { ...basePoll, multiple: 'true' as unknown as boolean } });
       expect(isOnlyScheduleChange(original, makeUpdated({ poll: basePoll }))).toBe(false);
       expect(isOnlyScheduleChange(original, makeUpdated({ poll: { ...basePoll, multiple: true } }))).toBe(true);
+    });
+
+    it('is false when the original poll has no options array', () => {
+      const original = makeOriginal({ poll: { expires_in: 3600 } as unknown as typeof basePoll });
+      expect(isOnlyScheduleChange(original, makeUpdated({ poll: basePoll }))).toBe(false);
     });
 
     it('is false when a poll duration is not a number', () => {
