@@ -83,7 +83,7 @@
 
 ## Lot 2 — Durcissement auth & OAuth (SEC-02, SEC-03, SEC-04, SEC-04b, SEC-05, SEC-06, SEC-08, SEC-09, CC-05, WEB-03)
 
-> ✅ **Livré en 0.14.0** : branche `fix/lot-2-auth-hardening`, plan [2026-10-02-lot-2-auth-hardening.md](../plans/2026-10-02-lot-2-auth-hardening.md). Les 16 contrôles de la Task 10 ont été vérifiés le 2026-10-04 avec Playwright, sur la build de production face à une instance Mastodon simulée (PKCE réellement vérifié). Restent à confirmer sur une vraie instance : la connexion (PKCE accepté), l'app retirée des *Authorized apps* après un logout, l'upload, et la liste des toots (CORS).
+> ✅ **Livré en 0.14.0** : branche `fix/lot-2-auth-hardening`, plan [2026-10-02-lot-2-auth-hardening.md](../plans/2026-10-02-lot-2-auth-hardening.md). Les 16 contrôles de la Task 10 ont été vérifiés le 2026-10-04 avec Playwright, sur la build de production face à une instance Mastodon simulée (PKCE réellement vérifié). Les 4 contrôles sur une vraie instance (connexion avec PKCE accepté, app retirée des *Authorized apps* après un logout, upload, liste des toots) ont été validés le 2026-10-04.
 
 **Objectif :** un flux OAuth conforme RFC 9700 (state + PKCE), un token qui expire réellement après 30 min d'inactivité et qui est révoqué au logout, une gestion globale des 401, un client HTTP unique.
 
