@@ -11,6 +11,8 @@ const http = vi.hoisted(() => ({
 vi.mock('axios', () => ({ default: http }));
 
 import { useAuthStore } from './auth';
+const ME = { id: '1', username: 'me', acct: 'me', display_name: 'Me', avatar: 'https://masto.example/me.png' };
+const NEW_ACCOUNT = { id: '2', username: 'new', acct: 'new', display_name: 'New', avatar: 'https://masto.example/new.png' };
 
 const MINUTE = 60 * 1000;
 const NOW = new Date('2030-01-01T12:00:00.000Z').getTime();
@@ -46,7 +48,7 @@ describe('auth store', () => {
     localStorage.clear();
     setActivePinia(createPinia());
     http.post.mockResolvedValue({ data: {} });
-    http.get.mockResolvedValue({ data: { id: '1', acct: 'me' } });
+    http.get.mockResolvedValue({ data: ME });
   });
 
   afterEach(() => {
@@ -72,7 +74,7 @@ describe('auth store', () => {
         headers: { Authorization: 'Bearer token' },
         timeout: 10000,
       });
-      expect(auth.account).toEqual({ id: '1', acct: 'me' });
+      expect(auth.account).toEqual(ME);
     });
 
     it('revokes and removes a session idle for 30 minutes, without using its token otherwise', async () => {
@@ -161,7 +163,7 @@ describe('auth store', () => {
       const auth = useAuthStore();
 
       await auth.logout();
-      answer({ data: { id: '1', acct: 'me' } });
+      answer({ data: ME });
       await flushPromises();
 
       expect(auth.account).toBeNull();
@@ -243,14 +245,14 @@ describe('auth store', () => {
       auth.completeLogin(credentials);
       auth.setAccount({ id: '1', username: 'old', acct: 'old', display_name: 'Old', avatar: '' });
       localStorage.setItem('mastodon_auth', JSON.stringify({ ...credentials, accessToken: 'other-token', lastActivityAt: NOW }));
-      http.get.mockResolvedValue({ data: { id: '2', acct: 'new' } });
+      http.get.mockResolvedValue({ data: NEW_ACCOUNT });
 
       auth.recordActivity(NOW + 31 * 1000);
       expect(auth.account).toBeNull();
       await flushPromises();
 
       expect(auth.accessToken).toBe('other-token');
-      expect(auth.account).toEqual({ id: '2', acct: 'new' });
+      expect(auth.account).toEqual(NEW_ACCOUNT);
     });
 
     it('clears the session when another tab clears all storage', () => {
@@ -266,7 +268,7 @@ describe('auth store', () => {
       const auth = useAuthStore();
       auth.completeLogin(credentials);
       auth.setAccount({ id: '1', username: 'old', acct: 'old', display_name: 'Old', avatar: '' });
-      http.get.mockResolvedValue({ data: { id: '2', acct: 'new' } });
+      http.get.mockResolvedValue({ data: NEW_ACCOUNT });
 
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'mastodon_auth',
@@ -280,7 +282,7 @@ describe('auth store', () => {
         headers: { Authorization: 'Bearer other-token' },
         timeout: 10000,
       });
-      expect(auth.account).toEqual({ id: '2', acct: 'new' });
+      expect(auth.account).toEqual(NEW_ACCOUNT);
     });
 
     it('logs this tab out when another tab removed the session', () => {

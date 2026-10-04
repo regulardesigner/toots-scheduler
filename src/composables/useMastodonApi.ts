@@ -1,7 +1,16 @@
 import axios from 'axios';
+import { z } from 'zod';
 import { createApiClient } from '../utils/api';
 import { useAuthStore } from '../stores/auth';
-import type { MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
+import type { MastodonAccount, MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
+import {
+  AccountSchema,
+  AppRegistrationSchema,
+  MediaAttachmentSchema,
+  ScheduledStatusSchema,
+  TokenResponseSchema,
+  parseApiResponse,
+} from '../schemas/mastodon';
 import { getRedirectUri, OAUTH_SCOPES } from '../config/constants';
 import { handleApiError } from '../utils/error';
 import { getNextPageUrl } from '../utils/linkHeader';
@@ -37,11 +46,7 @@ export function useMastodonApi() {
         website: window.location.origin + import.meta.env.BASE_URL,
       });
 
-      if (!response.data?.client_id || !response.data?.client_secret) {
-        throw new Error('Invalid response from server');
-      }
-
-      return response.data;
+      return parseApiResponse(AppRegistrationSchema, response.data, 'app registration');
     } catch (error) {
       throw new Error(handleApiError(error), { cause: error });
     }
@@ -75,11 +80,7 @@ export function useMastodonApi() {
         scope: OAUTH_SCOPES,
       });
 
-      if (!response.data?.access_token) {
-        throw new Error('Invalid response from server');
-      }
-
-      return response.data;
+      return parseApiResponse(TokenResponseSchema, response.data, 'token response');
     } catch (error) {
       throw new Error(handleApiError(error), { cause: error });
     }
@@ -87,13 +88,13 @@ export function useMastodonApi() {
 
   /**
    * Verifies the user's credentials with the Mastodon instance.
-   * @returns {Promise<Object>} The verified account data.
-   * @throws {Error} If the instance URL is not set.
+   * @returns {Promise<MastodonAccount>} The verified account data.
+   * @throws {Error} If the instance URL is not set, the request fails or the account is malformed.
    */
-  async function verifyCredentials() {
+  async function verifyCredentials(): Promise<MastodonAccount> {
     if (!auth.instance) throw new Error('No instance URL set');
     const response = await api.get(`${auth.instance}/api/v1/accounts/verify_credentials`);
-    return response.data;
+    return parseApiResponse(AccountSchema, response.data, 'account');
   }
 
   /**
@@ -227,7 +228,7 @@ export function useMastodonApi() {
     formData.append('file', file);
 
     try {
-      const response = await api.post<MastodonMediaAttachment>(`${auth.instance}/api/v2/media`, formData, {
+      const response = await api.post(`${auth.instance}/api/v2/media`, formData, {
         // Overrides the client's JSON default (axios would serialize the FormData to JSON otherwise);
         // in the browser axios then drops it so the browser sets the multipart boundary itself.
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -236,7 +237,7 @@ export function useMastodonApi() {
           if (onProgress && event.total) onProgress((event.loaded / event.total) * 100);
         },
       });
-      return response.data;
+      return parseApiResponse(MediaAttachmentSchema, response.data, 'media attachment');
     } catch (error) {
       throw new Error(handleApiError(error), { cause: error });
     }
@@ -247,17 +248,21 @@ export function useMastodonApi() {
    * @param {string} id - The ID of the media attachment.
    * @param {string} [description] - Optional description for the media.
    * @param {{ x: number; y: number }} [focus] - Optional focus coordinates for the media.
-   * @returns {Promise<Object>} The updated media metadata.
-   * @throws {Error} If the instance URL is not set.
+   * @returns {Promise<MastodonMediaAttachment>} The updated media attachment.
+   * @throws {Error} If the instance URL is not set, the request fails or the response is malformed.
    */
-  async function updateMediaMetadata(id: string, description?: string, focus?: { x: number; y: number }) {
+  async function updateMediaMetadata(id: string, description?: string, focus?: { x: number; y: number }): Promise<MastodonMediaAttachment> {
     if (!auth.instance) throw new Error('No instance URL set');
-  
-    const response = await api.put(`${auth.instance}/api/v1/media/${id}`, {
-      description,
-      focus,
-    });
-    return response.data;
+
+    try {
+      const response = await api.put(`${auth.instance}/api/v1/media/${encodeURIComponent(id)}`, {
+        description,
+        focus,
+      });
+      return parseApiResponse(MediaAttachmentSchema, response.data, 'media attachment');
+    } catch (error) {
+      throw new Error(handleApiError(error), { cause: error });
+    }
   }
 
   /**
@@ -278,9 +283,11 @@ export function useMastodonApi() {
       // instance can neither loop nor duplicate toots.
       while (url && !visited.has(url) && visited.size < MAX_SCHEDULED_PAGES) {
         visited.add(url);
-        const response = await api.get<MastodonStatus[]>(url);
-        if (response.data.length === 0) break;
-        toots.push(...response.data);
+        const response = await api.get(url);
+        const page = parseApiResponse(z.array(ScheduledStatusSchema), response.data, 'scheduled toots');
+        if (page.length === 0) break;
+        // Validated shape; MastodonStatus is the app's (looser) view of a scheduled status.
+        toots.push(...(page as unknown as MastodonStatus[]));
         const link = response.headers['link'];
         url = getNextPageUrl(typeof link === 'string' ? link : null, instance);
       }
