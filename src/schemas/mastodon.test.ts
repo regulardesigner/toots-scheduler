@@ -86,4 +86,11 @@ describe('mastodon schemas', () => {
       .toThrow('Your instance sent an unexpected response. Please try again later.');
     expect(parseApiResponse(AccountSchema, account, 'account').acct).toBe('alice');
   });
+
+  it('refuses fields the interface would crash on: invalid date, non-string visibility, non-array media ids', () => {
+    expect(ScheduledStatusSchema.safeParse({ ...scheduled, scheduled_at: 'garbage' }).success).toBe(false);
+    expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, visibility: { evil: 1 } } }).success).toBe(false);
+    expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, media_ids: 'm1' } }).success).toBe(false);
+    expect(ScheduledStatusSchema.safeParse({ ...scheduled, scheduled_at: '2031-01-01T12:00:00+00:00' }).success).toBe(true);
+  });
 });

@@ -56,6 +56,17 @@ describe('auth store', () => {
   });
 
   describe('on startup', () => {
+    it('keeps the session but no account when the instance sends a malformed account', async () => {
+      storeSession(NOW - MINUTE);
+      http.get.mockResolvedValue({ data: { id: '1' } });
+      const auth = useAuthStore();
+      await flushPromises();
+
+      expect(auth.accessToken).toBe('token');
+      expect(auth.account).toBeNull();
+      expect(http.post).not.toHaveBeenCalled();
+    });
+
     it('does nothing without a saved session', async () => {
       const auth = useAuthStore();
       await flushPromises();

@@ -93,8 +93,12 @@ export function useMastodonApi() {
    */
   async function verifyCredentials(): Promise<MastodonAccount> {
     if (!auth.instance) throw new Error('No instance URL set');
-    const response = await api.get(`${auth.instance}/api/v1/accounts/verify_credentials`);
-    return parseApiResponse(AccountSchema, response.data, 'account');
+    try {
+      const response = await api.get(`${auth.instance}/api/v1/accounts/verify_credentials`);
+      return parseApiResponse(AccountSchema, response.data, 'account');
+    } catch (error) {
+      throw new Error(handleApiError(error), { cause: error });
+    }
   }
 
   /**

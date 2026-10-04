@@ -55,15 +55,18 @@ export const MediaAttachmentSchema = z.object({
 }));
 
 /**
- * A scheduled status. Only what the app relies on is checked; the params' other fields
- * (visibility, flags, poll...) are kept as sent, since their nullable and string forms
- * are already handled by isOnlyScheduleChange and the composer.
+ * A scheduled status. What the app renders or compares is checked (date, text, visibility,
+ * media ids, poll options); the other params are kept as sent, since their nullable and string
+ * forms are already handled by isOnlyScheduleChange and the composer.
  */
 export const ScheduledStatusSchema = z.object({
   id: z.string(),
-  scheduled_at: z.string(),
+  // Rendered with date-fns: an invalid date would crash the list.
+  scheduled_at: z.string().refine(value => !Number.isNaN(Date.parse(value)), 'must be a date'),
   params: z.object({
     text: z.string().nullish().transform(text => text ?? ''),
+    visibility: z.string().nullish(),
+    media_ids: z.array(z.string()).nullish(),
     // Rendered by the composer when editing: options must be strings.
     poll: z.object({ options: z.array(z.string()) }).passthrough().nullish(),
   }).passthrough(),

@@ -115,7 +115,6 @@ describe('useMastodonApi', () => {
     });
   });
 
-
   describe('rescheduleToot', () => {
     it('PUTs only the new date to the scheduled status', async () => {
       http.put.mockResolvedValue({ data: { id: '42' } });
