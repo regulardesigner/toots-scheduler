@@ -91,6 +91,7 @@ describe('mastodon schemas', () => {
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, scheduled_at: 'garbage' }).success).toBe(false);
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, visibility: { evil: 1 } } }).success).toBe(false);
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, media_ids: 'm1' } }).success).toBe(false);
+    expect(ScheduledStatusSchema.safeParse({ ...scheduled, scheduled_at: 'Mon, 01 Jan 2031 12:00:00 GMT' }).success).toBe(false);
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, scheduled_at: '2031-01-01T12:00:00+00:00' }).success).toBe(true);
   });
 });

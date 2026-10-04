@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValid, parseISO } from 'date-fns';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
@@ -61,8 +62,8 @@ export const MediaAttachmentSchema = z.object({
  */
 export const ScheduledStatusSchema = z.object({
   id: z.string(),
-  // Rendered with date-fns: an invalid date would crash the list.
-  scheduled_at: z.string().refine(value => !Number.isNaN(Date.parse(value)), 'must be a date'),
+  // Parsed with date-fns parseISO by the list and the edit form: anything else would crash them.
+  scheduled_at: z.string().refine(value => isValid(parseISO(value)), 'must be an ISO 8601 date'),
   params: z.object({
     text: z.string().nullish().transform(text => text ?? ''),
     visibility: z.string().nullish(),
