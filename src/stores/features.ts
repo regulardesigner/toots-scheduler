@@ -11,6 +11,27 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.15.0',
+      date: '2026-10-04',
+      features: [
+        {
+          id: 'confirm-thanks',
+          title: '💌 Say Thanks, With a Preview',
+          description: 'Say Thanks now shows you the exact message before it is sent, and tells you if it could not be delivered.'
+        },
+        {
+          id: 'safer-uploads',
+          title: '🖼️ Clearer Image Uploads',
+          description: 'Files that are not supported images, or are larger than 8 MB, are refused right away with a clear message, and dropping several images at once keeps all of them.'
+        },
+        {
+          id: 'stricter-security',
+          title: '🛡️ Stricter Security',
+          description: 'The app now only runs its own code and checks everything your instance sends back before using it.'
+        },
+      ],
+    },
+    {
       version: '0.14.0',
       date: '2026-10-02',
       features: [
