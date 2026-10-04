@@ -24,4 +24,10 @@ describe('getImageRejection', () => {
     expect(getImageRejection(file('big.png', 'image/png', MAX_IMAGE_BYTES + 1))).toBe('"big.png" is larger than 8 MB.');
     expect(getImageRejection(file('max.png', 'image/png', MAX_IMAGE_BYTES))).toBeNull();
   });
+
+  it('guesses the type from the extension when the browser reports none', () => {
+    expect(getImageRejection(file('photo.HEIC', ''))).toBeNull();
+    expect(getImageRejection(file('photo.avif', ''))).toBeNull();
+    expect(getImageRejection(file('notes.txt', ''))).not.toBeNull();
+  });
 });

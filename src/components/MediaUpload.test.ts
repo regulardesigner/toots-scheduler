@@ -53,4 +53,36 @@ describe('MediaUpload', () => {
     expect(api.uploadMedia).not.toHaveBeenCalled();
     expect(wrapper.find('.error').text()).toBe('Maximum 4 images allowed');
   });
+
+  it('ignores a second drop while an upload is running', async () => {
+    api.uploadMedia.mockReturnValue(new Promise(() => {}));
+    const wrapper = mount(MediaUpload, { props: { modelValue: [] } });
+
+    await drop(wrapper, [new File(['a'], 'a.png', { type: 'image/png' })]);
+    await drop(wrapper, [new File(['b'], 'b.png', { type: 'image/png' })]);
+
+    expect(api.uploadMedia).toHaveBeenCalledTimes(1);
+  });
+
+  it('locks removing and describing images while an upload is running', async () => {
+    api.uploadMedia.mockReturnValue(new Promise(() => {}));
+    const wrapper = mount(MediaUpload, { props: { modelValue: [media('a')] } });
+
+    await drop(wrapper, [new File(['b'], 'b.png', { type: 'image/png' })]);
+
+    expect(wrapper.find('.remove-button').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('.edit-alt-button').attributes('disabled')).toBeDefined();
+  });
+
+  it('keeps the images already uploaded and names the file that failed', async () => {
+    api.uploadMedia.mockResolvedValueOnce(media('m1')).mockRejectedValueOnce(new Error('File too large'));
+    const wrapper = mount(MediaUpload, { props: { modelValue: [] } });
+
+    await drop(wrapper, [new File(['a'], 'a.png', { type: 'image/png' }), new File(['b'], 'b.png', { type: 'image/png' })]);
+    await flushPromises();
+
+    const events = wrapper.emitted('update:modelValue') as MastodonMediaAttachment[][][];
+    expect(events.at(-1)?.[0].map(item => item.id)).toEqual(['m1']);
+    expect(wrapper.find('.error').text()).toBe('Could not upload "b.png": File too large');
+  });
 });

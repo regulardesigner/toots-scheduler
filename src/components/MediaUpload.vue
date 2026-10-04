@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import type { MastodonMediaAttachment } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import ModalView from './Modals/ModalView.vue';
-import { getImageRejection, MAX_IMAGES_PER_TOOT, SUPPORTED_IMAGE_TYPES } from '../utils/media';
+import { ACCEPTED_IMAGE_FILES, getImageRejection, MAX_IMAGE_BYTES, MAX_IMAGES_PER_TOOT } from '../utils/media';
 
 const props = defineProps<{
   modelValue: MastodonMediaAttachment[];
@@ -27,7 +27,10 @@ async function handleFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;
   if (!input.files?.length) return;
   
-  await uploadFiles(Array.from(input.files));
+  const files = Array.from(input.files);
+  // Allows picking the same file again (e.g. after an error).
+  input.value = '';
+  await uploadFiles(files);
 }
 
 async function handleDrop(event: DragEvent) {
@@ -41,6 +44,8 @@ async function handleDrop(event: DragEvent) {
 }
 
 async function uploadFiles(files: File[]) {
+  // One upload at a time: a second drop would work from an outdated list of images.
+  if (isUploading.value) return;
   uploadError.value = '';
 
   // Checked before uploading: drag and drop bypasses the file picker's `accept`.
@@ -58,8 +63,10 @@ async function uploadFiles(files: File[]) {
   // Accumulated locally: the prop only updates after the parent re-renders.
   const attachments = [...props.modelValue];
 
+  let current = '';
   try {
     for (const file of files) {
+      current = file.name;
       const key = crypto.randomUUID();
       uploadProgress.value[key] = { name: file.name, percent: 0 };
 
@@ -72,7 +79,8 @@ async function uploadFiles(files: File[]) {
       delete uploadProgress.value[key];
     }
   } catch (err) {
-    uploadError.value = err instanceof Error && err.message ? err.message : 'Failed to upload images';
+    const reason = err instanceof Error && err.message ? err.message : 'Failed to upload images';
+    uploadError.value = current ? `Could not upload "${current}": ${reason}` : reason;
     console.error('Upload error:', err);
   } finally {
     isUploading.value = false;
@@ -81,12 +89,14 @@ async function uploadFiles(files: File[]) {
 }
 
 function removeMedia(index: number) {
+  if (isUploading.value) return;
   const newMedia = [...props.modelValue];
   newMedia.splice(index, 1);
   emit('update:modelValue', newMedia);
 }
 
 function startEditingMedia(index: number) {
+  if (isUploading.value) return;
   editingMediaIndex.value = index;
   const media = props.modelValue[index];
   mediaDescription.value = media.description || '';
@@ -122,12 +132,12 @@ async function saveMediaMetadata() {
       @dragleave.prevent="isDragging = false"
       @dragover.prevent
       @drop.prevent="handleDrop"
-      @click="fileInput?.click()"
+      @click="!isUploading && fileInput?.click()"
     >
       <input
         ref="fileInput"
         type="file"
-        :accept="SUPPORTED_IMAGE_TYPES.join(',')"
+        :accept="ACCEPTED_IMAGE_FILES"
         multiple
         class="hidden"
         @change="handleFileSelect"
@@ -135,7 +145,7 @@ async function saveMediaMetadata() {
       <div class="upload-content">
         <p>Drag & drop images here or click to select</p>
         <p class="upload-hint">
-          Up to 4 images, max 8MB each
+          Up to {{ MAX_IMAGES_PER_TOOT }} images, max {{ MAX_IMAGE_BYTES / 1024 / 1024 }} MB each
         </p>
       </div>
     </div>
@@ -182,6 +192,7 @@ async function saveMediaMetadata() {
             <button 
               type="button" 
               class="edit-alt-button"
+              :disabled="isUploading"
               @click="startEditingMedia(index)"
             >
               {{ editingMediaIndex === index ? 'Alt' : 'Alt' }}
@@ -190,6 +201,7 @@ async function saveMediaMetadata() {
             <button 
               type="button" 
               class="remove-button"
+              :disabled="isUploading"
               aria-label="Remove Image"
               @click="removeMedia(index)"
             >
