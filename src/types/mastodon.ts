@@ -41,8 +41,10 @@ export interface MastodonStatus {
 export interface MastodonMediaAttachment {
   id: string;
   type: 'image' | 'video' | 'gifv' | 'audio' | 'unknown';
-  url: string;
-  preview_url: string;
+  /** Null while the instance is still processing the file. */
+  url: string | null;
+  /** Missing when the instance sent none, or an unsafe one. */
+  preview_url?: string;
   description?: string;
 }
 
@@ -51,7 +53,8 @@ export interface MastodonAccount {
   username: string;
   acct: string;
   display_name: string;
-  avatar: string;
+  /** Missing when the instance sent an unsafe URL. */
+  avatar?: string;
 }
 
 export interface ScheduledToot {

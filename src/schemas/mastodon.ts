@@ -20,26 +20,36 @@ function isSafeUrl(value: string): boolean {
 
 const safeUrl = z.string().refine(isSafeUrl, 'must be an https URL');
 
+/**
+ * An optional URL from the instance: an unsafe or missing value is dropped (undefined)
+ * rather than failing the whole response. A bad avatar or preview must not block sign-in
+ * or hide a toot, and it never reaches the page either way.
+ */
+const optionalSafeUrl = safeUrl.optional().catch(undefined);
+
 /** GET /api/v1/accounts/verify_credentials */
 export const AccountSchema = z.object({
   id: z.string(),
   username: z.string(),
   acct: z.string(),
   display_name: z.string(),
-  avatar: safeUrl,
+  avatar: optionalSafeUrl,
 });
 
-/** A media attachment; `preview_url` falls back to `url`, a null description becomes undefined. */
+/**
+ * A media attachment. `url` is null while the instance still processes the file (202 on upload);
+ * `preview_url` falls back to `url`; unsafe URLs are dropped; a null description becomes undefined.
+ */
 export const MediaAttachmentSchema = z.object({
   id: z.string(),
   type: z.enum(['image', 'video', 'gifv', 'audio', 'unknown']),
-  url: safeUrl,
-  preview_url: safeUrl.nullish(),
+  url: optionalSafeUrl,
+  preview_url: optionalSafeUrl,
   description: z.string().nullish(),
 }).transform(media => ({
   id: media.id,
   type: media.type,
-  url: media.url,
+  url: media.url ?? null,
   preview_url: media.preview_url ?? media.url,
   description: media.description ?? undefined,
 }));
@@ -53,7 +63,9 @@ export const ScheduledStatusSchema = z.object({
   id: z.string(),
   scheduled_at: z.string(),
   params: z.object({
-    text: z.string().nullable().transform(text => text ?? ''),
+    text: z.string().nullish().transform(text => text ?? ''),
+    // Rendered by the composer when editing: options must be strings.
+    poll: z.object({ options: z.array(z.string()) }).passthrough().nullish(),
   }).passthrough(),
   media_attachments: z.array(MediaAttachmentSchema),
 }).passthrough();
