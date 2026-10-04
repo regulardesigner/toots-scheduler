@@ -105,10 +105,10 @@ export function useMastodonApi() {
    * Schedules a toot to be posted at a later time.
    * @param {ScheduledToot} toot - The toot data including content and scheduling information.
    * @param {string} idempotencyKey - Unique key per draft; Mastodon ignores a resubmission with the same key for 1 hour.
-   * @returns {Promise<MastodonStatus>} The scheduled toot data.
+   * @returns {Promise<void>} Resolves once the instance accepted it.
    * @throws {Error} If the instance URL is not set or the request fails.
    */
-  async function scheduleToot(toot: ScheduledToot, idempotencyKey: string): Promise<MastodonStatus> {
+  async function scheduleToot(toot: ScheduledToot, idempotencyKey: string): Promise<void> {
     if (!auth.instance) throw new Error('No instance URL set');
   
     try {
@@ -138,10 +138,9 @@ export function useMastodonApi() {
       }
   
       // Use the statuses endpoint with scheduled_at parameter
-      const response = await api.post(`${auth.instance}/api/v1/statuses`, payload, {
+      await api.post(`${auth.instance}/api/v1/statuses`, payload, {
         headers: { 'Idempotency-Key': idempotencyKey },
       });
-      return response.data;
     } catch (error) {
       throw new Error(handleApiError(error), { cause: error });
     }
@@ -151,17 +150,16 @@ export function useMastodonApi() {
    * Moves a scheduled toot to a new date. Mastodon only allows changing `scheduled_at` this way.
    * @param {string} id - The ID of the scheduled toot.
    * @param {string} scheduledAt - The new ISO 8601 date, at least 5 minutes in the future.
-   * @returns {Promise<MastodonStatus>} The updated scheduled toot.
+   * @returns {Promise<void>} Resolves once the instance accepted it.
    * @throws {Error} If the instance URL is not set or the request fails.
    */
-  async function rescheduleToot(id: string, scheduledAt: string): Promise<MastodonStatus> {
+  async function rescheduleToot(id: string, scheduledAt: string): Promise<void> {
     if (!auth.instance) throw new Error('No instance URL set');
 
     try {
-      const response = await api.put(`${auth.instance}/api/v1/scheduled_statuses/${encodeURIComponent(id)}`, {
+      await api.put(`${auth.instance}/api/v1/scheduled_statuses/${encodeURIComponent(id)}`, {
         scheduled_at: scheduledAt,
       });
-      return response.data;
     } catch (error) {
       throw new Error(handleApiError(error), { cause: error });
     }
@@ -335,7 +333,7 @@ export function useMastodonApi() {
      * Schedules a toot to be posted at a later time.
      * @param {ScheduledToot} toot - The toot data including content and scheduling information.
      * @param {string} idempotencyKey - Unique key per draft, sent as the Idempotency-Key header.
-     * @returns {Promise<MastodonStatus>} The scheduled toot data.
+     * @returns {Promise<void>} Resolves once the instance accepted it.
      */
     scheduleToot,
 
@@ -343,7 +341,7 @@ export function useMastodonApi() {
      * Moves a scheduled toot to a new date.
      * @param {string} id - The ID of the scheduled toot.
      * @param {string} scheduledAt - The new ISO 8601 date.
-     * @returns {Promise<MastodonStatus>} The updated scheduled toot.
+     * @returns {Promise<void>} Resolves once the instance accepted it.
      */
     rescheduleToot,
 

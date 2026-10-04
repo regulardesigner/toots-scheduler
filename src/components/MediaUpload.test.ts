@@ -20,6 +20,12 @@ describe('MediaUpload', () => {
     vi.resetAllMocks();
   });
 
+  it('shows a placeholder instead of a broken image when there is no preview yet', () => {
+    const wrapper = mount(MediaUpload, { props: { modelValue: [{ id: 'v1', type: 'video', url: null }] } });
+    expect(wrapper.find('.media-preview img').exists()).toBe(false);
+    expect(wrapper.find('.preview-placeholder').text()).toBe('Processing…');
+  });
+
   it('refuses a dropped file that is not a supported image, without uploading it', async () => {
     const wrapper = mount(MediaUpload, { props: { modelValue: [] } });
 

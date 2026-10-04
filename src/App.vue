@@ -82,7 +82,7 @@ async function confirmThanks(): Promise<void> {
     await mastodonApi.sendThanks(message);
     toast.success('Thanks sent successfully! 🤗');
   } catch (error) {
-    const reason = error instanceof Error && error.message ? error.message : 'unknown error';
+    const reason = error instanceof Error && error.message ? error.message.replace(/\.+$/, '') : 'unknown error';
     toast.error(`Failed to send thanks: ${reason}.`);
   }
 }

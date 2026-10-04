@@ -15,9 +15,9 @@ const EXTENSION_TYPES: Record<string, string> = {
 /** For the file picker: MIME types plus extensions, so systems that don't know HEIC/AVIF still offer them. */
 export const ACCEPTED_IMAGE_FILES = [...SUPPORTED_IMAGE_TYPES, ...Object.keys(EXTENSION_TYPES).map(extension => `.${extension}`)].join(',');
 
-/** The file's type, guessed from its extension when the browser doesn't know it. */
+/** The file's type, guessed from its extension when the browser doesn't know it (empty or generic binary type). */
 function imageType(file: File): string {
-  if (file.type) return file.type;
+  if (file.type && file.type !== 'application/octet-stream') return file.type;
   const dot = file.name.lastIndexOf('.');
   return dot === -1 ? '' : EXTENSION_TYPES[file.name.slice(dot + 1).toLowerCase()] ?? '';
 }

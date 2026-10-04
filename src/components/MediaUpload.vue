@@ -118,7 +118,8 @@ async function saveMediaMetadata() {
     editingMediaIndex.value = null;
   } catch (err) {
     console.error('Error updating media metadata:', err);
-    uploadError.value = 'Failed to update image details';
+    const reason = err instanceof Error && err.message ? err.message : 'unknown error';
+    uploadError.value = `Could not save the description: ${reason}`;
   }
 }
 </script>
@@ -185,9 +186,16 @@ async function saveMediaMetadata() {
       >
         <div class="preview-image-wrapper">
           <img 
+            v-if="media.preview_url"
             :src="media.preview_url" 
             :alt="media.description || ''"
           >
+          <div
+            v-else
+            class="preview-placeholder"
+          >
+            Processing…
+          </div>
           <div class="preview-controls">
             <button 
               type="button" 
@@ -220,6 +228,7 @@ async function saveMediaMetadata() {
           >Add a description</label>
           <div class="media-edit-form">
             <img 
+              v-if="media.preview_url"
               class="media-edit-image"
               :src="media.preview_url" 
               :alt="media.description || ''"
@@ -363,6 +372,18 @@ async function saveMediaMetadata() {
   border-radius: 0.5rem;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.preview-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+  background-color: #f8f8f8;
+  color: #666;
+  font-size: 0.9rem;
 }
 
 .preview-image-wrapper {

@@ -25,6 +25,11 @@ describe('getImageRejection', () => {
     expect(getImageRejection(file('max.png', 'image/png', MAX_IMAGE_BYTES))).toBeNull();
   });
 
+  it('also guesses the type when the browser reports a generic binary type', () => {
+    expect(getImageRejection(file('photo.heic', 'application/octet-stream'))).toBeNull();
+    expect(getImageRejection(file('archive.zip', 'application/octet-stream'))).not.toBeNull();
+  });
+
   it('guesses the type from the extension when the browser reports none', () => {
     expect(getImageRejection(file('photo.HEIC', ''))).toBeNull();
     expect(getImageRejection(file('photo.avif', ''))).toBeNull();
