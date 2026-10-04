@@ -40,7 +40,7 @@ export interface MastodonStatus {
 
 export interface MastodonMediaAttachment {
   id: string;
-  type: 'image' | 'video' | 'gifv' | 'audio';
+  type: 'image' | 'video' | 'gifv' | 'audio' | 'unknown';
   url: string;
   preview_url: string;
   description?: string;
