@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import type { MastodonMediaAttachment } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import ModalView from './Modals/ModalView.vue';
+import { getImageRejection, MAX_IMAGES_PER_TOOT, SUPPORTED_IMAGE_TYPES } from '../utils/media';
 
 const props = defineProps<{
   modelValue: MastodonMediaAttachment[];
@@ -19,7 +20,8 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const editingMediaIndex = ref<number | null>(null);
 const mediaDescription = ref('');
 const isDragging = ref(false);
-const uploadProgress = ref<{ [key: string]: number }>({});
+/** Upload progress per upload, keyed by a random id (two files can share a name). */
+const uploadProgress = ref<Record<string, { name: string; percent: number }>>({});
 
 async function handleFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;
@@ -39,32 +41,35 @@ async function handleDrop(event: DragEvent) {
 }
 
 async function uploadFiles(files: File[]) {
-  if (props.modelValue.length + files.length > 4) {
-    uploadError.value = 'Maximum 4 images allowed';
+  uploadError.value = '';
+
+  // Checked before uploading: drag and drop bypasses the file picker's `accept`.
+  const rejection = files.map(getImageRejection).find(message => message !== null);
+  if (rejection) {
+    uploadError.value = rejection;
+    return;
+  }
+  if (props.modelValue.length + files.length > MAX_IMAGES_PER_TOOT) {
+    uploadError.value = `Maximum ${MAX_IMAGES_PER_TOOT} images allowed`;
     return;
   }
 
   isUploading.value = true;
-  uploadError.value = '';
+  // Accumulated locally: the prop only updates after the parent re-renders.
+  const attachments = [...props.modelValue];
 
   try {
     for (const file of files) {
-      if (file.size > 8 * 1024 * 1024) {
-        uploadError.value = 'Each image must be less than 8MB';
-        continue;
-      }
+      const key = crypto.randomUUID();
+      uploadProgress.value[key] = { name: file.name, percent: 0 };
 
-      // Initialize progress for this file
-      uploadProgress.value[file.name] = 0;
-
-      const media = await api.uploadMedia(file, (progress) => {
-        uploadProgress.value[file.name] = progress;
+      const media = await api.uploadMedia(file, (percent) => {
+        uploadProgress.value[key] = { name: file.name, percent };
       });
 
-      emit('update:modelValue', [...props.modelValue, media]);
-      
-      // Clear progress after successful upload
-      delete uploadProgress.value[file.name];
+      attachments.push(media);
+      emit('update:modelValue', [...attachments]);
+      delete uploadProgress.value[key];
     }
   } catch (err) {
     uploadError.value = err instanceof Error && err.message ? err.message : 'Failed to upload images';
@@ -122,7 +127,7 @@ async function saveMediaMetadata() {
       <input
         ref="fileInput"
         type="file"
-        accept="image/*"
+        :accept="SUPPORTED_IMAGE_TYPES.join(',')"
         multiple
         class="hidden"
         @change="handleFileSelect"
@@ -141,18 +146,18 @@ async function saveMediaMetadata() {
       class="upload-progress"
     >
       <div
-        v-for="(progress, fileName) in uploadProgress"
-        :key="fileName"
+        v-for="(progress, key) in uploadProgress"
+        :key="key"
         class="progress-item"
       >
         <div class="progress-info">
-          <span class="file-name">{{ fileName }}</span>
-          <span class="progress-percentage">{{ Math.round(progress) }}%</span>
+          <span class="file-name">{{ progress.name }}</span>
+          <span class="progress-percentage">{{ Math.round(progress.percent) }}%</span>
         </div>
         <div class="progress-bar">
           <div
             class="progress-fill"
-            :style="{ width: `${progress}%` }"
+            :style="{ width: `${progress.percent}%` }"
           />
         </div>
       </div>
