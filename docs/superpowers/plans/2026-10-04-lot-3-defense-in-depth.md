@@ -37,7 +37,7 @@
   - `public/404.html` keeps its own inline scripts. GitHub Pages serves that file for unknown paths; it has no CSP and only redirects.
 - **Vite build warning:** `<script src="/toots-scheduler/spa-redirect.js"> in "/index.html" can't be bundled without type="module"` is expected. The file is copied as-is from `public/` and must run before the app module.
 - **Dry run:** every code block below was dry-run on a scratch copy of this branch:
-  - 183 unit tests pass, typecheck is clean, and lint reports 0 errors and 4 warnings;
+  - 196 unit tests pass, typecheck is clean, and lint reports 0 errors and 4 warnings;
   - the production build has the CSP and no inline script;
   - a 24-check Playwright run (Lot 2 regression plus Lot 3) passes with **no CSP violation**.
 
@@ -73,7 +73,7 @@ Task order: each task leaves typecheck and tests green.
 - Modify: `src/types/mastodon.ts` (one line)
 
 **Acceptance Criteria:**
-- [ ] An account with a `javascript:`, `data:` or plain `http:` avatar is refused. In dev, http is accepted only for localhost
+- [ ] An unsafe URL (`javascript:`, `data:` or plain `http:`; in dev, http is accepted only for localhost) is dropped, not refused. An account keeps everything else and has no avatar; a media attachment keeps its id with `url: null` (also how Mastodon reports a media still processing). *(Amended during review: a bad image URL must not refuse the whole response.)*
 - [ ] A media attachment: a null `preview_url` falls back to `url`, a null `description` becomes `undefined`, and an unknown `type` is refused
 - [ ] A scheduled status with null params is accepted and its params are kept as sent; null `text` becomes `''`
 - [ ] App registration requires `client_id` and `client_secret`, and the token response requires a non-empty `access_token`
@@ -290,7 +290,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 **Acceptance Criteria:**
 - [ ] The following throw the generic "unexpected response" error:
-  - `verifyCredentials` with a `javascript:` avatar;
+  - `verifyCredentials` with a missing `id` (a `javascript:` avatar is dropped, see Task 1);
   - `registerApplication` without a client secret;
   - `getScheduledToots` with one malformed item. The whole list is refused rather than shown partly.
 - [ ] `uploadMedia` and `updateMediaMetadata` return validated attachments. `updateMediaMetadata` now has a try/catch with `cause`, and it encodes the id
@@ -872,7 +872,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - [ ] `App.vue`:
   - both Thanks buttons (desktop and mobile) open the dialog;
   - Cancel and close send nothing;
-  - Send closes the dialog first, which prevents a double send, then toasts success or `Failed to send thanks (<reason>). Please try again later.`
+  - Send closes the dialog first, which prevents a double send, then toasts success or `Failed to send thanks: <reason>.` (trailing period of the reason trimmed)
 - [ ] typecheck, lint (0 errors) and tests pass (183)
 
 **Verify:** `npx vitest run src/utils/thanks.test.ts src/components/Modals/ThanksConfirmModal.test.ts src/composables/useMastodonApi.test.ts` → all pass
@@ -1502,13 +1502,26 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. The user already a
     - failed thanks → error toast (Task 4 plus Task 7 L3-6).
   - "No CSP violation in the console" → Task 7 L3-8, automated.
 - **Deviations from the spec (justified):**
-  - Types are not fully derived with `z.infer`. Scheduled statuses are validated on the fields the app relies on and then cast to `MastodonStatus`. Making `MastodonStatus` match the API (nullable params) would ripple through every component, so it is left for Lot 5 (types).
-  - The upload whitelist adds HEIC/HEIF, which Mastodon accepts, and refuses SVG explicitly.
+  - Types are not fully derived with `z.infer`. Scheduled statuses are validated on the fields the app relies on and then cast to `MastodonStatus`:
+    - `scheduled_at` must parse as a date;
+    - `visibility` must be a string, `media_ids` an array of strings, and poll options strings.
+    Making `MastodonStatus` match the API (nullable params) would ripple through every component, so it is left for Lot 5 (types).
+  - Unsafe image URLs are **dropped**, not refused (user decision during Task 1). One bad avatar or preview no longer locks the user out, and `<img>` is hidden when no URL is left: no avatar, or a "Processing…" placeholder for media.
+  - The upload whitelist:
+    - adds HEIC/HEIF, which Mastodon accepts, and refuses SVG explicitly;
+    - guesses the type from the extension when the browser reports none or `application/octet-stream`;
+    - allows one upload batch at a time, locks remove and edit while uploading, and names the failing file in errors.
+  - `style-src` is `'self'`, with no `'unsafe-inline'`. A test build showed 0 violations across the e2e flows, because Vue style bindings use CSSOM, which CSP does not block.
   - The scheduled-toots error visibility fix (`<details>` opening on error) was found by the Playwright dry run and added to Task 2.
-  - The thanks message lost the spaces before its line breaks, so the preview is exactly the sent text.
+  - The thanks message:
+    - lost the spaces before its line breaks, so the preview is exactly the sent text;
+    - neutralizes `@` in the sender's display name, so a name cannot add a hidden DM recipient.
+    The modal says who sees the DM.
+  - `scheduleToot`/`rescheduleToot` now return `Promise<void>`. Nobody read their unvalidated result.
 - **Known residuals:**
   - `frame-ancestors` (clickjacking) is impossible with a `<meta>` CSP on GitHub Pages.
-  - `style-src 'unsafe-inline'` is kept for Vue style bindings and vue-toastification.
+  - `regulardesigner.github.io` is a shared origin. `script-src 'self'` trusts every repository published there, and `localStorage` is shared with them too. This is documented in the README; only a custom domain would fix it.
   - `public/404.html` keeps inline scripts and has no CSP; it only redirects.
   - The dev server has no CSP.
+  - `img-src`/`connect-src` allow any `https:` origin, which a multi-instance client needs.
   - The Playwright suite stays in the session scratchpad; adding it to the repo with CI is a follow-up.
