@@ -17,3 +17,6 @@ export const SESSION_WARNING_MS = 5 * 60 * 1000;
 
 /** User activity is written to storage at most this often. */
 export const ACTIVITY_WRITE_INTERVAL_MS = 30 * 1000;
+
+/** Who receives the "Say Thanks" direct message: the app's author. */
+export const THANKS_RECIPIENT = '@dams@disabled.social';

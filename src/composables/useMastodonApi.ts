@@ -186,36 +186,22 @@ export function useMastodonApi() {
   }
 
   /**
-   * Sends a direct message to the user.
-   * @param {string} message - The message content.
-   * @returns {Promise<MastodonStatus>} The sent message data.
-   * @throws {Error} If the request fails.
+   * Sends the "thank you" direct message, exactly as previewed to the user.
+   * @param {string} message - The message, which mentions its recipient.
+   * @returns {Promise<void>} Resolves once the instance accepted the message.
+   * @throws {Error} If the request fails, so the UI can tell the user.
    */
-  async function sendDirectMessageAsUser(message: string): Promise<MastodonStatus> {
+  async function sendThanks(message: string): Promise<void> {
+    if (!auth.instance) throw new Error('No instance URL set');
+
     try {
-      const response = await api.post(`${auth.instance}/api/v1/statuses`, {
+      await api.post(`${auth.instance}/api/v1/statuses`, {
         status: message,
-        // 'direct': Only Mentioned Users
+        // 'direct': only the mentioned account sees it
         visibility: 'direct',
       });
-      console.log('Direct message sent:', response.data);
-  
-      return response.data;
     } catch (error) {
       throw new Error(handleApiError(error), { cause: error });
-    }
-  }
-
-  /**
-   * Sends a direct thank you notification to the user.
-   * @returns {Promise<void>} A promise that resolves when the notification is sent.
-   */
-  async function sendDirectThanksNotification(): Promise<void> {
-    try {
-      const thanksMessage = `🤗 ${auth.account?.display_name} is sending you a thank you! \nToday at ${new Date().toLocaleString()} \nCC: @dams@disabled.social`;
-      await sendDirectMessageAsUser(thanksMessage);
-    } catch (error) {
-      console.error('Failed to send thanks notification:', error);
     }
   }
 
@@ -369,10 +355,11 @@ export function useMastodonApi() {
     scheduledTootExists,
   
     /**
-     * Sends a direct thank you notification to the user.
-     * @returns {Promise<void>} A promise that resolves when the notification is sent.
+     * Sends the previewed "thank you" direct message.
+     * @param {string} message - The message.
+     * @returns {Promise<void>} Resolves once sent.
      */
-    sendDirectThanksNotification,
+    sendThanks,
   
     /**
      * Uploads media to the Mastodon instance.

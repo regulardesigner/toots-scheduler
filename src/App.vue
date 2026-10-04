@@ -10,6 +10,8 @@ import { useMastodonApi } from './composables/useMastodonApi';
 import { useToast } from 'vue-toastification';
 
 import WhatsNew from './components/Modals/WhatsNew.vue';
+import ThanksConfirmModal from './components/Modals/ThanksConfirmModal.vue';
+import { buildThanksMessage } from './utils/thanks';
 import ModalView from './components/Modals/ModalView.vue';
 import Send from './components/icons/Send.vue';
 
@@ -58,14 +60,31 @@ function handleWhatsNewClose() {
   showWhatsNew.value = false;
 }
 
-async function sendThanksNotification() {
-  try {
-    await mastodonApi.sendDirectThanksNotification();
-    toast.success('Thanks sent successfully! 🤗');
-  } catch {
-    toast.error('Failed to send thanks. Please try again later.');
-  }
+/** The "thank you" message awaiting confirmation; null when the dialog is closed. */
+const thanksMessage = ref<string | null>(null);
+
+function openThanks(): void {
   isMenuOpen.value = false;
+  const sender = auth.account?.display_name || auth.account?.acct || 'Someone';
+  thanksMessage.value = buildThanksMessage(sender, new Date());
+}
+
+function cancelThanks(): void {
+  thanksMessage.value = null;
+}
+
+async function confirmThanks(): Promise<void> {
+  const message = thanksMessage.value;
+  thanksMessage.value = null; // closes the dialog and prevents a second send
+  if (!message) return;
+
+  try {
+    await mastodonApi.sendThanks(message);
+    toast.success('Thanks sent successfully! 🤗');
+  } catch (error) {
+    const reason = error instanceof Error && error.message ? ` (${error.message})` : '';
+    toast.error(`Failed to send thanks${reason}. Please try again later.`);
+  }
 }
 
 function toggleMenu() {
@@ -96,7 +115,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
         </button>
         <button
           class="thanks-button"
-          @click="sendThanksNotification"
+          @click="openThanks"
         >
           <Send class="thanks-button-icon" />Say Thanks
         </button>
@@ -146,7 +165,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
             </button>
             <button
               class="thanks-button"
-              @click="sendThanksNotification"
+              @click="openThanks"
             >
               <Send class="thanks-button-icon" />
               Say Thanks
@@ -173,6 +192,17 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
       @close-modal="handleWhatsNewClose"
     >
       <WhatsNew @close-child-modal="handleWhatsNewClose" />
+    </ModalView>
+
+    <ModalView
+      :is-open="thanksMessage !== null"
+      @close-modal="cancelThanks"
+    >
+      <ThanksConfirmModal
+        :message="thanksMessage ?? ''"
+        @confirm="confirmThanks"
+        @cancel="cancelThanks"
+      />
     </ModalView>
   </div>
 </template>

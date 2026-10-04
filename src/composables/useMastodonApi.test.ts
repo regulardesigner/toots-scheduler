@@ -115,6 +115,25 @@ describe('useMastodonApi', () => {
     });
   });
 
+  describe('sendThanks', () => {
+    it('sends the previewed message as a direct message', async () => {
+      http.post.mockResolvedValue({ data: { id: 'dm' } });
+
+      await useMastodonApi().sendThanks('🤗 Thanks! CC: @dams@disabled.social');
+
+      expect(http.post).toHaveBeenCalledWith('https://masto.example/api/v1/statuses', {
+        status: '🤗 Thanks! CC: @dams@disabled.social',
+        visibility: 'direct',
+      });
+    });
+
+    it('reports a failure instead of hiding it', async () => {
+      http.post.mockRejectedValue({ isAxiosError: true, message: 'Request failed', response: { status: 422, data: { error: 'Text too long' } } });
+
+      await expect(useMastodonApi().sendThanks('Thanks')).rejects.toThrow('Text too long');
+    });
+  });
+
   describe('rescheduleToot', () => {
     it('PUTs only the new date to the scheduled status', async () => {
       http.put.mockResolvedValue({ data: { id: '42' } });
