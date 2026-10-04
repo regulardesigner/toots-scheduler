@@ -5,13 +5,13 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 /**
  * Content Security Policy for the production build. GitHub Pages can't send headers, so it
- * is a <meta> tag (which ignores frame-ancestors). Only scripts from this site may run;
+ * is a <meta> tag (which ignores frame-ancestors). Only scripts and styles from this origin may load;
  * the instance is reached over https (connect-src) and serves images and media over https.
  */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self'",
   "img-src 'self' data: https:",
   "media-src 'self' https:",
   "font-src 'self'",

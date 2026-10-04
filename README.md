@@ -88,7 +88,7 @@ Toot Scheduler is a static site with no backend. Here is what it does to protect
   - If your instance rejects the token, the session ends too.
   - Revocation is best effort: if you are offline or the instance is down, revoke the app yourself under *Preferences → Account → Authorized apps*.
 - **Upgrading to 0.14.0:** sessions saved by older versions are signed out once, and their token is revoked.
-- **Content Security Policy:** the production page only runs this site's own scripts (no inline or injected script, no plugins), talks to instances over https only, and loads images and media over https. GitHub Pages can't send headers, so the policy is a `<meta>` tag; clickjacking protection (`frame-ancestors`) isn't available there.
+- **Content Security Policy:** the production page only loads scripts and styles from its own origin (no inline or injected script, no plugins), talks to instances over https only, and loads images and media over https. GitHub Pages can't send headers, so the policy is a `<meta>` tag: clickjacking protection (`frame-ancestors`) isn't available, and "its own origin" is `regulardesigner.github.io`, which is shared with the account's other GitHub Pages sites (a custom domain would isolate the app).
 - **Known trade-off:** while you are signed in, a script running on this page could read the token. That is the price of having no backend; the CSP above makes injecting one much harder. The app never renders HTML coming from the API (`v-html` is forbidden by the linter), checks every response from the instance before using it, and the production build contains no console output.
 
 ## Project Structure
