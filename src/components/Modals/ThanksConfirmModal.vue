@@ -15,7 +15,7 @@ const emit = defineEmits<{
       Send a thank-you?
     </h2>
     <p class="thanks-description">
-      This sends the following direct message from your account to the app's author:
+      This sends the following direct message from your account to the app's author. Only they will see it, including your name and the time below:
     </p>
     <blockquote class="thanks-preview">
       {{ message }}
