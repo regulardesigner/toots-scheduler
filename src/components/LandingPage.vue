@@ -16,52 +16,84 @@ function handleCloseLoginForm() {
 
 <template>
   <div class="landing-hero">
-    <h1 class="landing-title winky-sans-900">The first toot scheduling <br>service of all time!</h1>
+    <h1 class="landing-title winky-sans-900">
+      The first toot scheduling <br>service of all time!
+    </h1>
 
-    <button class="landing-button" @click="handleGetStarted">Get started</button>
-    <p class="landing-subtitle">An instance account is required.</p>
+    <button
+      class="landing-button"
+      @click="handleGetStarted"
+    >
+      Get started
+    </button>
+    <p class="landing-subtitle">
+      An instance account is required.
+    </p>
   </div>
 
   <main>
-  <div class="landing-how-it-works">  
-    <h2 class="winky-sans-700">How to schedule a toot?</h2>
-    <div class="landing-how-it-works-steps">
-      <p class="step-one">Sign in to your instance account</p>
-      <p class="step-two">Write a toot and schedule it</p>
-      <p class="step-three">Relax, your toot posts automatically</p>
+    <div class="landing-how-it-works">  
+      <h2 class="winky-sans-700">
+        How to schedule a toot?
+      </h2>
+      <div class="landing-how-it-works-steps">
+        <p class="step-one">
+          Sign in to your instance account
+        </p>
+        <p class="step-two">
+          Write a toot and schedule it
+        </p>
+        <p class="step-three">
+          Relax, your toot posts automatically
+        </p>
+      </div>
     </div>
-  </div>
   
-  <section class="frequently-asked-questions">
-    <h2 class="winky-sans-700">Frequently Asked Questions</h2>
-    <div>
-      <details open>
-        <summary class="winky-sans-700">Why use this service?</summary>
-        <p>It's easy to use and it's good looking.</p>
-      </details>
-      <details>
-        <summary class="winky-sans-700">Is it free?</summary>
-        <p>Yes, it's completely free. No hidden fees. Virtual hugs appreciated!</p>
-      </details>
-      <details>
-        <summary class="winky-sans-700">Is it totally secure?</summary>
-        <p>Yes, it is. All scheduled toots are stored on your account's instance. We don't store any goddamn thing!</p>
-      </details>
-      <details>
-        <summary class="winky-sans-700">How do I schedule a toot?</summary>
-        <p>It's easy. Just login with your instance account and start scheduling your toots today!</p>
-      </details>
-      <details>
-        <summary class="winky-sans-700">First scheduling toot service, really?</summary>
-        <p>Yep, sort of. I'm all into this fake it till you make it thing.</p>
-      </details>
-    </div>
-  </section>
+    <section class="frequently-asked-questions">
+      <h2 class="winky-sans-700">
+        Frequently Asked Questions
+      </h2>
+      <div>
+        <details open>
+          <summary class="winky-sans-700">
+            Why use this service?
+          </summary>
+          <p>It's easy to use and it's good looking.</p>
+        </details>
+        <details>
+          <summary class="winky-sans-700">
+            Is it free?
+          </summary>
+          <p>Yes, it's completely free. No hidden fees. Virtual hugs appreciated!</p>
+        </details>
+        <details>
+          <summary class="winky-sans-700">
+            Is it totally secure?
+          </summary>
+          <p>Yes, it is. All scheduled toots are stored on your account's instance. We don't store any goddamn thing!</p>
+        </details>
+        <details>
+          <summary class="winky-sans-700">
+            How do I schedule a toot?
+          </summary>
+          <p>It's easy. Just login with your instance account and start scheduling your toots today!</p>
+        </details>
+        <details>
+          <summary class="winky-sans-700">
+            First scheduling toot service, really?
+          </summary>
+          <p>Yep, sort of. I'm all into this fake it till you make it thing.</p>
+        </details>
+      </div>
+    </section>
 
-  <ModalView :is-open="showLoginForm" @close-modal="handleCloseLoginForm">
-    <LoginForm @close-modal="handleCloseLoginForm" />
-  </ModalView>
-</main>
+    <ModalView
+      :is-open="showLoginForm"
+      @close-modal="handleCloseLoginForm"
+    >
+      <LoginForm @close-modal="handleCloseLoginForm" />
+    </ModalView>
+  </main>
 </template>
 
 <style>

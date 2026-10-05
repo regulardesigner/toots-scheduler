@@ -11,16 +11,31 @@ const emit = defineEmits<{
 
 <template>
   <div class="delete-confirm">
-    <h2 class="delete-title">Delete scheduled toot?</h2>
-    <p class="delete-description">This action cannot be undone.</p>
-    <blockquote v-if="tootPreview" class="toot-preview">
+    <h2 class="delete-title">
+      Delete scheduled toot?
+    </h2>
+    <p class="delete-description">
+      This action cannot be undone.
+    </p>
+    <blockquote
+      v-if="tootPreview"
+      class="toot-preview"
+    >
       {{ tootPreview }}
     </blockquote>
     <div class="delete-actions">
-      <button class="btn-cancel" type="button" @click="emit('cancel')">
+      <button
+        class="btn-cancel"
+        type="button"
+        @click="emit('cancel')"
+      >
         Cancel
       </button>
-      <button class="btn-delete" type="button" @click="emit('confirm')">
+      <button
+        class="btn-delete"
+        type="button"
+        @click="emit('confirm')"
+      >
         Delete
       </button>
     </div>

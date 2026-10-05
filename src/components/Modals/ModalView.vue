@@ -109,8 +109,14 @@ watch(() => props.isOpen, (newValue) => {
 </script>
 
 <template>
-  <div v-if="isOpen" class="modal">
-    <div class="modal-overlay" @click="handleClose"></div>
+  <div
+    v-if="isOpen"
+    class="modal"
+  >
+    <div
+      class="modal-overlay"
+      @click="handleClose"
+    />
     <div 
       ref="modalRef"
       class="modal-content"
@@ -119,7 +125,12 @@ watch(() => props.isOpen, (newValue) => {
       aria-modal="true"
       aria-label="Modal dialog"
     >
-      <button class="close-button" @click="handleClose">&times;</button>
+      <button
+        class="close-button"
+        @click="handleClose"
+      >
+        &times;
+      </button>
       <slot @close-child-modal="handleClose" />
     </div>
   </div>

@@ -30,20 +30,18 @@ const router = createRouter({
 });
 
 // Navigation guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   const auth = useAuthStore();
-  
+
   // If trying to access composer without auth, redirect to home
   if (to.meta.requiresAuth && !auth.accessToken) {
-    next({ name: 'home' });
-  } 
+    return { name: 'home' };
+  }
+
   // If authenticated and trying to access home, redirect to composer
-  else if (to.name === 'home' && auth.accessToken) {
-    next({ name: 'composer' });
-  } 
-  else {
-    next();
+  if (to.name === 'home' && auth.accessToken) {
+    return { name: 'composer' };
   }
 });
 
-export default router; 
+export default router;

@@ -22,25 +22,46 @@ function handleClose() {
 
 <template>
   <div class="whats-new-content">
-    <h2 class="winky-sans-700">{{ isFirstVisit ? "What's new" : "What's new since last time!" }}</h2>
-    <div v-if="newFeatures.length === 0" class="no-new-features">
+    <h2 class="winky-sans-700">
+      {{ isFirstVisit ? "What's new" : "What's new since last time!" }}
+    </h2>
+    <div
+      v-if="newFeatures.length === 0"
+      class="no-new-features"
+    >
       No new features to show.
     </div>
-    <div v-else class="features-list">
-      <div v-for="group in newFeatures" :key="group.version" class="feature-group">
+    <div
+      v-else
+      class="features-list"
+    >
+      <div
+        v-for="group in newFeatures"
+        :key="group.version"
+        class="feature-group"
+      >
         <div class="version-header">
-          <h3 class="winky-sans-500">In version {{ group.version }}</h3>
+          <h3 class="winky-sans-500">
+            In version {{ group.version }}
+          </h3>
           <span class="release-date">{{ group.date }}</span>
         </div>
         <div class="features">
-          <div v-for="feature in group.features" :key="feature.id" class="feature-item">
+          <div
+            v-for="feature in group.features"
+            :key="feature.id"
+            class="feature-item"
+          >
             <h4>{{ feature.title }}</h4>
             <p>{{ feature.description }}</p>
           </div>
         </div>
       </div>
     </div>
-    <button @click="handleClose" class="close-whats-new-modal-button">
+    <button
+      class="close-whats-new-modal-button"
+      @click="handleClose"
+    >
       Got it!
     </button>
   </div>

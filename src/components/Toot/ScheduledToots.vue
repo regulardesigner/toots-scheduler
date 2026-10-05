@@ -82,24 +82,39 @@ onMounted(() => {
 
 <template>
   <div class="scheduled-toots">
-    <details class="toots-details" :open="store.count > 0">
+    <details
+      class="toots-details"
+      :open="store.count > 0"
+    >
       <summary class="toots-summary">
         <h1>Scheduled Toots ({{ store.count }})</h1>
       </summary>
       
-      <div v-if="store.isLoading" class="loading">
+      <div
+        v-if="store.isLoading"
+        class="loading"
+      >
         Loading scheduled toots...
       </div>
       
-      <div v-else-if="store.error" class="error">
+      <div
+        v-else-if="store.error"
+        class="error"
+      >
         {{ store.error }}
       </div>
       
-      <div v-else-if="store.count === 0" class="empty-state">
+      <div
+        v-else-if="store.count === 0"
+        class="empty-state"
+      >
         No scheduled toots yet.
       </div>
       
-      <div v-else class="toots-list">
+      <div
+        v-else
+        class="toots-list"
+      >
         <TransitionGroup 
           name="toot-list" 
           tag="div"
@@ -107,8 +122,8 @@ onMounted(() => {
         >
           <TootCard
             v-for="toot in store.sortedToots"
-            :key="toot.id"
             :id="toot.id"
+            :key="toot.id"
             :scheduled-at="toot.scheduled_at || ''"
             :text="toot.params?.text"
             :visibility="toot.params?.visibility"
@@ -126,7 +141,10 @@ onMounted(() => {
     </details>
   </div>
 
-  <ModalView :is-open="!!tootToDelete" @close-modal="handleDeleteCancel">
+  <ModalView
+    :is-open="!!tootToDelete"
+    @close-modal="handleDeleteCancel"
+  >
     <DeleteConfirmModal
       :toot-preview="tootDeletePreview"
       @confirm="handleDeleteConfirm"

@@ -11,6 +11,17 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.13.1',
+      date: '2026-10-01',
+      features: [
+        {
+          id: 'security-dependency-update',
+          title: '🔒 Security Updates',
+          description: 'We updated the libraries Toot Scheduler relies on to close known security issues, and every new release is now automatically checked before it goes live.'
+        },
+      ],
+    },
+    {
       version: '0.13.0',
       date: '2026-03-25',
       features: [

@@ -26,6 +26,20 @@ For any coding task in this project, load the relevant skill(s) first. Most task
 - Axios for HTTP
 - date-fns for dates
 
+## Commands
+
+```bash
+npm run dev         # dev server
+npm run lint        # ESLint — must report 0 errors
+npm run typecheck   # vue-tsc -b — must exit 0
+npm test            # Vitest (tests live next to sources as *.test.ts)
+npm run build       # typecheck + production build
+```
+
+Run lint, typecheck and test before every commit. CI blocks the deploy if any of them fails.
+If `npm install -D <pkg>` crashes with `reading 'edgesOut'` (npm 10 bug), use `npx -y npm@11 install -D <pkg>`.
+There is no `*.vue` module shim: editors need the official Vue extension (Volar) for `.vue` type-checking, and `vue-tsc` is the type checker.
+
 ## Project Structure
 
 ```

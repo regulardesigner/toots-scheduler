@@ -1,0 +1,57 @@
+{
+  "planPath": "docs/superpowers/plans/2026-10-01-lot-0-quality-gate.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: Dependency hygiene and single lockfile",
+      "status": "completed",
+      "description": "**Goal:** Remove all high/critical runtime vulnerabilities (axios credential-theft CVEs) and keep only the npm lockfile.\n\n**Files:**\n- Delete: `yarn.lock`\n- Modify: `package.json`, `package-lock.json`\n- Create: `.nvmrc`\n\n**Acceptance Criteria:**\n- [ ] `yarn.lock` no longer exists\n- [ ] `npm ls axios` shows `axios@1.20.0` or later\n- [ ] `npm audit --omit=dev --audit-level=high` prints `found 0 vulnerabilities`\n- [ ] `npm run build` still succeeds\n- [ ] `package.json` declares `\"engines\": { \"node\": \">=22\" }` and `.nvmrc` contains `22`\n\n**Verify:** `npm audit --omit=dev --audit-level=high` → `found 0 vulnerabilities`\n\n**Steps:** see docs/superpowers/plans/2026-10-01-lot-0-quality-gate.md § Task 1: Dependency hygiene and single lockfile\n\n```json:metadata\n{\"files\": [\"yarn.lock\", \"package.json\", \"package-lock.json\", \".nvmrc\"], \"verifyCommand\": \"npm audit --omit=dev --audit-level=high\", \"acceptanceCriteria\": [\"yarn.lock deleted\", \"axios >= 1.20.0\", \"npm audit --omit=dev --audit-level=high reports 0 vulnerabilities\", \"npm run build succeeds\", \"engines.node >=22 and .nvmrc = 22\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: Make the typecheck real and fix the 5 hidden errors",
+      "status": "completed",
+      "description": "**Goal:** `npm run build` and `npm run typecheck` run `vue-tsc -b`, so a type error fails the build. The 5 existing errors are fixed.\n\n**Files:**\n- Modify: `package.json` (scripts)\n- Modify: `src/components/ContentWarning.vue:2`\n- Modify: `src/composables/useMastodonApi.ts:1`\n- Modify: `src/router/index.ts:32-48`\n- Modify: `src/components/Toot/TootCard.vue:1-18`\n\n**Acceptance Criteria:**\n- [ ] `package.json` has `\"build\": \"vue-tsc -b && vite build\"` and `\"typecheck\": \"vue-tsc -b\"`\n- [ ] `npm run typecheck` exits 0 with no output\n- [ ] Adding `export const broken: number = 'x';` to any file under `src/` makes `npm run build` exit non-zero\n- [ ] Router behavior unchanged: an unauthenticated user visiting `/composer` lands on `/`, and an authenticated user visiting `/` lands on `/composer`\n\n**Verify:** `npm run typecheck; echo \"exit=$?\"` → `exit=0`\n\n**Steps:** see docs/superpowers/plans/2026-10-01-lot-0-quality-gate.md § Task 2: Make the typecheck real and fix the 5 hidden errors\n\n```json:metadata\n{\"files\": [\"package.json\", \"src/components/ContentWarning.vue\", \"src/composables/useMastodonApi.ts\", \"src/router/index.ts\", \"src/components/Toot/TootCard.vue\"], \"verifyCommand\": \"npm run typecheck\", \"acceptanceCriteria\": [\"build script uses vue-tsc -b\", \"npm run typecheck exits 0\", \"a deliberate type error fails npm run build\", \"router redirects unchanged\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        0
+      ]
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: Vitest setup with first unit and component tests",
+      "status": "completed",
+      "description": "**Goal:** `npm test` runs Vitest (happy-dom) and passes a smoke test for a pure util and for a component.\n\n**Files:**\n- Modify: `package.json` (devDeps, scripts)\n- Modify: `vite.config.ts`\n- Create: `src/utils/url.test.ts`\n- Create: `src/components/Modals/DeleteConfirmModal.test.ts`\n\n**Acceptance Criteria:**\n- [ ] `vitest@^4.1`, `@vue/test-utils@^2.4`, `happy-dom@^20` are in `devDependencies`\n- [ ] `npm test` reports `Test Files  2 passed (2)` and `Tests  7 passed (7)`\n- [ ] `npm run typecheck` still exits 0 (test files are type-checked too, since `tsconfig.app.json` includes `src/**/*.ts`)\n- [ ] Temporarily breaking an assertion makes `npm test` exit non-zero\n\n**Verify:** `npm test` → `Tests  7 passed (7)`\n\n**Steps:** see docs/superpowers/plans/2026-10-01-lot-0-quality-gate.md § Task 3: Vitest setup with first unit and component tests\n\n```json:metadata\n{\"files\": [\"package.json\", \"package-lock.json\", \"vite.config.ts\", \"src/utils/url.test.ts\", \"src/components/Modals/DeleteConfirmModal.test.ts\"], \"verifyCommand\": \"npm test\", \"acceptanceCriteria\": [\"vitest, @vue/test-utils, happy-dom in devDependencies\", \"npm test: 2 files, 7 tests passed\", \"npm run typecheck exits 0\", \"a broken assertion fails npm test\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "subject": "Task 4: ESLint flat config, fix lint errors, one-off auto-format",
+      "status": "completed",
+      "description": "**Goal:** `npm run lint` exits 0 (no errors). `v-html` is forbidden, and `console`/`any` are flagged as warnings for the later lots.\n\n**Files:**\n- Create: `eslint.config.js`\n- Modify: `package.json` (devDeps, scripts)\n- Modify: `src/App.vue:40`, `src/composables/useMastodonApi.ts` (the `catch (error)` in `uploadMedia`)\n- Delete: `src/types/vue.d.ts`\n- Modify (auto-fix, second commit): `.vue` files reformatted by `eslint --fix`\n\n**Acceptance Criteria:**\n- [ ] `npm run lint` exits 0, with **0 errors**. Exactly 12 warnings remain after the auto-fix (7× `no-console`, 4× `no-explicit-any`, 1× `vue/prop-name-casing`): they are tracked for Lots 2 and 4 and must not be \"fixed\" here\n- [ ] Adding `<div v-html=\"x\" />` to any component makes `npm run lint` exit non-zero\n- [ ] `npm run typecheck`, `npm test` and `npm run build` all pass after the auto-fix commit\n- [ ] Logic fixes and formatting are in **two separate commits**\n\n**Verify:** `npm run lint; echo \"exit=$?\"` → `✖ 12 problems (0 errors, 12 warnings)` and `exit=0`\n\n**Steps:** see docs/superpowers/plans/2026-10-01-lot-0-quality-gate.md § Task 4: ESLint flat config, fix lint errors, one-off auto-format\n\n```json:metadata\n{\"files\": [\"eslint.config.js\", \"package.json\", \"package-lock.json\", \"src/App.vue\", \"src/composables/useMastodonApi.ts\", \"src/types/vue.d.ts\"], \"verifyCommand\": \"npm run lint\", \"acceptanceCriteria\": [\"npm run lint exits 0 with 0 errors\", \"12 known warnings remain untouched\", \"v-html triggers a lint error\", \"typecheck, test and build pass after auto-fix\", \"logic fixes and formatting in separate commits\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        2
+      ]
+    },
+    {
+      "id": 4,
+      "subject": "Task 5: CI verify gate, remove unused build secrets, update docs",
+      "status": "completed",
+      "description": "**Goal:** GitHub Actions runs lint → typecheck → test → audit → build on every PR and push. Deploy to Pages happens only from `main` after `verify` passes, with no `VITE_*` secrets in the build.\n\n**Files:**\n- Modify: `.github/workflows/deploy.yml` (full rewrite)\n- Delete: `.env.example`\n- Modify: `README.md` (sections \"Prerequisites\", \"Installation\", \"Project Structure\", \"Development Workflow\")\n- Modify: `CLAUDE.md` (new \"Commands\" section)\n\n**Acceptance Criteria:**\n- [ ] Workflow has a `verify` job and a `deploy` job with `needs: verify`\n- [ ] `deploy` only runs for `push`/`workflow_dispatch` on `refs/heads/main`, never for `pull_request`\n- [ ] `grep -n \"VITE_\" .github/workflows/deploy.yml` returns nothing\n- [ ] `.env.example` deleted; README no longer mentions `.env` or `VITE_MASTODON_SERVER`\n- [ ] Workflow YAML parses (`npx -y js-yaml .github/workflows/deploy.yml` exits 0)\n- [ ] Running the `verify` steps locally in order all pass\n\n**Verify:** `npm ci && npm run lint && npm run typecheck && npm test && npm audit --omit=dev --audit-level=high && npm run build` → all succeed\n\n**Steps:** see docs/superpowers/plans/2026-10-01-lot-0-quality-gate.md § Task 5: CI verify gate, remove unused build secrets, update docs\n\n```json:metadata\n{\"files\": [\".github/workflows/deploy.yml\", \".env.example\", \"README.md\", \"CLAUDE.md\"], \"verifyCommand\": \"npm ci && npm run lint && npm run typecheck && npm test && npm audit --omit=dev --audit-level=high && npm run build\", \"acceptanceCriteria\": [\"verify job + deploy needs verify\", \"deploy only on main, never on pull_request\", \"no VITE_ in workflow\", \".env.example deleted and README updated\", \"workflow YAML valid\", \"local verify sequence passes\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "subject": "Task 6: Release 0.13.1 entry",
+      "status": "completed",
+      "description": "**Goal:** Version bumped to 0.13.1, with a user-facing \"What's New\" entry for the security dependency update.\n\n**Files:**\n- Modify: `package.json` (`\"version\"`)\n- Modify: `package-lock.json` (root `version` fields)\n- Modify: `src/stores/features.ts` (prepend a `FeatureGroup`)\n\n**Acceptance Criteria:**\n- [ ] `package.json` `\"version\"` is `0.13.1`, and so is the first `FeatureGroup.version` in `src/stores/features.ts`\n- [ ] The new feature `id` is unique across the whole `features` array\n- [ ] `npm run lint && npm run typecheck && npm test && npm run build` pass\n\n**Verify:** `node -e \"console.log(require('./package.json').version)\"` → `0.13.1`\n\n**Steps:** see docs/superpowers/plans/2026-10-01-lot-0-quality-gate.md § Task 6: Release 0.13.1 entry\n\n```json:metadata\n{\"files\": [\"package.json\", \"package-lock.json\", \"src/stores/features.ts\"], \"verifyCommand\": \"node -e \\\"console.log(require('./package.json').version)\\\"\", \"acceptanceCriteria\": [\"version 0.13.1 in package.json and features store\", \"unique feature id\", \"lint, typecheck, test, build pass\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        4
+      ]
+    }
+  ],
+  "lastUpdated": "2026-10-01T20:13:26.230284+00:00"
+}

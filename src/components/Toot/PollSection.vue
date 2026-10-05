@@ -70,17 +70,36 @@ watch([pollOptions, pollExpiresIn, pollMultiple, pollHideTotals], () => {
 <template>
   <div class="poll-section">
     <div class="poll-options">
-      <div v-for="(_, index) in pollOptions" :key="index" :data-index="index + 1" class="poll-option" :class="{ 'poll-option--multiple': pollMultiple }">
+      <div
+        v-for="(_, index) in pollOptions"
+        :key="index"
+        :data-index="index + 1"
+        class="poll-option"
+        :class="{ 'poll-option--multiple': pollMultiple }"
+      >
         <input
           v-model="pollOptions[index]"
           type="text"
           placeholder="Poll option"
           required
-        />
-        <button class="pull-option_button_remove" v-if="pollOptions.length > 2" aria-label="Remove this option" @click="removePollOption(index)">&times;</button>
+        >
+        <button
+          v-if="pollOptions.length > 2"
+          class="pull-option_button_remove"
+          aria-label="Remove this option"
+          @click="removePollOption(index)"
+        >
+          &times;
+        </button>
       </div>
 
-      <button class="add-poll-button" v-if="pollOptions.length < 4" @click="addPollOption">Add Option</button>
+      <button
+        v-if="pollOptions.length < 4"
+        class="add-poll-button"
+        @click="addPollOption"
+      >
+        Add Option
+      </button>
     </div>
 
     <div class="poll-settings">
@@ -97,11 +116,17 @@ watch([pollOptions, pollExpiresIn, pollMultiple, pollHideTotals], () => {
         </select>
       </label>
       <label>
-        <input v-model="pollMultiple" type="checkbox" />
+        <input
+          v-model="pollMultiple"
+          type="checkbox"
+        >
         Allow multiple votes
       </label>
       <label>
-        <input v-model="pollHideTotals" type="checkbox" />
+        <input
+          v-model="pollHideTotals"
+          type="checkbox"
+        >
         Hide totals until poll ends
       </label>
     </div>

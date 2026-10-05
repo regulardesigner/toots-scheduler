@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   modelValue: boolean;
   spoilerText: string;
 }>();
@@ -13,23 +13,29 @@ const emit = defineEmits<{
 <template>
   <div class="content-warning">
     <div class="form-group">
-      <label for="sensitive-toggle" class="warning-label">
+      <label
+        for="sensitive-toggle"
+        class="warning-label"
+      >
         <input
+          id="sensitive-toggle"
           type="checkbox"
           :checked="modelValue"
           @change="emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
-          id="sensitive-toggle"
-        />
+        >
         Add content warning
       </label>
-      <div class="warning-input-wrapper" v-show="modelValue">
+      <div
+        v-show="modelValue"
+        class="warning-input-wrapper"
+      >
         <input
+          id="spoiler-text"
           type="text"
           :value="spoilerText"
-          @input="emit('update:spoilerText', ($event.target as HTMLInputElement).value)"
           placeholder="Write your warning here"
-          id="spoiler-text"
-        />
+          @input="emit('update:spoilerText', ($event.target as HTMLInputElement).value)"
+        >
       </div>
     </div>
   </div>

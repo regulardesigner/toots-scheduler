@@ -28,7 +28,7 @@ A modern Vue.js application that allows you to schedule Mastodon posts (toots) f
 
 ### Prerequisites
 
-- Node.js (v20 or later recommended)
+- Node.js 22 (see `.nvmrc`; run `nvm use`)
 - npm (included with Node.js)
 - A Mastodon account
 
@@ -42,18 +42,10 @@ cd toots-scheduler
 
 2. Install dependencies:
 ```bash
-npm install
+npm ci
 ```
 
-3. Copy the environment file and configure it:
-```bash
-cp .env.example .env
-```
-
-4. Update the `.env` file with your Mastodon instance details:
-```env
-VITE_MASTODON_SERVER=https://mastodon.social
-```
+No environment file is needed: the app registers itself on the Mastodon instance you sign in to.
 
 ### Development
 
@@ -74,6 +66,16 @@ Preview the production build:
 npm run preview
 ```
 
+### Quality checks
+
+These run in CI on every pull request and must pass before deploy:
+```bash
+npm run lint        # ESLint (v-html forbidden)
+npm run typecheck   # vue-tsc -b
+npm test            # Vitest
+npm audit --omit=dev --audit-level=high
+```
+
 ## Project Structure
 
 The project follows a standard Vue.js project structure with the following key directories:
@@ -87,13 +89,12 @@ The project follows a standard Vue.js project structure with the following key d
   - `types/`: TypeScript type definitions
   - `utils/`: Utility functions and helpers
 - `public/`: Static files that are served as-is
-- `env.example`: Example environment configuration file
 
 ## Development Workflow
 
 1. **Fork and Clone**: Fork the repository and clone it to your local machine.
-2. **Install Dependencies**: Run `npm install` to install all required dependencies.
-3. **Configure Environment**: Copy `.env.example` to `.env` and update with your Mastodon instance details.
+2. **Install Dependencies**: Run `npm ci` to install the locked dependencies.
+3. **Run Quality Checks**: `npm run lint && npm run typecheck && npm test` before pushing.
 4. **Run Development Server**: Use `npm run dev` to start the development server.
 5. **Make Changes**: Implement your changes in the appropriate files.
 6. **Test Changes**: Test your changes thoroughly to ensure they work as expected.

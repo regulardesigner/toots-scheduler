@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { createApiClient } from '../utils/api';
 import { useAuthStore } from '../stores/auth';
 import type { MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
@@ -181,7 +180,7 @@ export function useMastodonApi() {
           try {
             const response = JSON.parse(xhr.responseText);
             resolve(response);
-          } catch (error) {
+          } catch {
             reject(new Error('Failed to parse response'));
           }
         } else {
