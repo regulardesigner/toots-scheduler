@@ -3,13 +3,16 @@ import { computed } from 'vue';
 import { format, addMinutes } from 'date-fns';
 import type { ScheduledToot } from '../types/mastodon';
 
-defineProps<{
+const props = withDefaults(defineProps<{
   scheduledDate: string;
   scheduledTime: string;
   visibility: ScheduledToot['visibility'];
   language: string;
   isEditing: boolean;
-}>();
+  isSubmitting?: boolean;
+}>(), {
+  isSubmitting: false,
+});
 
 const emit = defineEmits<{
   (e: 'update:scheduledDate', value: string): void;
@@ -18,6 +21,11 @@ const emit = defineEmits<{
   (e: 'update:language', value: string): void;
   (e: 'cancel'): void;
 }>();
+
+const submitLabel = computed(() => {
+  if (props.isSubmitting) return props.isEditing ? 'Updating…' : 'Scheduling…';
+  return props.isEditing ? 'Update' : 'Schedule';
+});
 
 const minDateTime = computed(() => {
   const now = new Date();
@@ -116,8 +124,9 @@ const languages = [
     <button
       type="submit"
       :class="{ 'edit-mode': isEditing }"
+      :disabled="isSubmitting"
     >
-      {{ isEditing ? 'Update' : 'Schedule' }}
+      {{ submitLabel }}
     </button>
   </div>
 </template>
