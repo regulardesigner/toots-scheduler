@@ -4,10 +4,12 @@ const MIN_SCHEDULE_AHEAD_MINUTES = 5;
 const DEFAULT_POLL_EXPIRATION_SECONDS = 86400; // 24 hours
 
 import { ref, onMounted, watch } from 'vue';
+import { useToast } from 'vue-toastification';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import { useAuthStore } from '../../stores/auth';
 import { format, addMinutes, isBefore, parseISO } from 'date-fns';
-import type { ScheduledToot, MastodonMediaAttachment } from '../../types/mastodon';
+import type { ScheduledToot, MastodonMediaAttachment, PollFormState } from '../../types/mastodon';
+import { buildScheduledToot } from '../../utils/buildScheduledToot';
 import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore } from '../../stores/scheduledToots';
 import MediaUpload from '../MediaUpload.vue';
@@ -16,7 +18,17 @@ import ContentArea from '../ContentArea.vue';
 import ControlsBar from '../ControlsBar.vue';
 import PollSection from '../Toot/PollSection.vue';
 
+function createEmptyPoll(): PollFormState {
+  return {
+    options: ['', ''],
+    expiresIn: DEFAULT_POLL_EXPIRATION_SECONDS,
+    multiple: false,
+    hideTotals: false,
+  };
+}
+
 const auth = useAuthStore();
+const toast = useToast();
 const content = ref('');
 const scheduledDate = ref('');
 const scheduledTime = ref('');
@@ -29,30 +41,38 @@ const showMedia = ref(false);
 const showPoll = ref(false);
 const spoilerText = ref('');
 const mediaAttachments = ref<MastodonMediaAttachment[]>([]);
-
-const pollData = ref({
-  options: ['', ''],
-  expiresIn: DEFAULT_POLL_EXPIRATION_SECONDS,
-  multiple: false,
-  hideTotals: false
-});
+const pollData = ref<PollFormState>(createEmptyPoll());
 
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
 
-function handleShowMedia() {
-  if (showMedia.value) {
-    showMedia.value = false;
-  } else {
-    showMedia.value = true;
+/**
+ * Idempotency key of the last attempt. Mastodon returns the first result for a key it has
+ * seen in the last hour, so the key is reused only for an identical retry (same payload,
+ * same edited toot). Any change gets a new key: a possible duplicate is visible and fixable,
+ * whereas reusing a key could silently publish stale content or lose an edited toot.
+ */
+const idempotencyKey = ref(crypto.randomUUID());
+let lastAttemptFingerprint: string | null = null;
+
+function idempotencyKeyFor(toot: ScheduledToot): string {
+  const fingerprint = JSON.stringify({ editingId: store.editingToot?.id ?? null, toot });
+  if (fingerprint !== lastAttemptFingerprint) {
+    idempotencyKey.value = crypto.randomUUID();
+    lastAttemptFingerprint = fingerprint;
   }
+  return idempotencyKey.value;
+}
+
+function handleShowMedia() {
+  showMedia.value = !showMedia.value;
 }
 
 function handleShowPoll() {
-  if (showPoll.value) {
-    showPoll.value = false;
-  } else {
-    showPoll.value = true;
+  showPoll.value = !showPoll.value;
+  // A closed poll section means no poll: drop what was typed so it can't be sent later.
+  if (!showPoll.value) {
+    pollData.value = createEmptyPoll();
   }
 }
 
@@ -69,7 +89,7 @@ watch(() => store.editingToot, (newToot) => {
     }
     
     visibility.value = newToot.params?.visibility as ScheduledToot['visibility'] || 'public';
-    language.value = newToot.language || 'en';
+    language.value = newToot.params?.language || 'en';
     isSensitive.value = newToot.params?.sensitive || false;
     spoilerText.value = newToot.params?.spoiler_text || '';
     mediaAttachments.value = newToot.media_attachments || [];
@@ -77,19 +97,18 @@ watch(() => store.editingToot, (newToot) => {
     // Show media section if there are media attachments
     showMedia.value = newToot.media_attachments?.length > 0;
 
-    // Check both poll and params.poll for poll data
-    const poll = newToot.poll || newToot.params?.poll;
+    const poll = newToot.params?.poll;
     if (poll) {
-      console.log('Found poll data:', poll);
       showPoll.value = true;
       pollData.value = {
         options: poll.options || [],
-        expiresIn: poll.expires_in || DEFAULT_POLL_EXPIRATION_SECONDS,
+        expiresIn: Number(poll.expires_in) || DEFAULT_POLL_EXPIRATION_SECONDS,
         multiple: poll.multiple || false,
         hideTotals: poll.hide_totals || false
       };
     } else {
       showPoll.value = false;
+      pollData.value = createEmptyPoll();
     }
   }
 }, { immediate: true });
@@ -106,12 +125,8 @@ function resetForm() {
   mediaAttachments.value = [];
   showMedia.value = false;
   showPoll.value = false;
-  pollData.value = {
-    options: ['', ''],
-    expiresIn: DEFAULT_POLL_EXPIRATION_SECONDS,
-    multiple: false,
-    hideTotals: false
-  };
+  pollData.value = createEmptyPoll();
+  lastAttemptFingerprint = null;
 }
 
 function handleCancelEdit() {
@@ -134,10 +149,12 @@ onMounted(async () => {
 });
 
 async function handleSubmit() {
-  try {
-    error.value = '';
-    isSubmitting.value = true;
+  // Ignore resubmissions (double click, Enter key) while a request is in flight.
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
+  error.value = '';
 
+  try {
     // Validate scheduled time
     const scheduledDateTime = new Date(`${scheduledDate.value}T${scheduledTime.value}`);
     const minTime = addMinutes(new Date(), MIN_SCHEDULE_AHEAD_MINUTES);
@@ -147,56 +164,38 @@ async function handleSubmit() {
       return;
     }
 
-    const tootContent = content.value.trim();
+    const toot = buildScheduledToot({
+      content: content.value,
+      scheduledAt: scheduledDateTime,
+      visibility: visibility.value,
+      language: language.value,
+      isSensitive: isSensitive.value,
+      spoilerText: spoilerText.value,
+      mediaIds: mediaAttachments.value.map(media => media.id),
+      showPoll: showPoll.value,
+      poll: pollData.value,
+    });
+
+    const key = idempotencyKeyFor(toot);
 
     if (store.editingToot) {
-      // Create a new ScheduledToot object for updating
-      const updatedToot: ScheduledToot = {
-        status: tootContent,
-        scheduled_at: scheduledDateTime.toISOString(),
-        visibility: visibility.value,
-        language: language.value,
-        sensitive: isSensitive.value,
-        spoiler_text: isSensitive.value ? spoilerText.value : undefined,
-        media_ids: mediaAttachments.value.map(media => media.id),
-        poll: pollData.value.options.some(option => option.trim() !== '') ? {
-          options: pollData.value.options.filter(option => option.trim() !== ''),
-          expires_in: pollData.value.expiresIn,
-          multiple: pollData.value.multiple,
-          hide_totals: pollData.value.hideTotals,
-        } : undefined,
-      };
-      
-      await store.updateToot(store.editingToot.id, updatedToot);
+      // updateToot refreshes the list and leaves edit mode itself.
+      const result = await store.updateToot(store.editingToot, toot, key);
+      if (!result.previousVersionRemoved) {
+        toast.warning('Your toot was updated, but the previous version could not be removed. Please delete it from the list.');
+      }
     } else {
-      // Create the toot
-      const toot: ScheduledToot = {
-        status: tootContent,
-        scheduled_at: scheduledDateTime.toISOString(),
-        visibility: visibility.value,
-        language: language.value,
-        sensitive: isSensitive.value,
-        spoiler_text: isSensitive.value ? spoilerText.value : undefined,
-        media_ids: mediaAttachments.value.map(media => media.id),
-        poll: pollData.value.options.some(option => option.trim() !== '') ? {
-          options: pollData.value.options.filter(option => option.trim() !== ''),
-          expires_in: pollData.value.expiresIn,
-          multiple: pollData.value.multiple,
-          hide_totals: pollData.value.hideTotals,
-        } : undefined,
-      };
-
-      await api.scheduleToot(toot);
+      await api.scheduleToot(toot, key);
+      await store.fetchScheduledToots();
     }
-    
-    // Reset form and refresh toots
+
     resetForm();
-    store.setEditingToot(null);
-    await store.fetchScheduledToots();
     
   } catch (err) {
     console.error('Error scheduling toot:', err);
     error.value = err instanceof Error ? err.message : 'Failed to schedule toot. Please try again.';
+    // The request may have reached the instance despite the error: refresh so any created toot shows up.
+    void store.fetchScheduledToots();
   } finally {
     isSubmitting.value = false;
   }
@@ -237,7 +236,7 @@ async function handleSubmit() {
 
       <ContentArea
         v-model="content"
-        :has-poll="pollData.options.some(option => option.trim() !== '')"
+        :has-poll="showPoll && pollData.options.some(option => option.trim() !== '')"
         :has-media="mediaAttachments.length > 0"
         @add-media="handleShowMedia"
         @add-poll="handleShowPoll"
@@ -259,6 +258,7 @@ async function handleSubmit() {
         v-model:visibility="visibility"
         v-model:language="language"
         :is-editing="!!store.editingToot"
+        :is-submitting="isSubmitting"
         @cancel="handleCancelEdit"
       />
 

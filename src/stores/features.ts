@@ -11,6 +11,32 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.13.2',
+      date: '2026-10-02',
+      features: [
+        {
+          id: 'safe-toot-editing',
+          title: '🐛 Fix: Editing Never Loses a Toot',
+          description: 'Editing a scheduled toot now creates the new version before removing the old one, and a simple date change is applied in place. If something goes wrong, your original toot stays safe. If the toot was already published, you\'re told instead of getting a duplicate.'
+        },
+        {
+          id: 'no-duplicate-toots',
+          title: '🐛 Fix: No More Duplicate Toots',
+          description: 'Clicking Schedule twice, or retrying after a network hiccup, no longer creates the same toot twice.'
+        },
+        {
+          id: 'all-scheduled-toots-listed',
+          title: '🐛 Fix: All Your Scheduled Toots Are Listed',
+          description: 'If you have more than 20 scheduled toots, you now see all of them instead of only the first 20.'
+        },
+        {
+          id: 'poll-and-language-fixes',
+          title: '🐛 Fix: Polls and Languages When Editing',
+          description: 'A poll you closed is no longer sent by mistake, and editing a toot keeps its original language.'
+        },
+      ],
+    },
+    {
       version: '0.13.1',
       date: '2026-10-01',
       features: [
