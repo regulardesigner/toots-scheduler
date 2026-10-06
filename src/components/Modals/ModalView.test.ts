@@ -125,6 +125,30 @@ describe('ModalView', () => {
     expect(document.activeElement).not.toBe(opener);
   });
 
+  it('does not steal focus from a dialog opened on top before its own deferred focus ran', async () => {
+    // Hold the deferred focus callbacks to run the lower dialog's last, after the top one has taken focus.
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => frames.push(callback));
+    const below = mountModal(false);
+    const above = mountModal(false);
+
+    await below.setProps({ isOpen: true });
+    await nextTick();
+    await above.setProps({ isOpen: true });
+    await nextTick();
+    expect(frames).toHaveLength(2);
+    const [belowFrame, aboveFrame] = frames;
+
+    aboveFrame(0);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const aboveDialog = above.find('[role="dialog"]').element;
+    expect(aboveDialog.contains(document.activeElement)).toBe(true);
+
+    belowFrame(0);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(aboveDialog.contains(document.activeElement)).toBe(true);
+  });
+
   it('puts focus on the dialog itself, scrolled to the top, with initialFocus="dialog"', async () => {
     const wrapper = mountModal(false, 'dialog');
 

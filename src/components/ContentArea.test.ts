@@ -135,17 +135,22 @@ describe('ContentArea', () => {
     expect(changes.filter(text => text !== '')).toEqual(['47 characters left']);
   });
 
-  it('cancels a pending announcement when unmounted', async () => {
+  it('clears its pending announcement on unmount: no timer left, nothing announced', async () => {
     vi.useFakeTimers();
     const instance = useInstanceStore();
     instance.maxCharacters = 100;
     instance.hasCharacterLimit = true;
     const wrapper = mountArea('');
+    const liveRegion = wrapper.find('[aria-live="polite"]').element;
     await wrapper.setProps({ modelValue: 'x'.repeat(60) });
+    expect(vi.getTimerCount()).toBe(1);
 
     wrapper.unmount();
 
     expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(PAUSE_MS);
+    await Promise.resolve();
+    expect(liveRegion.textContent).toBe('');
   });
 
   it('does not announce anything before the instance limits are known', async () => {
