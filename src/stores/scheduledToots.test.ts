@@ -14,7 +14,7 @@ const api = vi.hoisted(() => ({
 vi.mock('../composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
 vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn().mockResolvedValue({}), isAxiosError: () => false } }));
 
-import { useScheduledTootsStore } from './scheduledToots';
+import { useScheduledTootsStore, BusyError } from './scheduledToots';
 import { useAuthStore } from './auth';
 
 const original: MastodonStatus = {
@@ -108,7 +108,9 @@ describe('scheduledToots store', () => {
       api.deleteScheduledToot.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
 
       const deleting = store.deleteToot('a');
-      await expect(store.updateToot(original, makeUpdated(), 'key-1')).rejects.toThrow('Another change is still being saved');
+      const refusal = store.updateToot(original, makeUpdated(), 'key-1');
+      await expect(refusal).rejects.toBeInstanceOf(BusyError);
+      await expect(refusal).rejects.toThrow('Another change is still being saved');
       expect(api.rescheduleToot).not.toHaveBeenCalled();
       expect(store.error).toBe('');
       expect(store.pendingId).toBe('a');
@@ -247,6 +249,45 @@ describe('scheduledToots store', () => {
     });
   });
 
+  describe('fetchScheduledToots', () => {
+    it('keeps the latest list when an earlier reload answers last', async () => {
+      const store = useScheduledTootsStore();
+      let answerFirst!: (toots: MastodonStatus[]) => void;
+      let answerSecond!: (toots: MastodonStatus[]) => void;
+      api.getScheduledToots
+        .mockReturnValueOnce(new Promise(resolve => { answerFirst = resolve; }))
+        .mockReturnValueOnce(new Promise(resolve => { answerSecond = resolve; }));
+      const stale = { ...original, id: 'deleted' };
+
+      const first = store.fetchScheduledToots();
+      const second = store.fetchScheduledToots();
+      answerSecond([original]);
+      await second;
+      expect(store.isLoading).toBe(false);
+      answerFirst([original, stale]);
+      await first;
+
+      expect(store.toots).toEqual([original]);
+      expect(store.isLoading).toBe(false);
+    });
+
+    it('ignores the error of an earlier reload once a later one has answered', async () => {
+      const store = useScheduledTootsStore();
+      let failFirst!: (err: Error) => void;
+      api.getScheduledToots
+        .mockReturnValueOnce(new Promise((_, reject) => { failFirst = reject; }))
+        .mockResolvedValueOnce([original]);
+
+      const first = store.fetchScheduledToots();
+      await store.fetchScheduledToots();
+      failFirst(new Error('Network Error'));
+      await first;
+
+      expect(store.error).toBe('');
+      expect(store.toots).toEqual([original]);
+    });
+  });
+
   describe('session changes', () => {
     const credentials = { instance: 'https://masto.example', clientId: 'id', clientSecret: 'secret', accessToken: 'token-a' };
 
@@ -331,6 +372,46 @@ describe('scheduledToots store', () => {
       fail(new Error('Boom'));
       await expect(updating).rejects.toThrow('Boom');
       expect(store.error).toBe('');
+    });
+
+    it('leaves the new session edit alone when an update of the previous one succeeds late', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      const store = useScheduledTootsStore();
+      await nextTick();
+      let finish!: () => void;
+      api.rescheduleToot.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+
+      const updating = store.updateToot(original, makeUpdated(), 'key-1');
+      auth.completeLogin({ ...credentials, accessToken: 'token-b' });
+      await nextTick();
+      const newEdit = { ...original, id: '7' };
+      store.setEditingToot(newEdit);
+
+      finish();
+      await updating;
+
+      expect(store.editingToot).toEqual(newEdit);
+    });
+
+    it('leaves the new session edit alone when a deletion of the previous one succeeds late', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      const store = useScheduledTootsStore();
+      await nextTick();
+      let finish!: () => void;
+      api.deleteScheduledToot.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+
+      const deleting = store.deleteToot('42');
+      auth.completeLogin({ ...credentials, accessToken: 'token-b' });
+      await nextTick();
+      // Ids are per instance: the new account may well have a toot with the same id.
+      store.setEditingToot(original);
+
+      finish();
+      await deleting;
+
+      expect(store.editingToot).toEqual(original);
     });
   });
 });

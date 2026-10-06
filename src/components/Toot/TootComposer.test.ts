@@ -205,6 +205,86 @@ describe('TootComposer', () => {
     expect(store.editingToot?.id).toBe('42');
   });
 
+  it('still reloads the list when a new toot fails while a deletion is running', async () => {
+    api.scheduleToot.mockRejectedValue(new Error('Network Error'));
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.pendingId = 'other';
+    store.pendingAction = 'delete';
+    api.getScheduledToots.mockClear();
+
+    await fillForm(wrapper, 'New toot');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').text()).toBe('Network Error');
+    expect(api.getScheduledToots).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reload the list when an edit is refused because another change is running', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.setEditingToot(makeScheduledToot());
+    await flushPromises();
+    await fillForm(wrapper, 'Bonjour !');
+    store.pendingId = 'other';
+    store.pendingAction = 'delete';
+    api.getScheduledToots.mockClear();
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.getScheduledToots).not.toHaveBeenCalled();
+  });
+
+  it('says so when the toot being edited is deleted', async () => {
+    api.deleteScheduledToot.mockResolvedValue(undefined);
+    mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.setEditingToot(makeScheduledToot());
+    await flushPromises();
+
+    await store.deleteToot('other');
+    expect(toast.info).not.toHaveBeenCalled();
+
+    await store.deleteToot('42');
+    await flushPromises();
+
+    expect(toast.info).toHaveBeenCalledWith('The toot you were editing was deleted.');
+  });
+
+  it('empties the form on Cancel, without a deletion notice', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    useScheduledTootsStore().setEditingToot(makeScheduledToot());
+    await flushPromises();
+
+    await wrapper.find('.cancel-button').trigger('click');
+    await flushPromises();
+
+    expect(useScheduledTootsStore().editingToot).toBeNull();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('');
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it('does not announce a deletion after an edit is saved', async () => {
+    api.rescheduleToot.mockResolvedValue(undefined);
+    const wrapper = mountComposer();
+    await flushPromises();
+    useScheduledTootsStore().setEditingToot(makeScheduledToot());
+    await flushPromises();
+    await fillForm(wrapper, 'Bonjour');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(useScheduledTootsStore().editingToot).toBeNull();
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
   it('refuses a toot longer than the instance allows, without sending it', async () => {
     const wrapper = mountComposer();
     await flushPromises();

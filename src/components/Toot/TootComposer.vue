@@ -13,7 +13,7 @@ import { format, addMinutes, isBefore, parseISO } from 'date-fns';
 import type { ScheduledToot, MastodonMediaAttachment, PollFormState } from '../../types/mastodon';
 import { buildScheduledToot } from '../../utils/buildScheduledToot';
 import ScheduledToots from './ScheduledToots.vue';
-import { useScheduledTootsStore } from '../../stores/scheduledToots';
+import { useScheduledTootsStore, BusyError } from '../../stores/scheduledToots';
 import MediaUpload from '../MediaUpload.vue';
 import ContentWarning from '../ContentWarning.vue';
 import ContentArea from '../ContentArea.vue';
@@ -137,10 +137,20 @@ function resetForm() {
   lastAttemptFingerprint = null;
 }
 
+// Leaving edit mode empties the form through the watcher above.
 function handleCancelEdit() {
   store.setEditingToot(null);
-  resetForm();
 }
+
+// The toot being edited was deleted from the list: the form empties by itself, so say why.
+store.$onAction(({ name, args, after }) => {
+  if (name !== 'deleteToot') return;
+  const [id] = args;
+  if (store.editingToot?.id !== id) return;
+  after((deleted) => {
+    if (deleted && store.editingToot === null) toast.info('The toot you were editing was deleted.');
+  });
+});
 
 onMounted(async () => {
   console.log('Initial auth account:', auth.account);
@@ -219,8 +229,8 @@ async function handleSubmit() {
     console.error('Error scheduling toot:', err);
     error.value = err instanceof Error ? err.message : 'Failed to schedule toot. Please try again.';
     // The request may have reached the instance despite the error: refresh so any created toot shows up.
-    // Unless another change is still running (the edit was refused): it refreshes the list itself.
-    if (store.pendingId === null) void store.fetchScheduledToots();
+    // Unless the edit was refused before anything was sent: the change still running refreshes the list itself.
+    if (!(err instanceof BusyError)) void store.fetchScheduledToots();
   } finally {
     isSubmitting.value = false;
   }

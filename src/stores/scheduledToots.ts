@@ -5,8 +5,13 @@ import { useMastodonApi } from '../composables/useMastodonApi';
 import { useAuthStore } from './auth';
 import { isOnlyScheduleChange } from '../utils/isOnlyScheduleChange';
 
-/** Shown when a change is attempted while another one is still being saved. */
-const BUSY_MESSAGE = 'Another change is still being saved. Please try again in a moment.';
+/** A change refused because another one is still being saved: nothing was sent. */
+export class BusyError extends Error {
+  constructor() {
+    super('Another change is still being saved. Please try again in a moment.');
+    this.name = 'BusyError';
+  }
+}
 
 /** Mastodon refuses scheduling less than 5 minutes ahead; past that point the original may publish mid-edit. */
 const EDIT_LOCK_MS = 5 * 60 * 1000;
@@ -39,6 +44,9 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
   const pendingId = ref<string | null>(null);
   const pendingAction = ref<PendingAction | null>(null);
   const auth = useAuthStore();
+
+  /** Number of the latest list request: an earlier one that answers late must not overwrite it. */
+  let fetchSeq = 0;
 
   const count = computed(() => toots.value.length);
   const sortedToots = computed(() => [...toots.value].sort((a, b) => getTimestamp(a) - getTimestamp(b)));
@@ -77,19 +85,23 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
   async function fetchScheduledToots(): Promise<void> {
     // A list loaded for a previous session must not overwrite the current one.
     const token = auth.accessToken;
+    // Reloads can overlap (a deletion and an edit, say): only the latest one may update the list.
+    const seq = ++fetchSeq;
+    const isStale = () => seq !== fetchSeq || auth.accessToken !== token;
     try {
       setLoading(true);
       setError('');
       const api = useMastodonApi();
       const loaded = await api.getScheduledToots();
-      if (auth.accessToken !== token) return;
+      if (isStale()) return;
       setToots(loaded);
     } catch (err) {
       console.error('Error fetching scheduled toots:', err);
-      if (auth.accessToken !== token) return;
+      if (isStale()) return;
       setError(err instanceof Error ? err.message : 'Failed to fetch scheduled toots');
     } finally {
-      setLoading(false);
+      // The latest request owns the loading state.
+      if (seq === fetchSeq) setLoading(false);
     }
   }
 
@@ -107,7 +119,8 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       setError('');
       await useMastodonApi().deleteScheduledToot(id);
       // The composer must not keep editing, and later re-create, a toot that no longer exists.
-      if (editingToot.value?.id === id) setEditingToot(null);
+      // Unless another session took over: its edit is another account's toot.
+      if (auth.accessToken === token && editingToot.value?.id === id) setEditingToot(null);
       await fetchScheduledToots();
       return true;
     } catch (err) {
@@ -136,7 +149,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     idempotencyKey: string,
   ): Promise<UpdateTootResult> {
     // Thrown before anything starts, and not put in `error`: the list stays as it is, the composer says why.
-    if (pendingId.value !== null) throw new Error(BUSY_MESSAGE);
+    if (pendingId.value !== null) throw new BusyError();
     const token = auth.accessToken;
     try {
       startPending(original.id, 'update');
@@ -166,7 +179,8 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       }
 
       await fetchScheduledToots();
-      setEditingToot(null);
+      // Another session took over meanwhile: its edit, if any, is not this one.
+      if (auth.accessToken === token) setEditingToot(null);
       return { previousVersionRemoved };
     } catch (err) {
       console.error('Error updating toot:', err);
