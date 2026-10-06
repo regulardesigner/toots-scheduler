@@ -261,6 +261,24 @@ describe('TootComposer', () => {
     expect(api.scheduleToot).toHaveBeenCalled();
   });
 
+  it('does not count the spaces around the content warning', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.isLoaded = true;
+    await fillForm(wrapper, 'Hello');
+    await wrapper.find('#sensitive-toggle').setValue(true);
+    await wrapper.find('#spoiler-text').setValue('Warn      ');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').exists()).toBe(false);
+    expect(api.scheduleToot).toHaveBeenCalled();
+  });
+
   it('refuses more images than the instance allows, without sending', async () => {
     const wrapper = mountComposer();
     await flushPromises();

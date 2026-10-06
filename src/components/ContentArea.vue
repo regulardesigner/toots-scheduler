@@ -42,11 +42,15 @@ const announceLevel = computed(() =>
 /** Text of the live region: it changes, and is read, only when a step is reached or left. */
 const announcement = ref('');
 
-function describeRemaining(remaining: number): string {
-  if (remaining === 0) return 'Character limit reached';
+/** "3 characters left" / "1 character over the limit": the wording of the counter and of the live region. */
+function spokenCount(remaining: number): string {
   const count = Math.abs(remaining);
   const characters = count === 1 ? 'character' : 'characters';
-  return remaining > 0 ? `${count} ${characters} left` : `${count} ${characters} over the limit`;
+  return remaining < 0 ? `${count} ${characters} over the limit` : `${count} ${characters} left`;
+}
+
+function describeRemaining(remaining: number): string {
+  return remaining === 0 ? 'Character limit reached' : spokenCount(remaining);
 }
 
 watch(announceLevel, (level) => {
@@ -98,7 +102,7 @@ watch(announceLevel, (level) => {
         class="character-count"
         :class="{ 'near-limit': instance.isLoaded && remainingCharacters < 50 }"
       >
-        {{ remainingCharacters }}<span class="visually-hidden">{{ remainingCharacters < 0 ? ' characters over the limit' : ' characters left' }}</span>
+        <span aria-hidden="true">{{ remainingCharacters }}</span><span class="visually-hidden">{{ spokenCount(remainingCharacters) }}</span>
       </span>
       <span
         class="visually-hidden"

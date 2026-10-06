@@ -23,7 +23,7 @@ describe('ContentArea', () => {
   it("uses Mastodon's default limit until the instance answers", () => {
     const wrapper = mountArea();
 
-    expect(wrapper.find('.character-count').text()).toMatch(/^495\b/);
+    expect(wrapper.find('.character-count [aria-hidden="true"]').text()).toBe('495');
   });
 
   it("follows the instance's character limit", async () => {
@@ -31,7 +31,7 @@ describe('ContentArea', () => {
     useInstanceStore().maxCharacters = 1000;
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('.character-count').text()).toMatch(/^995\b/);
+    expect(wrapper.find('.character-count [aria-hidden="true"]').text()).toBe('995');
   });
 
   it('shows the red near-limit style only once the instance limits are known', async () => {
@@ -47,7 +47,7 @@ describe('ContentArea', () => {
     const wrapper = mountArea(`https://example.com/${'a'.repeat(100)}`);
 
     expect(wrapper.find('textarea').attributes('maxlength')).toBeUndefined();
-    expect(wrapper.find('.character-count').text()).toMatch(/^477\b/);
+    expect(wrapper.find('.character-count [aria-hidden="true"]').text()).toBe('477');
   });
 
   it('announces the remaining characters only when a step near the limit is reached', async () => {
@@ -116,8 +116,17 @@ describe('ContentArea', () => {
     useInstanceStore().maxCharacters = 10;
     const wrapper = mountArea('x'.repeat(13));
 
-    expect(wrapper.find('.character-count').text()).toBe('-3 characters over the limit');
-    expect(wrapper.find('.character-count').text()).not.toContain('left');
+    const spoken = wrapper.find('.character-count .visually-hidden').text();
+    expect(spoken).toBe('3 characters over the limit');
+    expect(wrapper.find('.character-count [aria-hidden="true"]').text()).toBe('-3');
+    expect(wrapper.find('.character-count').attributes('id')).toBe('character-count');
+  });
+
+  it('reads the remaining count with singular wording', () => {
+    useInstanceStore().maxCharacters = 10;
+
+    expect(mountArea('x'.repeat(9)).find('.character-count .visually-hidden').text()).toBe('1 character left');
+    expect(mountArea('x'.repeat(11)).find('.character-count .visually-hidden').text()).toBe('1 character over the limit');
   });
 
   it('counts the extra characters of the content warning', () => {
@@ -126,6 +135,6 @@ describe('ContentArea', () => {
       global: { plugins: [pinia] },
     });
 
-    expect(wrapper.find('.character-count').text()).toMatch(/^485\b/);
+    expect(wrapper.find('.character-count [aria-hidden="true"]').text()).toBe('485');
   });
 });
