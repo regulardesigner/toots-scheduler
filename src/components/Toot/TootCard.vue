@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ref, computed } from 'vue';
 import type { PollParams } from '../../types/mastodon';
 import type { PendingAction } from '../../stores/scheduledToots';
+import { getTimeZone } from '../../utils/timeZone';
 
 interface Props {
   id: string;
@@ -43,6 +44,9 @@ const languages = {
   ar: 'العربية',
   hi: 'हिन्दी',
 } as const;
+
+/** Dates are shown in the browser's time zone, named next to them. */
+const timeZone = getTimeZone();
 
 function formatDateTime(date: string) {
   return format(new Date(date), 'MMM d, yyyy HH:mm');
@@ -85,7 +89,7 @@ const hasPoll = computed(() => {
     <div class="toot-header">
       <div class="meta-row">
         <span class="meta-label">Scheduled for:
-          {{ formatDateTime(props.scheduledAt) }}
+          {{ formatDateTime(props.scheduledAt) }} {{ timeZone }}
         </span>
       </div>
       <div class="actions">

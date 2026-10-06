@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import TootCard from './TootCard.vue';
+import { getTimeZone } from '../../utils/timeZone';
 
 const base = { scheduledAt: '2031-01-01T12:00:00.000Z', text: 'Hello' };
 
@@ -75,5 +76,9 @@ describe('TootCard', () => {
   it('is marked busy only while something is being done to it', () => {
     expect(mountCard().find('.toot-card').attributes('aria-busy')).toBeUndefined();
     expect(mountCard({ pendingAction: 'delete' }).find('.toot-card').attributes('aria-busy')).toBe('true');
+  });
+
+  it('names the time zone of the scheduled date', () => {
+    expect(mountCard().find('.meta-label').text()).toContain(getTimeZone());
   });
 });
