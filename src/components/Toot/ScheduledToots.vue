@@ -140,15 +140,16 @@ onMounted(() => {
         Loading scheduled toots...
       </div>
 
+      <!-- After a failed load, "no toots" may be false: the error above says enough. -->
       <div
-        v-else-if="store.count === 0"
+        v-else-if="store.count === 0 && !store.error"
         class="empty-state"
       >
         No scheduled toots yet.
       </div>
 
       <div
-        v-else
+        v-else-if="store.count > 0"
         class="toots-list"
       >
         <TransitionGroup 

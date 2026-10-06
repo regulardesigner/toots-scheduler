@@ -119,6 +119,17 @@ describe('ScheduledToots', () => {
     expect(wrapper.find('[role="alert"]').text()).toBe('Boom');
   });
 
+  it('does not claim there are no toots when the list could not be loaded', async () => {
+    const wrapper = await mountList();
+    expect(wrapper.find('.empty-state').exists()).toBe(true);
+
+    useScheduledTootsStore().setError('Boom');
+    await flushPromises();
+
+    expect(wrapper.find('.empty-state').exists()).toBe(false);
+    expect(wrapper.find('[role="alert"]').text()).toBe('Boom');
+  });
+
   it('shows an error and the list together', async () => {
     api.getScheduledToots.mockResolvedValue([toot]);
     const wrapper = await mountList();
