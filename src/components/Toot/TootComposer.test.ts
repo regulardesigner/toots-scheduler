@@ -217,6 +217,7 @@ describe('TootComposer', () => {
     instance.maxCharacters = 10;
     instance.isLoaded = true;
     await fillForm(wrapper, 'Hello');
+    await wrapper.find('#sensitive-toggle').setValue(true);
     await wrapper.find('#spoiler-text').setValue('Warning!');
 
     await wrapper.find('form').trigger('submit');
@@ -233,6 +234,7 @@ describe('TootComposer', () => {
     instance.maxCharacters = 30;
     instance.isLoaded = true;
     await fillForm(wrapper, 'Hello');
+    await wrapper.find('#sensitive-toggle').setValue(true);
     await wrapper.find('#spoiler-text').setValue('https://example.com/abcdefghij');
 
     await wrapper.find('form').trigger('submit');
@@ -240,6 +242,23 @@ describe('TootComposer', () => {
 
     expect(api.scheduleToot).not.toHaveBeenCalled();
     expect(wrapper.find('.error').text()).toBe('Your toot is 35 characters long, but your instance allows 30.');
+  });
+
+  it('does not count the content warning text while the warning is off', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.isLoaded = true;
+    await fillForm(wrapper, 'Hello');
+    await wrapper.find('#spoiler-text').setValue('Warning!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').exists()).toBe(false);
+    expect(api.scheduleToot).toHaveBeenCalled();
   });
 
   it('refuses more images than the instance allows, without sending', async () => {

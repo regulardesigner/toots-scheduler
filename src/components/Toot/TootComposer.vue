@@ -43,8 +43,8 @@ const isSensitive = ref(false);
 const showMedia = ref(false);
 const showPoll = ref(false);
 const spoilerText = ref('');
-/** The content warning counts toward the limit, in the counter and in the submit check alike. */
-const spoilerLength = computed(() => countGraphemes(spoilerText.value));
+/** The content warning counts toward the limit only when it is enabled (that is when it is sent), in the counter and the submit check alike. */
+const spoilerLength = computed(() => (isSensitive.value ? countGraphemes(spoilerText.value) : 0));
 const mediaAttachments = ref<MastodonMediaAttachment[]>([]);
 const pollData = ref<PollFormState>(createEmptyPoll());
 
