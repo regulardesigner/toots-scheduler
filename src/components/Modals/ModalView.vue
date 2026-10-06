@@ -80,8 +80,8 @@ function handleDocumentKeydown(event: KeyboardEvent): void {
 }
 
 function activate(): void {
-  // Closed again before the content rendered: nothing to do.
-  if (!props.isOpen) return;
+  // Closed again, or unmounted (the template ref is nulled), before the content rendered: nothing to do.
+  if (!props.isOpen || !modalRef.value) return;
   openStack.push(id);
   syncScrollLock();
   document.addEventListener('keydown', handleDocumentKeydown);

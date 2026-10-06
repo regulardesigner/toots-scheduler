@@ -42,6 +42,7 @@ describe('ModalView', () => {
   afterEach(() => {
     mounted.splice(0).forEach(wrapper => wrapper.unmount());
     document.body.innerHTML = '';
+    document.body.classList.remove('modal-open');
   });
 
   it('is named by its heading and has a labelled close button', () => {
@@ -177,5 +178,14 @@ describe('ModalView', () => {
     await wrapper.setProps({ isOpen: false });
 
     expect(document.activeElement).toBe(opener);
+  });
+
+  it('leaves no trace when unmounted before it activated', async () => {
+    const wrapper = mountModal(true);
+    wrapper.unmount();
+    mounted.splice(mounted.indexOf(wrapper), 1);
+    await nextTick();
+
+    expect(document.body.classList.contains('modal-open')).toBe(false);
   });
 });
