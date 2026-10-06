@@ -250,6 +250,9 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
 .app-main {
   flex: 1;
   width: 100%;
+  /* Pages stay flex items, as they were directly under .app: their top margins don't collapse into their children's. */
+  display: flex;
+  flex-direction: column;
 }
 
 footer {
