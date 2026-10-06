@@ -63,7 +63,9 @@ onMounted(async () => {
 <template>
   <div class="oauth-callback">
     <div class="loading">
-      <p>Authenticating...</p>
+      <h1 class="loading-title">
+        Authenticating...
+      </h1>
     </div>
   </div>
 </template>
@@ -78,5 +80,10 @@ onMounted(async () => {
 
 .loading {
   text-align: center;
+}
+
+.loading-title {
+  font-size: 1rem;
+  font-weight: 400;
 }
 </style>

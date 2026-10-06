@@ -15,13 +15,13 @@ import ThanksConfirmModal from './components/Modals/ThanksConfirmModal.vue';
 import { buildThanksMessage } from './utils/thanks';
 import ModalView from './components/Modals/ModalView.vue';
 import Send from './components/icons/Send.vue';
+import MobileNav from './components/MobileNav.vue';
 
 const auth = useAuthStore();
 const featuresStore = useFeaturesStore();
 const { newFeatures } = storeToRefs(featuresStore);
 const showWhatsNew = ref(false);
 const mastodonApi = useMastodonApi();
-const isMenuOpen = ref(false);
 const toast = useToast();
 
 // Initialize session timeout
@@ -34,7 +34,6 @@ const route = useRoute();
 const router = useRouter();
 
 async function handleLogout(): Promise<void> {
-  isMenuOpen.value = false;
   await auth.logout();
   toast.success('You have been logged out successfully.');
 }
@@ -70,7 +69,6 @@ function handleWhatsNewClose() {
 const thanksMessage = ref<string | null>(null);
 
 function openThanks(): void {
-  isMenuOpen.value = false;
   const sender = auth.account?.display_name || auth.account?.acct || 'Someone';
   thanksMessage.value = buildThanksMessage(sender, new Date());
 }
@@ -93,19 +91,16 @@ async function confirmThanks(): Promise<void> {
   }
 }
 
-function toggleMenu() {
-  isMenuOpen.value = !isMenuOpen.value;
-}
-
 const hasNewFeatures = computed(() => newFeatures.value.length > 0);
 </script>
 
 <template>
   <div class="app">
     <header class="header">
-      <h1 class="header-title winky-sans-900">
+      <!-- The app name, not a heading: each page has its own main heading. -->
+      <p class="header-title winky-sans-900">
         Toot Scheduler
-      </h1>
+      </p>
       
       <!-- Desktop Navigation -->
       <nav
@@ -134,60 +129,18 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
       </nav>
 
       <!-- Mobile Burger Menu -->
-      <div
+      <MobileNav
         v-if="auth.accessToken"
-        class="mobile-nav"
-      >
-        <span
-          v-if="hasNewFeatures"
-          class="notification-dot"
-          :class="{ 'notification-dot--none': isMenuOpen }"
-        />
-        <span
-          v-if="hasNewFeatures"
-          class="whats-new-mobile-label"
-          :class="{ 'whats-new-mobile-label--none': isMenuOpen }"
-        >What's New</span>
-        <button
-          class="burger-menu"
-          :class="{ 'is-open': isMenuOpen }"
-          @click="toggleMenu"
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-        <div
-          class="mobile-menu"
-          :class="{ 'is-open': isMenuOpen }"
-        >
-          <span class="mobile-menu-spacer">
-            <button 
-              v-if="hasNewFeatures"
-              class="whats-new-button"
-              @click="showWhatsNew = true"
-            >
-              What's New
-            </button>
-            <button
-              class="thanks-button"
-              @click="openThanks"
-            >
-              <Send class="thanks-button-icon" />
-              Say Thanks
-            </button>
-          </span>
-          <button
-            class="logout-button"
-            @click="handleLogout"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
+        :has-new-features="hasNewFeatures"
+        @whats-new="showWhatsNew = true"
+        @thanks="openThanks"
+        @logout="handleLogout"
+      />
     </header>
 
-    <RouterView />
+    <main class="app-main">
+      <RouterView />
+    </main>
 
     <footer>
       <p>&copy; {{ new Date().getFullYear() }} Toot Scheduler</p>
@@ -275,116 +228,6 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   gap: 0.8rem;
 }
 
-/* Mobile Navigation Styles */
-.mobile-nav {
-  position: relative;
-  display: none;
-
-}
-
-.burger-menu {
-  position: relative;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.burger-menu span {
-  display: block;
-  width: 25px;
-  height: 3px;
-  border-radius: 5px;
-  background-color: #333;
-  transition: all 0.3s ease;
-}
-
-.notification-dot {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.2rem;
-  width: 0.65rem;
-  height: 0.65rem;
-  background-color: #FF9200;
-  border-radius: 50%;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.whats-new-mobile-label {
-  position: absolute;
-  top: 0.4rem;
-  right: 2.6rem;
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #fff;
-  background-color: #FF9200;
-  padding: 0.2rem 0.5rem;
-  border-radius: 0.5rem;
-  z-index: 10;
-  display: inline-block;
-  text-wrap: nowrap;
-  animation: enter-from-right-fade-in-and-out 3s ease forwards;
-}
-
-@keyframes enter-from-right-fade-in-and-out {
-  0% {
-    opacity: 0;
-    transform: translateX(20%);
-  }
-  10%, 80% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-.notification-dot--none {
-  display: none;
-}
-
-.burger-menu.is-open span:nth-child(1) {
-  transform: translateY(9px) rotate(45deg);
-}
-
-.burger-menu.is-open span:nth-child(2) {
-  opacity: 0;
-}
-
-.burger-menu.is-open span:nth-child(3) {
-  transform: translateY(-9px) rotate(-45deg);
-}
-
-.mobile-menu {
-  position: fixed;
-  top: 60px;
-  right: -100%;
-  width: 100%;
-  height: calc(100dvh - 60px);
-  background-color: #f5f5f5;
-  padding: 1rem;
-  transition: right 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.mobile-menu-spacer {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.mobile-menu.is-open {
-  right: 0;
-}
-
 /* Desktop Navigation Styles */
 .desktop-nav {
   display: flex;
@@ -395,17 +238,10 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   .desktop-nav {
     display: none;
   }
-
-  .mobile-nav {
-    display: block;
-  }
 }
 
-main {
+.app-main {
   flex: 1;
-  padding: 2rem 1rem;
-  max-width: 800px;
-  margin: 0 auto;
   width: 100%;
 }
 

@@ -57,6 +57,14 @@ describe('TootComposer', () => {
     api.scheduledTootExists.mockResolvedValue(true);
   });
 
+  it('has one <h1>; the scheduled list is a section under it', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+
+    expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Schedule a toot']);
+    expect(wrapper.find('.toots-summary h2').text()).toBe('Scheduled Toots (0)');
+  });
+
   it('sends a single request when the form is submitted twice quickly', async () => {
     let finish!: () => void;
     api.scheduleToot.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));

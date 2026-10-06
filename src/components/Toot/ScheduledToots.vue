@@ -87,7 +87,7 @@ onMounted(() => {
       :open="store.count > 0 || !!store.error"
     >
       <summary class="toots-summary">
-        <h1>Scheduled Toots ({{ store.count }})</h1>
+        <h2>Scheduled Toots ({{ store.count }})</h2>
       </summary>
       
       <div
@@ -193,7 +193,7 @@ onMounted(() => {
   transform: translateY(-50%) rotate(180deg);
 }
 
-h1 {
+h2 {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;

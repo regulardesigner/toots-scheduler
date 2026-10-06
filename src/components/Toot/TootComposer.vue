@@ -225,6 +225,9 @@ async function handleSubmit() {
 
 <template>
   <div class="toot-composer">
+    <h1 class="visually-hidden">
+      Schedule a toot
+    </h1>
     <form @submit.prevent="handleSubmit">
       <div
         v-if="auth.account"
