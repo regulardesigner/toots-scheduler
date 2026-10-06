@@ -33,10 +33,10 @@ const remainingCharacters = computed(() => instance.maxCharacters - characterCou
 
 /**
  * How many steps the remaining count has reached; 0 while far from the limit,
- * and until the instance limits are known (the default limit could be wrong).
+ * and until the instance gave its limit (the default could be wrong).
  */
 const announceLevel = computed(() =>
-  instance.isLoaded ? ANNOUNCE_STEPS.filter(step => remainingCharacters.value <= step).length : 0,
+  instance.hasCharacterLimit ? ANNOUNCE_STEPS.filter(step => remainingCharacters.value <= step).length : 0,
 );
 
 /** Text of the live region: it changes, and is read, only when a step is reached or left. */
@@ -100,7 +100,7 @@ watch(announceLevel, (level) => {
       <span
         id="character-count"
         class="character-count"
-        :class="{ 'near-limit': instance.isLoaded && remainingCharacters < 50 }"
+        :class="{ 'near-limit': instance.hasCharacterLimit && remainingCharacters < 50 }"
       >
         <span aria-hidden="true">{{ remainingCharacters }}</span><span class="visually-hidden">{{ spokenCount(remainingCharacters) }}</span>
       </span>

@@ -214,6 +214,28 @@ describe('useMastodonApi', () => {
       expect(configuration.maxCharacters).toBe(5000);
     });
 
+    it('asks /api/v1/instance for the text limit when v2 gives none, v2 values winning', async () => {
+      http.get
+        .mockResolvedValueOnce({ data: { configuration: { media_attachments: { image_size_limit: 5000 } } } })
+        .mockResolvedValueOnce({ data: { max_toot_chars: 5000, configuration: { media_attachments: { image_size_limit: 1 } } } });
+
+      const configuration = await useMastodonApi().getInstanceConfiguration();
+
+      expect(http.get).toHaveBeenNthCalledWith(2, 'https://masto.example/api/v1/instance');
+      expect(configuration).toMatchObject({ maxCharacters: 5000, imageSizeLimit: 5000 });
+    });
+
+    it('keeps the v2 answer when v2 gives no text limit and v1 fails', async () => {
+      http.get
+        .mockResolvedValueOnce({ data: { configuration: { media_attachments: { image_size_limit: 5000 } } } })
+        .mockRejectedValueOnce(httpError(404));
+
+      const configuration = await useMastodonApi().getInstanceConfiguration();
+
+      expect(configuration.maxCharacters).toBeUndefined();
+      expect(configuration.imageSizeLimit).toBe(5000);
+    });
+
     it('rejects when both instance endpoints fail', async () => {
       http.get.mockRejectedValueOnce(httpError(404)).mockRejectedValueOnce(httpError(500));
 
@@ -228,7 +250,7 @@ describe('useMastodonApi', () => {
       expect(http.get).toHaveBeenCalledTimes(1);
     });
 
-    it('never calls v1 when v2 answers', async () => {
+    it('never calls v1 when v2 gives the text limit', async () => {
       http.get.mockResolvedValue({ data: { configuration: { statuses: { max_characters: 1000 } } } });
 
       await useMastodonApi().getInstanceConfiguration();

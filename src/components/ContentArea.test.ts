@@ -38,9 +38,18 @@ describe('ContentArea', () => {
     const wrapper = mountArea('a'.repeat(600));
     expect(wrapper.find('.character-count').classes()).not.toContain('near-limit');
 
-    useInstanceStore().isLoaded = true;
+    useInstanceStore().hasCharacterLimit = true;
     await wrapper.vm.$nextTick();
     expect(wrapper.find('.character-count').classes()).toContain('near-limit');
+  });
+
+  it('neither shows red nor announces when the instance gave only media limits', async () => {
+    useInstanceStore().hasMediaLimit = true;
+    const wrapper = mountArea('');
+    await wrapper.setProps({ modelValue: 'a'.repeat(600) });
+
+    expect(wrapper.find('.character-count').classes()).not.toContain('near-limit');
+    expect(wrapper.find('[aria-live="polite"]').text()).toBe('');
   });
 
   it('counts a long URL as 23 characters and does not truncate the text', () => {
@@ -53,7 +62,7 @@ describe('ContentArea', () => {
   it('announces the remaining characters only when a step near the limit is reached', async () => {
     const instance = useInstanceStore();
     instance.maxCharacters = 100;
-    instance.isLoaded = true;
+    instance.hasCharacterLimit = true;
     const wrapper = mountArea('');
     const liveRegion = () => wrapper.find('[aria-live="polite"]').text();
     expect(liveRegion()).toBe('');
@@ -101,7 +110,7 @@ describe('ContentArea', () => {
   it('announces going one character over the limit', async () => {
     const instance = useInstanceStore();
     instance.maxCharacters = 100;
-    instance.isLoaded = true;
+    instance.hasCharacterLimit = true;
     const wrapper = mountArea('');
     const liveRegion = () => wrapper.find('[aria-live="polite"]').text();
 

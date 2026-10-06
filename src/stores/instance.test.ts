@@ -61,18 +61,42 @@ describe('instance store', () => {
     });
   });
 
-  it('knows whether the limits were read', async () => {
+  it('knows which limits the instance gave', async () => {
     const store = useInstanceStore();
-    expect(store.isLoaded).toBe(false);
+    expect(store.hasCharacterLimit).toBe(false);
+    expect(store.hasMediaLimit).toBe(false);
 
     const auth = useAuthStore();
     auth.completeLogin(credentials);
     await flushPromises();
-    expect(store.isLoaded).toBe(true);
+    expect(store.hasCharacterLimit).toBe(true);
+    expect(store.hasMediaLimit).toBe(true);
 
     await auth.logout();
     await flushPromises();
-    expect(store.isLoaded).toBe(false);
+    expect(store.hasCharacterLimit).toBe(false);
+    expect(store.hasMediaLimit).toBe(false);
+  });
+
+  it('does not treat the default text limit as known when the instance gave only media limits', async () => {
+    api.getInstanceConfiguration.mockResolvedValue({ maxMediaAttachments: 2 });
+    const store = useInstanceStore();
+    useAuthStore().completeLogin(credentials);
+    await flushPromises();
+
+    expect(store.hasCharacterLimit).toBe(false);
+    expect(store.hasMediaLimit).toBe(true);
+    expect(store.maxCharacters).toBe(500);
+  });
+
+  it('does not treat the default image count as known when the instance gave only the text limit', async () => {
+    api.getInstanceConfiguration.mockResolvedValue({ maxCharacters: 1000 });
+    const store = useInstanceStore();
+    useAuthStore().completeLogin(credentials);
+    await flushPromises();
+
+    expect(store.hasCharacterLimit).toBe(true);
+    expect(store.hasMediaLimit).toBe(false);
   });
 
   it('does not claim the limits were read when the request failed', async () => {
@@ -81,7 +105,8 @@ describe('instance store', () => {
     useAuthStore().completeLogin(credentials);
     await flushPromises();
 
-    expect(store.isLoaded).toBe(false);
+    expect(store.hasCharacterLimit).toBe(false);
+    expect(store.hasMediaLimit).toBe(false);
   });
 
   it('reads the limits of a restored session', async () => {

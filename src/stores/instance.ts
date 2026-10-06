@@ -18,15 +18,18 @@ export const useInstanceStore = defineStore('instance', () => {
   const maxMediaAttachments = ref(MAX_IMAGES_PER_TOOT);
   const imageSizeLimit = ref(MAX_IMAGE_BYTES);
   const supportedMimeTypes = ref<string[]>([...SUPPORTED_IMAGE_TYPES]);
-  /** True once the instance's own limits were read; until then the values above are guesses. */
-  const isLoaded = ref(false);
+  /** True once the instance gave its text limit; until then maxCharacters is a guess, not to be enforced. */
+  const hasCharacterLimit = ref(false);
+  /** True once the instance gave its images-per-toot limit; until then maxMediaAttachments is a guess. */
+  const hasMediaLimit = ref(false);
 
   function reset(): void {
     maxCharacters.value = DEFAULT_MAX_CHARACTERS;
     maxMediaAttachments.value = MAX_IMAGES_PER_TOOT;
     imageSizeLimit.value = MAX_IMAGE_BYTES;
     supportedMimeTypes.value = [...SUPPORTED_IMAGE_TYPES];
-    isLoaded.value = false;
+    hasCharacterLimit.value = false;
+    hasMediaLimit.value = false;
   }
 
   /**
@@ -44,7 +47,8 @@ export const useInstanceStore = defineStore('instance', () => {
       maxMediaAttachments.value = configuration.maxMediaAttachments ?? MAX_IMAGES_PER_TOOT;
       imageSizeLimit.value = configuration.imageSizeLimit ?? MAX_IMAGE_BYTES;
       supportedMimeTypes.value = usableImageTypes(configuration.supportedMimeTypes);
-      isLoaded.value = true;
+      hasCharacterLimit.value = configuration.maxCharacters !== undefined;
+      hasMediaLimit.value = configuration.maxMediaAttachments !== undefined;
     } catch (error) {
       console.error('Could not read the instance limits, using the defaults:', error);
     }
@@ -66,8 +70,10 @@ export const useInstanceStore = defineStore('instance', () => {
     imageSizeLimit,
     /** Image MIME types the app can attach on this instance (images only, never empty). */
     supportedMimeTypes,
-    /** Whether the limits above come from the instance (false: defaults, not to be enforced). */
-    isLoaded,
+    /** Whether maxCharacters comes from the instance (false: the default, not to be enforced). */
+    hasCharacterLimit,
+    /** Whether maxMediaAttachments comes from the instance (false: the default, not to be enforced). */
+    hasMediaLimit,
     /** Reads the limits again for the current session. */
     load,
   };

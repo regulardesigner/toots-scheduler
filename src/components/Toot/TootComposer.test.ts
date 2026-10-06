@@ -332,7 +332,7 @@ describe('TootComposer', () => {
     await flushPromises();
     const instance = useInstanceStore();
     instance.maxCharacters = 10;
-    instance.isLoaded = true;
+    instance.hasCharacterLimit = true;
     await fillForm(wrapper, 'Hello world!');
 
     await wrapper.find('form').trigger('submit');
@@ -348,7 +348,7 @@ describe('TootComposer', () => {
     await flushPromises();
     const instance = useInstanceStore();
     instance.maxCharacters = 10;
-    instance.isLoaded = true;
+    instance.hasCharacterLimit = true;
     await fillForm(wrapper, 'Hello world!');
 
     await wrapper.find('form').trigger('submit');
@@ -376,12 +376,47 @@ describe('TootComposer', () => {
     expect(api.scheduleToot).toHaveBeenCalledTimes(1);
   });
 
+  it('does not enforce the default text limit when the instance gave only media limits', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.hasMediaLimit = true;
+    await fillForm(wrapper, 'b'.repeat(600));
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').exists()).toBe(false);
+    expect(api.scheduleToot).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not enforce the default image count when the instance gave only the text limit', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    api.deleteScheduledToot.mockResolvedValue(undefined);
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxMediaAttachments = 1;
+    instance.hasCharacterLimit = true;
+    const image = { id: 'a', type: 'image', url: 'https://x/a.png', preview_url: 'https://x/a.png' };
+    useScheduledTootsStore().setEditingToot(makeScheduledToot({ media_attachments: [image, { ...image, id: 'b' }] as MastodonStatus['media_attachments'] }));
+    await flushPromises();
+    await wrapper.find('textarea').setValue('Bonjour !');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').exists()).toBe(false);
+    expect(api.scheduleToot).toHaveBeenCalledTimes(1);
+  });
+
   it('counts the content warning with the text', async () => {
     const wrapper = mountComposer();
     await flushPromises();
     const instance = useInstanceStore();
     instance.maxCharacters = 10;
-    instance.isLoaded = true;
+    instance.hasCharacterLimit = true;
     await fillForm(wrapper, 'Hello');
     await wrapper.find('#sensitive-toggle').setValue(true);
     await wrapper.find('#spoiler-text').setValue('Warning!');
@@ -398,7 +433,7 @@ describe('TootComposer', () => {
     await flushPromises();
     const instance = useInstanceStore();
     instance.maxCharacters = 30;
-    instance.isLoaded = true;
+    instance.hasCharacterLimit = true;
     await fillForm(wrapper, 'Hello');
     await wrapper.find('#sensitive-toggle').setValue(true);
     await wrapper.find('#spoiler-text').setValue('https://example.com/abcdefghij');
@@ -416,7 +451,7 @@ describe('TootComposer', () => {
     await flushPromises();
     const instance = useInstanceStore();
     instance.maxCharacters = 10;
-    instance.isLoaded = true;
+    instance.hasCharacterLimit = true;
     await fillForm(wrapper, 'Hello');
     await wrapper.find('#spoiler-text').setValue('Warning!');
 
@@ -433,7 +468,7 @@ describe('TootComposer', () => {
     await flushPromises();
     const instance = useInstanceStore();
     instance.maxCharacters = 10;
-    instance.isLoaded = true;
+    instance.hasCharacterLimit = true;
     await fillForm(wrapper, 'Hello');
     await wrapper.find('#sensitive-toggle').setValue(true);
     await wrapper.find('#spoiler-text').setValue('Warn      ');
@@ -450,7 +485,7 @@ describe('TootComposer', () => {
     await flushPromises();
     const instance = useInstanceStore();
     instance.maxMediaAttachments = 1;
-    instance.isLoaded = true;
+    instance.hasMediaLimit = true;
     const image = { id: 'a', type: 'image', url: 'https://x/a.png', preview_url: 'https://x/a.png' };
     useScheduledTootsStore().setEditingToot(makeScheduledToot({ media_attachments: [image, { ...image, id: 'b' }] as MastodonStatus['media_attachments'] }));
     await flushPromises();
