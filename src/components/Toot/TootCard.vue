@@ -89,7 +89,7 @@ const hasPoll = computed(() => {
     <div class="toot-header">
       <div class="meta-row">
         <span class="meta-label">Scheduled for:
-          {{ formatDateTime(props.scheduledAt) }} {{ timeZone }}
+          {{ formatDateTime(props.scheduledAt) }} ({{ timeZone }})
         </span>
       </div>
       <div class="actions">

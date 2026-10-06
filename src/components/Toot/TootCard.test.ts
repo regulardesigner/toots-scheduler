@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { format } from 'date-fns';
 import { defineComponent, h } from 'vue';
 import TootCard from './TootCard.vue';
 import { getTimeZone } from '../../utils/timeZone';
@@ -78,7 +79,9 @@ describe('TootCard', () => {
     expect(mountCard({ pendingAction: 'delete' }).find('.toot-card').attributes('aria-busy')).toBe('true');
   });
 
-  it('names the time zone of the scheduled date', () => {
-    expect(mountCard().find('.meta-label').text()).toContain(getTimeZone());
+  it('shows the scheduled date in local time, with the time zone in parentheses', () => {
+    const localDate = format(new Date(base.scheduledAt), 'MMM d, yyyy HH:mm');
+
+    expect(mountCard().find('.meta-label').text()).toBe(`Scheduled for: ${localDate} (${getTimeZone()})`);
   });
 });
