@@ -68,7 +68,10 @@ export interface ScheduledToot {
   poll?: PollParams;
 }
 
-/** The limits an instance reports (GET /api/v2/instance). A missing value: the instance gave none, or an invalid one. */
+/**
+ * The limits an instance reports (GET /api/v2/instance; GET /api/v1/instance as the fallback when v2
+ * fails, or gives no text limit). A missing value: the instance gave none, or an invalid one.
+ */
 export interface InstanceConfiguration {
   maxCharacters?: number;
   maxMediaAttachments?: number;

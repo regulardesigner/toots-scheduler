@@ -61,6 +61,8 @@ async function handleDeleteConfirm() {
   if (!tootToDelete.value) return;
   const id = tootToDelete.value.id;
   handleDeleteCancel();
+  // Another change started while the dialog was open: deleteToot would refuse, and nothing moved, so neither does focus.
+  if (store.pendingId !== null) return;
 
   const deleting = store.deleteToot(id);
   // The dialog has now closed and given focus back to its opener, this card's Delete button.
@@ -90,7 +92,7 @@ async function handleEdit(id: string) {
 
   // Once the composer has rendered the toot.
   await nextTick();
-  const textarea = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Toot text"]');
+  const textarea = document.querySelector<HTMLTextAreaElement>('textarea[data-toot-text]');
   textarea?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
   textarea?.focus({ preventScroll: true });
 }

@@ -208,9 +208,8 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       if (auth.accessToken === token) setEditingToot(null);
       return { previousVersionRemoved };
     } catch (err) {
+      // Not put in `error`: the composer shows it, and the reload it starts would clear it at once.
       console.error('Error updating toot:', err);
-      if (auth.accessToken !== token) throw err;
-      setError(err instanceof Error ? err.message : 'Failed to update toot');
       throw err;
     } finally {
       finishPending(original.id);

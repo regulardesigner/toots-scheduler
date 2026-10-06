@@ -242,9 +242,27 @@ describe('ScheduledToots', () => {
       expect(document.activeElement).toBe(elsewhere);
     });
 
+    it('neither deletes nor moves focus when the deletion is refused because another change started', async () => {
+      const wrapper = await mountList();
+      const store = useScheduledTootsStore();
+
+      await wrapper.findAll('.delete-button')[0].trigger('click');
+      await flushPromises();
+      // Another change started while the confirmation was open.
+      store.pendingId = 'b';
+      store.pendingAction = 'update';
+      const focusSpy = vi.spyOn(wrapper.find<HTMLButtonElement>('#scheduled-toots-title button').element, 'focus');
+
+      await wrapper.find('.btn-delete').trigger('click');
+      await flushPromises();
+
+      expect(api.deleteScheduledToot).not.toHaveBeenCalled();
+      expect(focusSpy).not.toHaveBeenCalled();
+    });
+
     it('loads the toot into the composer and focuses its text box on Edit', async () => {
       const textarea = document.createElement('textarea');
-      textarea.setAttribute('aria-label', 'Toot text');
+      textarea.setAttribute('data-toot-text', '');
       document.body.appendChild(textarea);
       const wrapper = await mountList();
 
@@ -258,7 +276,7 @@ describe('ScheduledToots', () => {
     it('scrolls to the text box without animation when the user prefers reduced motion', async () => {
       vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)' }));
       const textarea = document.createElement('textarea');
-      textarea.setAttribute('aria-label', 'Toot text');
+      textarea.setAttribute('data-toot-text', '');
       textarea.scrollIntoView = vi.fn();
       document.body.appendChild(textarea);
       const wrapper = await mountList();

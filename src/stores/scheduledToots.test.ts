@@ -269,7 +269,7 @@ describe('scheduledToots store', () => {
       expect(api.scheduledTootExists).toHaveBeenCalledWith('42');
     });
 
-    it('keeps the original when creating the new version fails', async () => {
+    it('keeps the original when creating the new version fails, leaving the failure to the composer', async () => {
       const store = useScheduledTootsStore();
       store.setEditingToot(original);
       api.scheduleToot.mockRejectedValue(new Error('Validation failed'));
@@ -277,7 +277,7 @@ describe('scheduledToots store', () => {
       await expect(store.updateToot(original, makeUpdated({ status: 'Changed' }), 'key-1')).rejects.toThrow('Validation failed');
 
       expect(api.deleteScheduledToot).not.toHaveBeenCalled();
-      expect(store.error).toBe('Validation failed');
+      expect(store.error).toBe('');
       expect(store.editingToot).toEqual(original);
     });
 

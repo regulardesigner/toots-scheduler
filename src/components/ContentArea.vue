@@ -67,6 +67,7 @@ watch(announceLevel, (level) => {
       :value="modelValue"
       :placeholder="'What\'s on your mind?'"
       aria-label="Toot text"
+      data-toot-text
       aria-describedby="character-count"
       required
       rows="4"

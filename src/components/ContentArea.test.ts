@@ -94,6 +94,7 @@ describe('ContentArea', () => {
     const wrapper = mountArea();
 
     expect(wrapper.find('textarea').attributes('aria-label')).toBe('Toot text');
+    expect(wrapper.find('textarea').attributes('data-toot-text')).toBeDefined();
     expect(wrapper.find('textarea').attributes('aria-describedby')).toBe('character-count');
     expect(wrapper.find('label[for="media"]').text()).toBe('Add images');
     expect(wrapper.find('label[for="poll"]').text()).toBe('Add a poll');
