@@ -1,0 +1,68 @@
+import { defineStore } from 'pinia';
+import { ref, watch } from 'vue';
+import { useAuthStore } from './auth';
+import { useMastodonApi } from '../composables/useMastodonApi';
+import { DEFAULT_MAX_CHARACTERS } from '../config/constants';
+import { MAX_IMAGE_BYTES, MAX_IMAGES_PER_TOOT, SUPPORTED_IMAGE_TYPES, usableImageTypes } from '../utils/media';
+
+/**
+ * Creates a Pinia store for the signed-in instance's limits (toot length, images per toot,
+ * image size and types). It reads them after every sign-in or restored session and goes back
+ * to Mastodon's defaults on sign-out, on an account switch, or when the instance can't tell.
+ * @returns {Object} The instance store with its limits.
+ */
+export const useInstanceStore = defineStore('instance', () => {
+  const auth = useAuthStore();
+
+  const maxCharacters = ref(DEFAULT_MAX_CHARACTERS);
+  const maxMediaAttachments = ref(MAX_IMAGES_PER_TOOT);
+  const imageSizeLimit = ref(MAX_IMAGE_BYTES);
+  const supportedMimeTypes = ref<string[]>([...SUPPORTED_IMAGE_TYPES]);
+
+  function reset(): void {
+    maxCharacters.value = DEFAULT_MAX_CHARACTERS;
+    maxMediaAttachments.value = MAX_IMAGES_PER_TOOT;
+    imageSizeLimit.value = MAX_IMAGE_BYTES;
+    supportedMimeTypes.value = [...SUPPORTED_IMAGE_TYPES];
+  }
+
+  /**
+   * Reads the current instance's limits. Each missing or invalid one keeps its default, and a
+   * failed request keeps them all: the instance stays the final judge of every toot.
+   */
+  async function load(): Promise<void> {
+    // Limits read for a previous session must not apply to the current one.
+    const token = auth.accessToken;
+    if (!token) return;
+    try {
+      const configuration = await useMastodonApi().getInstanceConfiguration();
+      if (auth.accessToken !== token) return;
+      maxCharacters.value = configuration.maxCharacters ?? DEFAULT_MAX_CHARACTERS;
+      maxMediaAttachments.value = configuration.maxMediaAttachments ?? MAX_IMAGES_PER_TOOT;
+      imageSizeLimit.value = configuration.imageSizeLimit ?? MAX_IMAGE_BYTES;
+      supportedMimeTypes.value = usableImageTypes(configuration.supportedMimeTypes);
+    } catch (error) {
+      console.error('Could not read the instance limits, using the defaults:', error);
+    }
+  }
+
+  // Sign-in, restored session, account switch in another tab, sign-out: always start from the defaults.
+  watch(() => auth.accessToken, (token, previous) => {
+    if (token === previous) return;
+    reset();
+    if (token) void load();
+  }, { immediate: true });
+
+  return {
+    /** Longest toot the instance accepts, in characters. */
+    maxCharacters,
+    /** Most images per toot. */
+    maxMediaAttachments,
+    /** Largest image, in bytes. */
+    imageSizeLimit,
+    /** Image MIME types the app can attach on this instance (images only, never empty). */
+    supportedMimeTypes,
+    /** Reads the limits again for the current session. */
+    load,
+  };
+});

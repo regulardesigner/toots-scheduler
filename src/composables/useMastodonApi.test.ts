@@ -176,6 +176,24 @@ describe('useMastodonApi', () => {
     });
   });
 
+  describe('getInstanceConfiguration', () => {
+    it('reads the limits from the v2 instance endpoint', async () => {
+      http.get.mockResolvedValue({ data: { configuration: { statuses: { max_characters: 1000 } } } });
+
+      const configuration = await useMastodonApi().getInstanceConfiguration();
+
+      expect(http.get).toHaveBeenCalledWith('https://masto.example/api/v2/instance');
+      expect(configuration.maxCharacters).toBe(1000);
+      expect(configuration.supportedMimeTypes).toBeUndefined();
+    });
+
+    it('fails when the instance cannot be read', async () => {
+      http.get.mockRejectedValue(new Error('Request failed with status code 404'));
+
+      await expect(useMastodonApi().getInstanceConfiguration()).rejects.toThrow('Request failed with status code 404');
+    });
+  });
+
   describe('deleteScheduledToot', () => {
     it('encodes the id in the path', async () => {
       http.delete.mockResolvedValue({ data: {} });

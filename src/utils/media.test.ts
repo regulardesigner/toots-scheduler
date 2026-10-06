@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getImageRejection, MAX_IMAGE_BYTES } from './media';
+import { getImageRejection, MAX_IMAGE_BYTES, SUPPORTED_IMAGE_TYPES, usableImageTypes } from './media';
 
 function file(name: string, type: string, size = 10): File {
   const created = new File(['x'], name, { type });
@@ -34,5 +34,16 @@ describe('getImageRejection', () => {
     expect(getImageRejection(file('photo.HEIC', ''))).toBeNull();
     expect(getImageRejection(file('photo.avif', ''))).toBeNull();
     expect(getImageRejection(file('notes.txt', ''))).not.toBeNull();
+  });
+});
+
+describe('usableImageTypes', () => {
+  it('keeps the instance image types the app supports, in the app order', () => {
+    expect(usableImageTypes(['video/mp4', 'image/webp', 'IMAGE/PNG', 'image/svg+xml', 'image/bmp'])).toEqual(['image/png', 'image/webp']);
+  });
+
+  it('falls back to the app list without a usable instance list', () => {
+    expect(usableImageTypes(undefined)).toEqual(SUPPORTED_IMAGE_TYPES);
+    expect(usableImageTypes(['video/mp4', 'audio/mpeg'])).toEqual(SUPPORTED_IMAGE_TYPES);
   });
 });

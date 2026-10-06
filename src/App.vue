@@ -3,6 +3,7 @@ import { RouterView } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import { useSessionTimeout } from './composables/useSessionTimeout';
 import { useFeaturesStore } from './stores/features';
+import { useInstanceStore } from './stores/instance';
 import { storeToRefs } from 'pinia';
 import { ref, computed, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -25,6 +26,9 @@ const toast = useToast();
 
 // Initialize session timeout
 useSessionTimeout();
+
+// Reads the instance's limits after every sign-in or restored session.
+useInstanceStore();
 
 const route = useRoute();
 const router = useRouter();

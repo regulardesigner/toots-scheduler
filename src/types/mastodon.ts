@@ -66,4 +66,14 @@ export interface ScheduledToot {
   spoiler_text?: string;
   language?: string;
   poll?: PollParams;
-} 
+}
+
+/** The limits an instance reports (GET /api/v2/instance). A missing value: the instance gave none, or an invalid one. */
+export interface InstanceConfiguration {
+  maxCharacters?: number;
+  maxMediaAttachments?: number;
+  /** Bytes. */
+  imageSizeLimit?: number;
+  /** Every MIME type the instance accepts, images or not. */
+  supportedMimeTypes?: string[];
+}

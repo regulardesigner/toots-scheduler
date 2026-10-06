@@ -15,6 +15,20 @@ const EXTENSION_TYPES: Record<string, string> = {
 /** For the file picker: MIME types plus extensions, so systems that don't know HEIC/AVIF still offer them. */
 export const ACCEPTED_IMAGE_FILES = [...SUPPORTED_IMAGE_TYPES, ...Object.keys(EXTENSION_TYPES).map(extension => `.${extension}`)].join(',');
 
+/**
+ * The image types this app can attach on an instance: the instance's own list, kept to the
+ * images the app supports. Without a usable list (none sent, or no supported image in it)
+ * the app's default list applies; the instance still checks every upload.
+ * @param {readonly string[] | undefined} instanceTypes - `supported_mime_types` from the instance.
+ * @returns {string[]} The image MIME types to accept.
+ */
+export function usableImageTypes(instanceTypes: readonly string[] | undefined): string[] {
+  if (!instanceTypes) return [...SUPPORTED_IMAGE_TYPES];
+  const offered = new Set(instanceTypes.map(type => type.toLowerCase()));
+  const usable = SUPPORTED_IMAGE_TYPES.filter(type => offered.has(type));
+  return usable.length > 0 ? usable : [...SUPPORTED_IMAGE_TYPES];
+}
+
 /** The file's type, guessed from its extension when the browser doesn't know it (empty or generic binary type). */
 function imageType(file: File): string {
   if (file.type && file.type !== 'application/octet-stream') return file.type;

@@ -2,10 +2,11 @@ import axios from 'axios';
 import { z } from 'zod';
 import { createApiClient } from '../utils/api';
 import { useAuthStore } from '../stores/auth';
-import type { MastodonAccount, MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
+import type { InstanceConfiguration, MastodonAccount, MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
 import {
   AccountSchema,
   AppRegistrationSchema,
+  InstanceSchema,
   MediaAttachmentSchema,
   ScheduledStatusSchema,
   TokenResponseSchema,
@@ -96,6 +97,22 @@ export function useMastodonApi() {
     try {
       const response = await api.get(`${auth.instance}/api/v1/accounts/verify_credentials`);
       return parseApiResponse(AccountSchema, response.data, 'account');
+    } catch (error) {
+      throw new Error(handleApiError(error), { cause: error });
+    }
+  }
+
+  /**
+   * Reads the limits of the signed-in instance (GET /api/v2/instance, Mastodon 4.0+).
+   * The endpoint is public; the shared client still sends the token only to this instance.
+   * @returns {Promise<InstanceConfiguration>} The limits it reported; missing or invalid ones are left out.
+   * @throws {Error} If the instance URL is not set, the request fails or the body is not an object.
+   */
+  async function getInstanceConfiguration(): Promise<InstanceConfiguration> {
+    if (!auth.instance) throw new Error('No instance URL set');
+    try {
+      const response = await api.get(`${auth.instance}/api/v2/instance`);
+      return parseApiResponse(InstanceSchema, response.data, 'instance information');
     } catch (error) {
       throw new Error(handleApiError(error), { cause: error });
     }
@@ -328,6 +345,12 @@ export function useMastodonApi() {
      * @returns {Promise<Object>} The verified account data.
      */
     verifyCredentials,
+
+    /**
+     * Reads the limits of the signed-in instance.
+     * @returns {Promise<InstanceConfiguration>} The limits it reported.
+     */
+    getInstanceConfiguration,
   
     /**
      * Schedules a toot to be posted at a later time.

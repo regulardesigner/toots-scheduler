@@ -74,6 +74,32 @@ export const ScheduledStatusSchema = z.object({
   media_attachments: z.array(MediaAttachmentSchema),
 }).passthrough();
 
+/** A limit from the instance: a positive whole number, or dropped (undefined) so the app's default applies. */
+const optionalLimit = z.number().int().positive().optional().catch(undefined);
+
+/**
+ * GET /api/v2/instance, reduced to the limits the composer follows. Every part is optional:
+ * a missing or invalid value is dropped and the app keeps its default for it, so an unusual
+ * instance never blocks the composer. Only a body that is not an object is refused.
+ */
+export const InstanceSchema = z.object({
+  configuration: z.object({
+    statuses: z.object({
+      max_characters: optionalLimit,
+      max_media_attachments: optionalLimit,
+    }).optional().catch(undefined),
+    media_attachments: z.object({
+      image_size_limit: optionalLimit,
+      supported_mime_types: z.array(z.string()).optional().catch(undefined),
+    }).optional().catch(undefined),
+  }).optional().catch(undefined),
+}).transform(instance => ({
+  maxCharacters: instance.configuration?.statuses?.max_characters,
+  maxMediaAttachments: instance.configuration?.statuses?.max_media_attachments,
+  imageSizeLimit: instance.configuration?.media_attachments?.image_size_limit,
+  supportedMimeTypes: instance.configuration?.media_attachments?.supported_mime_types,
+}));
+
 /** POST /api/v1/apps */
 export const AppRegistrationSchema = z.object({
   client_id: z.string().min(1),
