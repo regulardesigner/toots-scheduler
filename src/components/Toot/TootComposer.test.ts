@@ -207,6 +207,22 @@ describe('TootComposer', () => {
     expect(wrapper.find('.error').text()).toBe('Your toot is 13 characters long, but your instance allows 10.');
   });
 
+  it('counts every character of the content warning, URLs included', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 30;
+    instance.isLoaded = true;
+    await fillForm(wrapper, 'Hello');
+    await wrapper.find('#spoiler-text').setValue('https://example.com/abcdefghij');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('.error').text()).toBe('Your toot is 35 characters long, but your instance allows 30.');
+  });
+
   it('refuses more images than the instance allows, without sending', async () => {
     const wrapper = mountComposer();
     await flushPromises();

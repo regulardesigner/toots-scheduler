@@ -34,6 +34,15 @@ describe('ContentArea', () => {
     expect(wrapper.find('.character-count').text()).toMatch(/^995\b/);
   });
 
+  it('shows the red near-limit style only once the instance limits are known', async () => {
+    const wrapper = mountArea('a'.repeat(600));
+    expect(wrapper.find('.character-count').classes()).not.toContain('near-limit');
+
+    useInstanceStore().isLoaded = true;
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.character-count').classes()).toContain('near-limit');
+  });
+
   it('counts a long URL as 23 characters and does not truncate the text', () => {
     const wrapper = mountArea(`https://example.com/${'a'.repeat(100)}`);
 

@@ -86,7 +86,7 @@ function handlePollCheckboxChange(event: Event) {
     <div class="textarea-footer">
       <span
         class="character-count"
-        :class="{ 'near-limit': remainingCharacters < 50 }"
+        :class="{ 'near-limit': instance.isLoaded && remainingCharacters < 50 }"
       >
         {{ remainingCharacters }}
       </span>
