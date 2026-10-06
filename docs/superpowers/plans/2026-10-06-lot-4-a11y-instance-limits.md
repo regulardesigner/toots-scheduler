@@ -63,7 +63,7 @@ Audit: [docs/audits/2026-10-01-red-team-report.md](../../audits/2026-10-01-red-t
   - string slots need Vue's template compiler, so tests use render functions (`h()`);
   - no CSS is computed: contrast is checked by axe in Task 9.
 - **Dry run:** every code block below was dry-run on a scratch clone of this branch.
-  - Unit checks (final, after the review fixes): 339 tests pass, typecheck is clean, lint reports 0 errors and 4 warnings, and the build succeeds.
+  - Unit checks (final, after the review and Safari fixes): 362 tests pass, typecheck is clean, lint reports 0 errors and 4 warnings, and the build succeeds.
   - axe-core 4.14 was run with Playwright on the production build, against the scratchpad's mock instance. The 12 states listed in Task 9 (L4-4) showed **no violation at all**, and there was **no CSP violation**. Before the contrast fixes, it flagged the colors listed in Task 4, Step 6.
 
 ## File map
@@ -94,7 +94,7 @@ Audit: [docs/audits/2026-10-01-red-team-report.md](../../audits/2026-10-01-red-t
 | `src/components/ControlsBar.vue` (+ test) | Modify | 4, 7 | Contrast; time zone hint |
 | `package.json`, `package-lock.json`, `src/stores/features.ts`, `README.md` | Modify | 8 | Release 0.16.0 |
 
-Test count after each task: 196 → **209** (T1) → **219** (T2) → **226** (T3) → **229** (T4) → **236** (T5) → **246** (T6) → **250** (T7) → 250 (T8) → **339** after the final-review fixes. Each task leaves typecheck, lint and tests green.
+Test count after each task: 196 → **209** (T1) → **219** (T2) → **226** (T3) → **229** (T4) → **236** (T5) → **246** (T6) → **250** (T7) → 250 (T8) → **362** after the final-review and Safari/VoiceOver fixes. Each task leaves typecheck, lint and tests green.
 
 ---
 
@@ -3604,11 +3604,11 @@ The controller then reports what passed and what only the user can check, and as
 **Acceptance Criteria:**
 - [ ] `npm run build`, then `npx vite preview --port 4173 --strictPort`, then `node e2e.mjs`: all checks pass:
   - the 24 existing checks (#1–#16, L3-1–L3-8);
-  - L4-1 to L4-14 below;
+  - L4-1 to L4-14 below, and L4-15 in WebKit only;
   - L3-8, zero CSP violations, now also covering every Lot 4 flow and the axe injection
 - [ ] The user has been told what the run proves and what still needs a real instance, a screen reader and Lighthouse, and has answered
 
-**Verify:** the e2e output ends with `38/38 passed`
+**Verify:** the whole suite runs twice, in Chromium and in WebKit (Playwright `webkit`). The Chromium run ends with `38/38 passed` and the WebKit run with `39/39 passed`
 
 **Steps:**
 
@@ -3662,8 +3662,9 @@ async function axeScan(page, name) {
 | L4-12 | What's New: open it from the header (desktop) with new features listed | The dialog has focus, its `scrollTop` is 0 and its heading `#whats-new-title` is within the dialog's visible area. Tab moves focus to "Got it!". |
 | L4-13 | Create in flight: account A with two scheduled toots; hold the mock's `POST /api/v1/statuses` answer, then submit a new toot | While the POST is pending, every card's Edit and Delete is `disabled` and no card says "Deleting…" or "Updating…". Once it answers, the new toot is listed and the buttons are enabled again. |
 | L4-14 | v1 merge: `instanceConfig = { configuration: { statuses: { max_media_attachments: 2 } } }` (no `max_characters`) and `instanceV1Config = { max_toot_chars: 5000 }`, then sign in | Both endpoints are called; the counter shows 5000 and the upload hint says `Up to 2 images`. |
+| L4-15 (WebKit) | Safari behaviour, in the WebKit run only: click (not keyboard) the openers of the delete, Thanks and What's New dialogs, then close each; click the burger; open a dialog while recording when focus enters it (a `focusin` listener and `requestAnimationFrame` timestamps from the moment `[role=dialog]` is inserted); trigger a login error, a composer error, an upload error and a list error | 1. After each close, focus is back on the clicked opener, or on What's New's `returnFocus` target ("Say Thanks", the burger or `main h1`) when its button is gone.<br>2. The burger is the active element after the click, and its `aria-expanded` changes.<br>3. Focus enters the dialog at least one animation frame after the dialog is inserted.<br>4. Each `[role=alert]` container (login, composer, upload, list) is in the DOM, empty, before the error, and is the same element once filled. |
 
-Then make L3-8 also cover the L4 flows. Expected end of run: `38/38 passed`.
+Then make L3-8 also cover the L4 flows. Run the whole suite in Chromium and in WebKit. Expected end of run: `38/38 passed` in Chromium and `39/39 passed` in WebKit (L4-15 runs in WebKit only).
 
 - [ ] **Step 3: Run**
 
@@ -3707,7 +3708,7 @@ AskUserQuestion:
 ```
 
 ```json:metadata
-{"files": [], "verifyCommand": "node e2e.mjs", "acceptanceCriteria": ["24 existing checks still pass", "L4-1..L4-14 pass (keyboard journey, axe serious/critical = 0, limits, v1 fallback and merge, unique ids, time zone, live region, layout, What's New at the top, cards disabled during a create)", "zero CSP violations across all flows", "user informed of real-instance, VoiceOver and Lighthouse checks and answered"], "requiresUserVerification": true, "userVerificationPrompt": "The automated checks pass (keyboard journey, axe with no serious or critical violation, instance limits and fallback, unique ids, time zone, no CSP violation). Do the real-world checks pass: limits on a real instance allowing more than 500 characters, a VoiceOver pass, and Lighthouse accessibility of at least 95?"}
+{"files": [], "verifyCommand": "node e2e.mjs", "acceptanceCriteria": ["24 existing checks still pass", "L4-1..L4-14 pass in Chromium and WebKit, L4-15 in WebKit (keyboard journey, axe serious/critical = 0, limits, v1 fallback and merge, unique ids, time zone, live region, layout, What's New at the top, cards disabled during a create, Safari focus and alerts): 38/38 Chromium, 39/39 WebKit", "zero CSP violations across all flows", "user informed of real-instance, VoiceOver and Lighthouse checks and answered"], "requiresUserVerification": true, "userVerificationPrompt": "The automated checks pass (keyboard journey, axe with no serious or critical violation, instance limits and fallback, unique ids, time zone, no CSP violation). Do the real-world checks pass: limits on a real instance allowing more than 500 characters, a VoiceOver pass, and Lighthouse accessibility of at least 95?"}
 ```
 
 ---
@@ -3781,7 +3782,7 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-4-a1
     - a dialog closed or unmounted before it activated leaves no trace;
     - What's New closed by Escape, the overlay or the close button counts as seen.
   - **Headings and layout:** the header's "Toot Scheduler" is a `<p>` on every route. The spec allowed `<p>` or `<h1>` depending on the route; one rule is simpler. The composer gets a visually hidden `<h1>Schedule a toot</h1>`, OAuthCallback's "Authenticating..." becomes its `<h1>`, and the landing `<h1>` has `tabindex="-1"` so focus lands there after logout. `.app-main` is a flex column, so the routed pages stay flex items as they were directly under `.app`, and their top margins don't collapse (the composer no longer slides under the fixed header).
-  - **Scheduled list: an accordion instead of `<details>` (added in review).** The `<summary>` with an `<h1>` inside became an `<h2>` holding a real toggle `<button>` (`aria-expanded`, `aria-controls="scheduled-toots-panel"`), with the panel under `v-show`. The list opens by itself when it has toots or an error. A collapse by hand is remembered until a new error, which opens it again.
+  - **Scheduled list: an accordion instead of `<details>` (added in review).** The `<summary>` with an `<h1>` inside became an `<h2>` holding a real toggle `<button>` (`aria-expanded`, `aria-controls="scheduled-toots-panel"`), with the panel under `v-show`. The list opens by itself when it has toots, and a collapse by hand is remembered. Its error is shown above the panel (see the Safari fixes) and neither opens the panel nor hides the toots.
   - **`MobileNav` extracted from App.vue** (the spec lists App.vue) so it can be tested without mounting the whole app. Beyond the plan:
     - the closed menu gets `visibility: hidden`: otherwise Tab reached its off-screen items;
     - choosing an item closes the menu and focuses the burger first, so a dialog opened from the menu returns focus to a visible element;
@@ -3804,18 +3805,29 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-4-a1
     - "Editing…" is removed: Edit only loads the toot, nothing is pending.
     - The list stays visible while it refreshes ("Loading…" only when empty).
     - After Edit, the composer's text box (found by `data-toot-text`) gets focus, and the scroll is instant under `prefers-reduced-motion`.
-    - After a deletion (success or failure), focus goes to the list toggle, unless the user moved it elsewhere meanwhile.
+    - After a deletion, focus goes to the list toggle on success, and back to that card's Delete button (found by `data-toot-id`) on failure, unless the user moved it elsewhere meanwhile. The choice follows the outcome, not the DOM: a deleted card stays in the page during its 0.3 s leave transition. The list transitions are off under `prefers-reduced-motion`.
     - When the toot being edited is deleted, the store leaves edit mode. The composer's watcher empties the form whenever edit mode ends outside it, and a `$onAction` hook shows "The toot you were editing was deleted." Cancel and a saved edit show no notice.
     - The sensitive toggle's label has a visually hidden prefix ("Show the content behind this warning:").
   - **Time zone:** shown as the IANA name (for example `Europe/Stockholm`), with no UTC offset, which would change with daylight saving time. It appears as `Time zone: …` under the date and time fields (their `aria-describedby`) and in parentheses after each card's date, `… 14:30 (Europe/Stockholm)`. The helper returns `your local time zone` when the browser gives none.
   - **What's New 0.16.0** has four entries: instance limits, keyboard and screen reader, time zone, and the per-toot fix.
-  - **New test files** beyond the spec: `App.test.ts`, `LandingPage.test.ts`, `MobileNav.test.ts`, `ScheduledToots.test.ts`, `ContentArea.test.ts`, `TootCard.test.ts`, `timeZone.test.ts`, `tootLength.test.ts`. The suite ends at **339 tests**, not the 250 planned, because of the review fixes.
+  - **New test files** beyond the spec: `App.test.ts`, `LandingPage.test.ts`, `MobileNav.test.ts`, `ScheduledToots.test.ts`, `ContentArea.test.ts`, `TootCard.test.ts`, `timeZone.test.ts`, `tootLength.test.ts`. The suite ends at **362 tests**, not the 250 planned, because of the review and Safari/VoiceOver fixes.
   - **Task 9 follows what shipped:**
     - L4-1: focus after the deletion goes to `#scheduled-toots-title button`.
     - L4-5 and L4-6: check the counter, not `maxlength`. The fallback goes through `/api/v1/instance` before the defaults.
     - L4-8: the card's date ends with `(Asia/Tokyo)`.
     - L4-9: run it with `max_characters: 500` mocked, since an unknown limit keeps the live region silent.
-    - L4-10 to L4-14 are added for the review fixes: the v1 fallback, the desktop layout, What's New opening at the top, cards disabled during a create, and the v1 merge. The run ends at `38/38 passed`.
+    - L4-10 to L4-14 are added for the review fixes: the v1 fallback, the desktop layout, What's New opening at the top, cards disabled during a create, and the v1 merge.
+    - L4-15 (WebKit only) covers the Safari fixes. The suite runs in Chromium and WebKit: `38/38 passed` and `39/39 passed`.
+  - **Safari/VoiceOver fixes (after the user's VoiceOver pass).** The markup was already correct; the failures came from timing, which Playwright WebKit reproduced:
+    - **Dialog name:** ModalView moves the initial focus one frame and one task after the dialog is rendered (`requestAnimationFrame` then `setTimeout`), so WebKit registers the dialog first and VoiceOver reads "<name>, web dialog". The trap, `openStack` and the scroll lock start at once. The deferred focus is skipped if the dialog was closed, unmounted or covered by another one meanwhile.
+    - **Focus return in Safari:** Safari does not focus a clicked button, so ModalView also records the last clicked control (one capture-phase `click` listener on the document, added once) and returns focus there when nothing else had focus at opening. The burger focuses itself on toggle, so its new `aria-expanded` state is announced.
+  - **Persistent alerts:** the login form, composer, media upload and scheduled list keep an empty `role="alert"` container in the DOM and only change its content, because Safari ignores an alert inserted already filled. The list's alert sits outside the collapsible panel, whose hidden subtree is not in the accessibility tree. The instance field gets `aria-invalid` and `aria-describedby="login-error"` on error.
+  - **Counter announcement:** the live region is `aria-atomic` and speaks a reached step only after a 500 ms typing pause (as in the GOV.UK character count), with the count at that moment, because VoiceOver drops polite updates made while typing. The steps are unchanged, and the timer is cleared on unmount.
+  - **Focus return, hardened (after the Safari fixes):**
+    - the clicked control stands in for the opener only if it was clicked within the last second, and only once;
+    - ModalView gives focus back one tick after closing, so an opener removed by the same update is seen as gone whatever the render order;
+    - a `returnFocus` prop names where focus goes when the opener is gone or there was none. What's New uses it, because its desktop button disappears once the features are seen: focus goes to the displayed "Say Thanks", else the burger, else the page's `<h1>` (the composer's visually hidden `<h1>` now has `tabindex="-1"`).
+  - **The list keeps its toots under an error:** the error, shown in the persistent alert above the panel, no longer opens the panel, overrides a collapse by hand, or hides the toots. "No scheduled toots yet." is hidden while there is an error, since after a failed load it may be false.
   - **No new project dependency.** axe-core is installed in the scratchpad's e2e folder only.
 - **Known residuals:**
   - **Character counting** follows Mastodon's rules (URLs as 23, remote mentions shortened, graphemes, content warning included) with simpler patterns: the URL pattern is `https?://\S+`, so trailing punctuation or scheme-less links may count differently. Without `Intl.Segmenter`, code points are counted. The instance stays the judge, and its 422 message is shown.
@@ -3826,6 +3838,7 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-4-a1
   - Dialogs set `aria-modal="true"` and trap Tab, but do not make the rest of the page `inert`. The scroll lock is `overflow: hidden` on `<body>`, which iOS Safari may not honour.
   - The open mobile menu has no focus trap; this is the disclosure pattern, and Escape closes it. A click that gives focus to nothing (non-focusable text, or Safari not focusing buttons) leaves it open.
   - The scheduled list is fetched twice when the composer mounts (by the composer and by the list). `fetchSeq` keeps the result correct; the extra request is left for Lot 5.
-  - A failed deletion replaces the whole list with the error until the next reload, as before.
+  - **Deferred dialog focus:** for about a frame after a dialog opens, focus is still on its opener, so a key pressed in that instant reaches the opener (Tab and Escape are already handled by the dialog). Focus also comes back one tick after a dialog closes, so it rests on `<body>` for that tick.
+  - **Verified in WebKit, not yet re-tested with VoiceOver:** the Safari fixes were confirmed in Playwright WebKit (timing and DOM, L4-15). A new VoiceOver + Safari pass is still needed for the dialog names, the alerts, the counter, the burger state and the focus return.
   - Toasts (vue-toastification's default colors, for example white on green) may fail contrast while shown. Task 9 scans while no toast is visible. Restyling the library's toasts is left for Lot 5.
   - Dark mode is not addressed (`prefers-color-scheme` is not handled in these components), as before.
