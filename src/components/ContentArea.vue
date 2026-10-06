@@ -1,8 +1,11 @@
 <script setup lang="ts">
 // The live region speaks when the remaining count reaches one of these steps, never on every keystroke.
 const ANNOUNCE_STEPS = [50, 20, 10, 0, -1];
+// ...and only once typing pauses this long (GOV.UK character count): VoiceOver in Safari drops
+// polite updates made while the user is still typing.
+const ANNOUNCE_DELAY_MS = 500;
 
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onUnmounted } from 'vue';
 import { useInstanceStore } from '../stores/instance';
 import { countTootCharacters } from '../utils/tootLength';
 
@@ -53,9 +56,27 @@ function describeRemaining(remaining: number): string {
   return remaining === 0 ? 'Character limit reached' : spokenCount(remaining);
 }
 
-watch(announceLevel, (level) => {
+/** The step the live region last spoke for. */
+let announcedLevel = announceLevel.value;
+let announceTimer: ReturnType<typeof setTimeout> | undefined;
+
+function announce(): void {
+  announceTimer = undefined;
+  const level = announceLevel.value;
+  if (level === announcedLevel) return;
+  announcedLevel = level;
   announcement.value = level === 0 ? '' : describeRemaining(remainingCharacters.value);
+}
+
+// A step reached or left: speak after the pause, with the count at that moment. Every keystroke
+// while an announcement waits restarts the pause.
+watch([announceLevel, remainingCharacters], () => {
+  if (announceTimer === undefined && announceLevel.value === announcedLevel) return;
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(announce, ANNOUNCE_DELAY_MS);
 });
+
+onUnmounted(() => clearTimeout(announceTimer));
 </script>
 
 <template>
@@ -108,6 +129,7 @@ watch(announceLevel, (level) => {
       <span
         class="visually-hidden"
         aria-live="polite"
+        aria-atomic="true"
       >{{ announcement }}</span>
     </div>
   </div>

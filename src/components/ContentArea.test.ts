@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 import ContentArea from './ContentArea.vue';
@@ -19,6 +19,13 @@ describe('ContentArea', () => {
     pinia = createPinia();
     setActivePinia(pinia);
   });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** The live region speaks once typing has paused this long. */
+  const PAUSE_MS = 500;
 
   it("uses Mastodon's default limit until the instance answers", () => {
     const wrapper = mountArea();
@@ -46,7 +53,10 @@ describe('ContentArea', () => {
   it('neither shows red nor announces when the instance gave only media limits', async () => {
     useInstanceStore().hasMediaLimit = true;
     const wrapper = mountArea('');
+    vi.useFakeTimers();
     await wrapper.setProps({ modelValue: 'a'.repeat(600) });
+    vi.advanceTimersByTime(PAUSE_MS);
+    await wrapper.vm.$nextTick();
 
     expect(wrapper.find('.character-count').classes()).not.toContain('near-limit');
     expect(wrapper.find('[aria-live="polite"]').text()).toBe('');
@@ -59,7 +69,21 @@ describe('ContentArea', () => {
     expect(wrapper.find('.character-count [aria-hidden="true"]').text()).toBe('477');
   });
 
+  /** Types the text, then pauses long enough for the live region to speak. */
+  async function typeAndPause(wrapper: ReturnType<typeof mountArea>, text: string): Promise<void> {
+    await wrapper.setProps({ modelValue: text });
+    vi.advanceTimersByTime(PAUSE_MS);
+    await wrapper.vm.$nextTick();
+  }
+
+  it('is an atomic polite live region', () => {
+    const liveRegion = mountArea().find('[aria-live="polite"]');
+
+    expect(liveRegion.attributes('aria-atomic')).toBe('true');
+  });
+
   it('announces the remaining characters only when a step near the limit is reached', async () => {
+    vi.useFakeTimers();
     const instance = useInstanceStore();
     instance.maxCharacters = 100;
     instance.hasCharacterLimit = true;
@@ -67,25 +91,67 @@ describe('ContentArea', () => {
     const liveRegion = () => wrapper.find('[aria-live="polite"]').text();
     expect(liveRegion()).toBe('');
 
-    await wrapper.setProps({ modelValue: 'x'.repeat(40) });
+    await typeAndPause(wrapper, 'x'.repeat(40));
     expect(liveRegion()).toBe('');
 
-    await wrapper.setProps({ modelValue: 'x'.repeat(55) });
+    await typeAndPause(wrapper, 'x'.repeat(55));
     expect(liveRegion()).toBe('45 characters left');
 
-    await wrapper.setProps({ modelValue: 'x'.repeat(56) });
+    await typeAndPause(wrapper, 'x'.repeat(56));
     expect(liveRegion()).toBe('45 characters left');
 
-    await wrapper.setProps({ modelValue: 'x'.repeat(100) });
+    await typeAndPause(wrapper, 'x'.repeat(100));
     expect(liveRegion()).toBe('Character limit reached');
 
-    await wrapper.setProps({ modelValue: 'x'.repeat(10) });
+    await typeAndPause(wrapper, 'x'.repeat(10));
     expect(liveRegion()).toBe('');
   });
 
-  it('does not announce anything before the instance limits are known', async () => {
+  it('waits for a typing pause, then announces a crossed step once, with the latest count', async () => {
+    vi.useFakeTimers();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 100;
+    instance.hasCharacterLimit = true;
+    const wrapper = mountArea('x'.repeat(45));
+    const liveRegion = () => wrapper.find('[aria-live="polite"]').text();
+    const changes: string[] = [];
+    const observer = new MutationObserver(() => changes.push(liveRegion()));
+    observer.observe(wrapper.find('[aria-live="polite"]').element, { childList: true, characterData: true, subtree: true });
+
+    // Each keystroke comes before the pause ends: crossing 50 left does not speak yet.
+    for (const length of [49, 50, 51, 52, 53]) {
+      await wrapper.setProps({ modelValue: 'x'.repeat(length) });
+      vi.advanceTimersByTime(PAUSE_MS - 100);
+      await wrapper.vm.$nextTick();
+    }
+    expect(liveRegion()).toBe('');
+
+    vi.advanceTimersByTime(100);
+    await wrapper.vm.$nextTick();
+    await Promise.resolve();
+    observer.disconnect();
+
+    expect(liveRegion()).toBe('47 characters left');
+    expect(changes.filter(text => text !== '')).toEqual(['47 characters left']);
+  });
+
+  it('cancels a pending announcement when unmounted', async () => {
+    vi.useFakeTimers();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 100;
+    instance.hasCharacterLimit = true;
     const wrapper = mountArea('');
-    await wrapper.setProps({ modelValue: 'x'.repeat(480) });
+    await wrapper.setProps({ modelValue: 'x'.repeat(60) });
+
+    wrapper.unmount();
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('does not announce anything before the instance limits are known', async () => {
+    vi.useFakeTimers();
+    const wrapper = mountArea('');
+    await typeAndPause(wrapper, 'x'.repeat(480));
 
     expect(wrapper.find('[aria-live="polite"]').text()).toBe('');
   });
@@ -109,16 +175,17 @@ describe('ContentArea', () => {
   });
 
   it('announces going one character over the limit', async () => {
+    vi.useFakeTimers();
     const instance = useInstanceStore();
     instance.maxCharacters = 100;
     instance.hasCharacterLimit = true;
     const wrapper = mountArea('');
     const liveRegion = () => wrapper.find('[aria-live="polite"]').text();
 
-    await wrapper.setProps({ modelValue: 'x'.repeat(100) });
+    await typeAndPause(wrapper, 'x'.repeat(100));
     expect(liveRegion()).toBe('Character limit reached');
 
-    await wrapper.setProps({ modelValue: 'x'.repeat(101) });
+    await typeAndPause(wrapper, 'x'.repeat(101));
     expect(liveRegion()).toBe('1 character over the limit');
   });
 
