@@ -65,6 +65,23 @@ watch(() => auth.sessionEndReason, (reason) => {
   auth.acknowledgeSessionEnd();
 }, { immediate: true });
 
+/**
+ * Where focus goes once What's New closes: its desktop button is gone by then (the features are seen).
+ * "Say Thanks" took its place in the desktop nav; on mobile the menu button opened it and stays.
+ */
+function whatsNewReturnFocus(): HTMLElement | null {
+  const candidates = ['.desktop-nav .thanks-button', '.mobile-nav .burger-menu', '.app-main h1'];
+  for (const selector of candidates) {
+    const element = document.querySelector<HTMLElement>(selector);
+    if (element && isDisplayed(element)) return element;
+  }
+  return null;
+}
+
+function isDisplayed(element: HTMLElement): boolean {
+  return typeof element.checkVisibility === 'function' ? element.checkVisibility() : element.getClientRects().length > 0;
+}
+
 function handleWhatsNewClose() {
   // Escape, the close button and the overlay count as having seen it (a no-op repeat after WhatsNew's own button).
   featuresStore.markFeaturesAsSeen();
@@ -157,6 +174,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
       :is-open="showWhatsNew"
       labelled-by="whats-new-title"
       initial-focus="dialog"
+      :return-focus="whatsNewReturnFocus"
       @close="handleWhatsNewClose"
     >
       <WhatsNew @close="handleWhatsNewClose" />

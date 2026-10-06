@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { h, nextTick } from 'vue';
 import ModalView from './ModalView.vue';
@@ -7,9 +7,13 @@ import { settleFocus } from '../../test-utils/settle';
 const mounted: VueWrapper[] = [];
 
 /** A dialog titled "Edit" with a text field and a Save button. */
-function mountModal(isOpen: boolean, initialFocus?: 'first' | 'dialog'): VueWrapper {
+function mountModal(
+  isOpen: boolean,
+  initialFocus?: 'first' | 'dialog',
+  returnFocus?: () => HTMLElement | null | undefined,
+): VueWrapper {
   const wrapper = mount(ModalView, {
-    props: { isOpen, labelledBy: 'dialog-title', initialFocus },
+    props: { isOpen, labelledBy: 'dialog-title', initialFocus, returnFocus },
     slots: {
       default: () => [
         h('h2', { id: 'dialog-title' }, 'Edit'),
@@ -31,6 +35,14 @@ function focusedButton(): HTMLButtonElement {
   return button;
 }
 
+/** A button outside the dialog, clicked without taking focus, as in Safari. */
+function clickedButton(): HTMLButtonElement {
+  const button = document.createElement('button');
+  document.body.appendChild(button);
+  button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  return button;
+}
+
 function pressTab(shiftKey = false): void {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true }));
 }
@@ -41,6 +53,7 @@ function pressEscape(): void {
 
 describe('ModalView', () => {
   afterEach(() => {
+    vi.restoreAllMocks();
     mounted.splice(0).forEach(wrapper => wrapper.unmount());
     document.body.innerHTML = '';
     document.body.classList.remove('modal-open');
@@ -156,6 +169,63 @@ describe('ModalView', () => {
     await wrapper.setProps({ isOpen: true });
     await settleFocus();
     expect(document.activeElement?.id).toBe('first-field');
+    await wrapper.setProps({ isOpen: false });
+
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('ignores a click older than a second as the opener', async () => {
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
+    const opener = clickedButton();
+    const wrapper = mountModal(false);
+    now.mockReturnValue(2500);
+
+    await wrapper.setProps({ isOpen: true });
+    await settleFocus();
+    await wrapper.setProps({ isOpen: false });
+
+    expect(document.activeElement).not.toBe(opener);
+  });
+
+  it('uses a clicked opener only once', async () => {
+    const opener = clickedButton();
+    const wrapper = mountModal(false);
+    await wrapper.setProps({ isOpen: true });
+    await settleFocus();
+    await wrapper.setProps({ isOpen: false });
+    expect(document.activeElement).toBe(opener);
+    opener.blur();
+
+    // Opened again without a click (e.g. by code): the earlier click is not the opener any more.
+    await wrapper.setProps({ isOpen: true });
+    await settleFocus();
+    await wrapper.setProps({ isOpen: false });
+
+    expect(document.activeElement).not.toBe(opener);
+  });
+
+  it('focuses the returnFocus target when the opener was removed while it was open', async () => {
+    const opener = focusedButton();
+    const fallback = document.createElement('button');
+    document.body.appendChild(fallback);
+    const wrapper = mountModal(false, 'first', () => fallback);
+    await wrapper.setProps({ isOpen: true });
+    await settleFocus();
+
+    opener.remove();
+    await wrapper.setProps({ isOpen: false });
+
+    expect(document.activeElement).toBe(fallback);
+  });
+
+  it('prefers the opener to the returnFocus target while the opener is still there', async () => {
+    const opener = focusedButton();
+    const fallback = document.createElement('button');
+    document.body.appendChild(fallback);
+    const wrapper = mountModal(false, 'first', () => fallback);
+    await wrapper.setProps({ isOpen: true });
+    await settleFocus();
+
     await wrapper.setProps({ isOpen: false });
 
     expect(document.activeElement).toBe(opener);

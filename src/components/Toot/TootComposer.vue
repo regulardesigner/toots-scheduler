@@ -239,7 +239,10 @@ async function handleSubmit() {
 
 <template>
   <div class="toot-composer">
-    <h1 class="visually-hidden">
+    <h1
+      class="visually-hidden"
+      tabindex="-1"
+    >
       Schedule a toot
     </h1>
     <form @submit.prevent="handleSubmit">

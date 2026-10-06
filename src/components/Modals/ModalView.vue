@@ -9,11 +9,16 @@ function syncScrollLock(): void {
 /** What a click can activate: the opener focus goes back to, when the click did not focus it. */
 const ACTIVATABLE_SELECTOR = 'button, a[href], input, select, textarea, summary, [tabindex]';
 
+/** A click older than this did not open the dialog: it is not taken as the opener. */
+const RECENT_CLICK_MS = 1000;
+
 /**
  * The control last clicked. Safari does not focus a button on click (nor, likely, on VoiceOver
  * activation), so document.activeElement is the body when a dialog opens and focus would be lost on close.
  */
 let lastActivated: HTMLElement | null = null;
+/** When lastActivated was clicked, from performance.now(). */
+let lastActivatedAt = 0;
 let isTrackingActivation = false;
 
 /** Listens once, in the capture phase so the opener is known before its own click handler opens a dialog. */
@@ -22,8 +27,18 @@ function trackActivation(): void {
   isTrackingActivation = true;
   document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target.closest(ACTIVATABLE_SELECTOR) : null;
-    if (target instanceof HTMLElement) lastActivated = target;
+    if (!(target instanceof HTMLElement)) return;
+    lastActivated = target;
+    lastActivatedAt = performance.now();
   }, true);
+}
+
+/** The control clicked just now, if it is still in the page; forgotten once read, so it is used only once. */
+function takeRecentlyActivated(): HTMLElement | null {
+  const target = lastActivated;
+  lastActivated = null;
+  if (!target?.isConnected || performance.now() - lastActivatedAt > RECENT_CLICK_MS) return null;
+  return target;
 }
 </script>
 
@@ -49,8 +64,11 @@ const props = withDefaults(defineProps<{
    * (for long content whose first control is at the end, so it opens at the top).
    */
   initialFocus?: 'first' | 'dialog';
+  /** Where focus goes on closing when the opener has left the page (e.g. a button shown only until the dialog is seen). */
+  returnFocus?: () => HTMLElement | null | undefined;
 }>(), {
   initialFocus: 'first',
+  returnFocus: undefined,
 });
 
 const emit = defineEmits<{
@@ -136,10 +154,15 @@ function activate(): void {
 function deactivate(): void {
   document.removeEventListener('keydown', handleDocumentKeydown);
   const index = openStack.indexOf(id);
-  if (index !== -1) openStack.splice(index, 1);
+  const wasActive = index !== -1;
+  if (wasActive) openStack.splice(index, 1);
   syncScrollLock();
-  const target = returnFocusTo;
+  const opener = returnFocusTo;
   returnFocusTo = null;
+  // Never opened, or already closed: focus is not ours to move.
+  if (!opener && !wasActive) return;
+  // The opener left the page (or there was none): the stable place the parent named, if any.
+  const target = opener?.isConnected ? opener : props.returnFocus?.();
   if (target?.isConnected) target.focus();
 }
 
@@ -147,9 +170,8 @@ watch(() => props.isOpen, (open) => {
   if (open) {
     // The real opener, captured before anything inside the dialog can take focus; in Safari, the clicked one.
     const active = document.activeElement;
-    returnFocusTo = active instanceof HTMLElement && active !== document.body
-      ? active
-      : lastActivated?.isConnected ? lastActivated : null;
+    const clicked = takeRecentlyActivated();
+    returnFocusTo = active instanceof HTMLElement && active !== document.body ? active : clicked;
     void nextTick(activate);
   }
   else deactivate();

@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { defineComponent, h } from 'vue';
 import { useAuthStore } from './stores/auth';
+import { settleFocus } from './test-utils/settle';
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn(), dismiss: vi.fn() }));
 vi.mock('vue-toastification', () => ({ useToast: () => toast }));
@@ -45,6 +46,22 @@ describe('App', () => {
     expect(wrapper.find('main h1').text()).toBe('A page');
     expect(wrapper.findAll('h1')).toHaveLength(1);
     expect(wrapper.find('.header-title').element.tagName).toBe('P');
+  });
+
+  it("keeps focus in the account navigation after What's New closes and its button disappears", async () => {
+    const wrapper = await mountApp(true);
+    const whatsNew = wrapper.find('.desktop-nav .whats-new-button');
+    expect(whatsNew.exists()).toBe(true);
+    (whatsNew.element as HTMLButtonElement).focus();
+
+    await whatsNew.trigger('click');
+    await settleFocus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flushPromises();
+
+    expect(wrapper.find('.desktop-nav .whats-new-button').exists()).toBe(false);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toBe(wrapper.find('.desktop-nav .thanks-button').element);
   });
 
   it('names the account navigation, and puts focus on the page heading after logout', async () => {
