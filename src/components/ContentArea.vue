@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+// The live region speaks when the remaining count reaches one of these steps, never on every keystroke.
+const ANNOUNCE_STEPS = [50, 20, 10, 0];
+
+import { computed, ref, watch } from 'vue';
 import { useInstanceStore } from '../stores/instance';
 import { countTootCharacters } from '../utils/tootLength';
 
@@ -7,6 +10,10 @@ const props = defineProps<{
   modelValue: string;
   hasPoll: boolean;
   hasMedia: boolean;
+  /** Whether the composer shows the media section: the toggle reflects it, it never keeps its own state. */
+  showMedia: boolean;
+  /** Whether the composer shows the poll section. */
+  showPoll: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -22,31 +29,27 @@ const characterCount = computed(() => countTootCharacters(props.modelValue));
 /** Against the instance's own limit (Mastodon's default 500 until it answers). */
 const remainingCharacters = computed(() => instance.maxCharacters - characterCount.value);
 
-const isMediaChecked = ref(false);
-const isPollChecked = ref(false);
+/**
+ * How many steps the remaining count has reached; 0 while far from the limit,
+ * and until the instance limits are known (the default limit could be wrong).
+ */
+const announceLevel = computed(() =>
+  instance.isLoaded ? ANNOUNCE_STEPS.filter(step => remainingCharacters.value <= step).length : 0,
+);
 
-function handleMediaCheckboxChange(event: Event) {
-  const target = event.target as HTMLInputElement;
-  isMediaChecked.value = target.checked;
-  
-  emit('add-media');
+/** Text of the live region: it changes, and is read, only when a step is reached or left. */
+const announcement = ref('');
 
-  if (target.checked) {
-    isPollChecked.value = false; // Uncheck poll if media is checked
-  }
+function describeRemaining(remaining: number): string {
+  if (remaining === 0) return 'Character limit reached';
+  const count = Math.abs(remaining);
+  const characters = count === 1 ? 'character' : 'characters';
+  return remaining > 0 ? `${count} ${characters} left` : `${count} ${characters} over the limit`;
 }
 
-function handlePollCheckboxChange(event: Event) {
-  const target = event.target as HTMLInputElement;
-  isPollChecked.value = target.checked;
-
-  emit('add-poll');
-
-  if (target.checked) {
-    isMediaChecked.value = false; // Uncheck media if poll is checked
-  }
-}
-
+watch(announceLevel, (level) => {
+  announcement.value = level === 0 ? '' : describeRemaining(remainingCharacters.value);
+});
 </script>
 
 <template>
@@ -57,39 +60,48 @@ function handlePollCheckboxChange(event: Event) {
     <textarea
       :value="modelValue"
       :placeholder="'What\'s on your mind?'"
+      aria-label="Toot text"
+      aria-describedby="character-count"
       required
       rows="4"
       @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />
     <div class="media-poll-controls">
-      <input 
-        id="media" 
-        v-model="isMediaChecked" 
-        type="checkbox" 
-        name="media-or-poll" 
-        value="media" 
-        aria-label="Upload media" 
-        :disabled="isPollChecked || hasPoll" 
-        @click="handleMediaCheckboxChange" 
+      <input
+        id="media"
+        type="checkbox"
+        :checked="showMedia"
+        :disabled="showPoll || hasPoll"
+        @click="emit('add-media')"
       >
-      <input 
-        id="poll" 
-        v-model="isPollChecked" 
-        type="checkbox" 
-        name="media-or-poll" 
-        value="poll" 
-        aria-label="Add a poll" 
-        :disabled="isMediaChecked || hasMedia" 
-        @click="handlePollCheckboxChange"
+      <label
+        for="media"
+        class="visually-hidden"
+      >Add images</label>
+      <input
+        id="poll"
+        type="checkbox"
+        :checked="showPoll"
+        :disabled="showMedia || hasMedia"
+        @click="emit('add-poll')"
       >
+      <label
+        for="poll"
+        class="visually-hidden"
+      >Add a poll</label>
     </div>
     <div class="textarea-footer">
       <span
+        id="character-count"
         class="character-count"
         :class="{ 'near-limit': instance.isLoaded && remainingCharacters < 50 }"
       >
-        {{ remainingCharacters }}
+        {{ remainingCharacters }}<span class="visually-hidden"> characters left</span>
       </span>
+      <span
+        class="visually-hidden"
+        aria-live="polite"
+      >{{ announcement }}</span>
     </div>
   </div>
 </template>
@@ -133,7 +145,7 @@ textarea {
 }
 
 .character-count.near-limit {
-  color: #ff4136;
+  color: #c0392b;
 }
 
 .media-poll-controls {

@@ -94,11 +94,11 @@ const emit = defineEmits<{
 
 .btn-cancel {
   background-color: #95a5a6;
-  color: white;
+  color: #333;
 }
 
 .btn-cancel:hover {
-  background-color: #7f8c8d;
+  filter: brightness(1.1);
 }
 
 .btn-send {

@@ -256,6 +256,8 @@ async function handleSubmit() {
         v-model="content"
         :has-poll="showPoll && pollData.options.some(option => option.trim() !== '')"
         :has-media="mediaAttachments.length > 0"
+        :show-media="showMedia"
+        :show-poll="showPoll"
         @add-media="handleShowMedia"
         @add-poll="handleShowPoll"
       />
@@ -283,6 +285,7 @@ async function handleSubmit() {
       <p
         v-if="error"
         class="error"
+        role="alert"
       >
         {{ error }}
       </p>
@@ -349,7 +352,7 @@ async function handleSubmit() {
 }
 
 .error {
-  color: #e74c3c;
+  color: #c0392b;
   margin: 1rem 0;
   padding: 0.5rem;
   border-radius: 4px;

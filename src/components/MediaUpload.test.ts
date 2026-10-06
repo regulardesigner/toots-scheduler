@@ -53,6 +53,7 @@ describe('MediaUpload', () => {
 
     expect(api.uploadMedia).not.toHaveBeenCalled();
     expect(wrapper.find('.error').text()).toBe('"doc.pdf" is not a supported image (JPEG, PNG, GIF, WebP, AVIF or HEIC).');
+    expect(wrapper.find('.error').attributes('role')).toBe('alert');
   });
 
   it('keeps every image when several are uploaded at once', async () => {

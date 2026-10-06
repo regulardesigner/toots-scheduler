@@ -100,6 +100,7 @@ onMounted(() => {
       <div
         v-else-if="store.error"
         class="error"
+        role="alert"
       >
         {{ store.error }}
       </div>
@@ -209,7 +210,7 @@ h1 {
 }
 
 .error {
-  color: #e74c3c;
+  color: #c0392b;
   background-color: #fde8e7;
   border-radius: 0.5rem;
 }

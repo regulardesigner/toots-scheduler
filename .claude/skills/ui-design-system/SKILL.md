@@ -52,9 +52,12 @@ use the existing patterns below.
 ### Semantic colors (use only for these roles)
 | Role    | Value                              |
 |---------|------------------------------------|
-| Error   | text `#e74c3c`, bg `#fde8e7`       |
-| Edit    | `#2b90d9` (Mastodon blue), hover `#2577b1` |
-| Neutral | `#95a5a6` (cancel buttons)         |
+| Error   | text `#c0392b`, bg `#fde8e7`; destructive buttons `#c0392b` with white text |
+| Edit    | `#2577b1` (Mastodon blue) with white text, hover `filter: brightness(0.9)` |
+| Neutral | `#95a5a6` with `#333` text (cancel buttons) |
+
+Text must keep a contrast of at least 4.5:1 (3:1 from 24px, or 18.66px bold), as axe and Lighthouse check.
+White on `#e74c3c` (3.8:1), `#2b90d9` (3.4:1) or `#95a5a6` (2.6:1) fails; so does `#e74c3c` on `#fde8e7` (3.3:1).
 
 ---
 
@@ -119,10 +122,10 @@ Two variants exist — use the right one:
 ```css
 .btn-cancel {
   background-color: #95a5a6;
-  color: white;
+  color: #333;
   /* same shape as primary */
 }
-.btn-cancel:hover:not(:disabled) { background-color: #7f8c8d; }
+.btn-cancel:hover:not(:disabled) { filter: brightness(1.1); }
 ```
 
 **Never** use the default browser button style. Always apply one of these two patterns.
@@ -160,7 +163,7 @@ Label style: `font-size: 0.9rem; color: #666`.
 ### Error message
 ```css
 .error {
-  color: #e74c3c;
+  color: #c0392b;
   margin: 1rem 0;
   padding: 0.5rem;
   border-radius: 4px;

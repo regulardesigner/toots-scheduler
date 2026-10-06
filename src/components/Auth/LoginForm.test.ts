@@ -50,6 +50,7 @@ describe('LoginForm', () => {
     await flushPromises();
 
     expect(wrapper.find('.error').text()).toBe('The instance address must use https://');
+    expect(wrapper.find('.error').attributes('role')).toBe('alert');
     expect(api.registerApplication).not.toHaveBeenCalled();
     expect(assign).not.toHaveBeenCalled();
   });

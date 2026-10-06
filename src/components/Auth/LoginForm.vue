@@ -78,6 +78,7 @@ async function handleLogin() {
       <p
         v-if="error"
         class="error"
+        role="alert"
       >
         {{ error }}
       </p>
@@ -136,7 +137,7 @@ input:disabled {
 }
 
 .error {
-  color: #e74c3c;
+  color: #c0392b;
   margin-bottom: 1rem;
   padding: 0.75rem;
   background-color: #fde8e7;

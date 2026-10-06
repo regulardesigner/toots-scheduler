@@ -174,6 +174,7 @@ describe('TootComposer', () => {
 
     expect(api.scheduleToot).not.toHaveBeenCalled();
     expect(wrapper.find('.error').text()).toBe('Your toot is 12 characters long, but your instance allows 10.');
+    expect(wrapper.find('.error').attributes('role')).toBe('alert');
   });
 
   it('does not block a toot while the instance limits are unknown', async () => {

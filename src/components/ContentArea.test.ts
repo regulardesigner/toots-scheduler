@@ -6,9 +6,9 @@ import { useInstanceStore } from '../stores/instance';
 
 let pinia: Pinia;
 
-function mountArea(modelValue = 'Hello') {
+function mountArea(modelValue = 'Hello', sections = { showMedia: false, showPoll: false }) {
   return mount(ContentArea, {
-    props: { modelValue, hasPoll: false, hasMedia: false },
+    props: { modelValue, hasPoll: false, hasMedia: false, ...sections },
     global: { plugins: [pinia] },
   });
 }
@@ -48,5 +48,53 @@ describe('ContentArea', () => {
 
     expect(wrapper.find('textarea').attributes('maxlength')).toBeUndefined();
     expect(wrapper.find('.character-count').text()).toMatch(/^477\b/);
+  });
+
+  it('announces the remaining characters only when a step near the limit is reached', async () => {
+    const instance = useInstanceStore();
+    instance.maxCharacters = 100;
+    instance.isLoaded = true;
+    const wrapper = mountArea('');
+    const liveRegion = () => wrapper.find('[aria-live="polite"]').text();
+    expect(liveRegion()).toBe('');
+
+    await wrapper.setProps({ modelValue: 'x'.repeat(40) });
+    expect(liveRegion()).toBe('');
+
+    await wrapper.setProps({ modelValue: 'x'.repeat(55) });
+    expect(liveRegion()).toBe('45 characters left');
+
+    await wrapper.setProps({ modelValue: 'x'.repeat(56) });
+    expect(liveRegion()).toBe('45 characters left');
+
+    await wrapper.setProps({ modelValue: 'x'.repeat(100) });
+    expect(liveRegion()).toBe('Character limit reached');
+
+    await wrapper.setProps({ modelValue: 'x'.repeat(10) });
+    expect(liveRegion()).toBe('');
+  });
+
+  it('does not announce anything before the instance limits are known', async () => {
+    const wrapper = mountArea('');
+    await wrapper.setProps({ modelValue: 'x'.repeat(480) });
+
+    expect(wrapper.find('[aria-live="polite"]').text()).toBe('');
+  });
+
+  it('gives the text box and the media and poll toggles a name', () => {
+    const wrapper = mountArea();
+
+    expect(wrapper.find('textarea').attributes('aria-label')).toBe('Toot text');
+    expect(wrapper.find('textarea').attributes('aria-describedby')).toBe('character-count');
+    expect(wrapper.find('label[for="media"]').text()).toBe('Add images');
+    expect(wrapper.find('label[for="poll"]').text()).toBe('Add a poll');
+  });
+
+  it("shows the composer's real state on the toggles", () => {
+    const wrapper = mountArea('Hello', { showMedia: true, showPoll: false });
+
+    expect((wrapper.find('#media').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('#poll').element as HTMLInputElement).checked).toBe(false);
+    expect(wrapper.find('#poll').attributes('disabled')).toBeDefined();
   });
 });

@@ -207,12 +207,13 @@ input#scheduled-date, input#scheduled-time, input#visibility, input#language {
 }
 
 button.edit-mode {
-  background-color: #2b90d9;
+  background-color: #2577b1;
   color: white;
 }
 
 button.edit-mode:hover:not(:disabled) {
   background-color: #2577b1;
+  filter: brightness(0.9);
 }
 
 @media (max-width: 768px) {

@@ -275,6 +275,7 @@ async function saveMediaMetadata() {
     <p
       v-if="uploadError"
       class="error"
+      role="alert"
     >
       {{ uploadError }}
     </p>
@@ -430,7 +431,7 @@ async function saveMediaMetadata() {
 .edit-alt-button {
   bottom: 0.4rem;
   left: 0.4rem;
-  background-color: #cbcbcb;
+  background-color: #333;
   color: white;
   border-radius: 0.3rem;
   font-size: 1rem;
@@ -444,7 +445,7 @@ async function saveMediaMetadata() {
   right: 0.4rem;
   width: 1.2rem;
   height: 1.2rem;
-  background-color: #ff4136;
+  background-color: #c0392b;
   color: white;
   border-radius: 1.2rem;
 }
