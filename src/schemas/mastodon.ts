@@ -90,7 +90,9 @@ export const InstanceSchema = z.object({
     }).optional().catch(undefined),
     media_attachments: z.object({
       image_size_limit: optionalLimit,
-      supported_mime_types: z.array(z.string()).optional().catch(undefined),
+      supported_mime_types: z.array(z.unknown())
+        .transform(types => types.filter((t): t is string => typeof t === 'string'))
+        .optional().catch(undefined),
     }).optional().catch(undefined),
   }).optional().catch(undefined),
 }).transform(instance => ({

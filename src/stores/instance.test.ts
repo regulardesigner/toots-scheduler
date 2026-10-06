@@ -76,6 +76,7 @@ describe('instance store', () => {
     useAuthStore().completeLogin(credentials);
     await flushPromises();
 
+    expect(api.getInstanceConfiguration).toHaveBeenCalledTimes(1);
     expect(limitsOf(store)).toEqual(DEFAULTS);
   });
 
@@ -117,5 +118,26 @@ describe('instance store', () => {
     await flushPromises();
 
     expect(store.maxCharacters).toBe(500);
+  });
+
+  it('ignores a late answer of the previous account after a direct switch', async () => {
+    let answerA!: (value: unknown) => void;
+    let answerB!: (value: unknown) => void;
+    api.getInstanceConfiguration
+      .mockReturnValueOnce(new Promise(resolve => { answerA = resolve; }))
+      .mockReturnValueOnce(new Promise(resolve => { answerB = resolve; }));
+    const store = useInstanceStore();
+    const auth = useAuthStore();
+    auth.completeLogin(credentials);
+    await flushPromises();
+    auth.completeLogin({ ...credentials, accessToken: 'token-b' });
+    await flushPromises();
+
+    answerB({ maxCharacters: 5000 });
+    await flushPromises();
+    answerA({ maxCharacters: 1000 });
+    await flushPromises();
+
+    expect(store.maxCharacters).toBe(5000);
   });
 });

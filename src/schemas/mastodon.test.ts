@@ -112,6 +112,11 @@ describe('mastodon schemas', () => {
     });
   });
 
+  it('keeps the valid MIME types when the list has other entries', () => {
+    const parsed = InstanceSchema.parse({ configuration: { media_attachments: { supported_mime_types: ['image/png', null, 42, 'image/webp'] } } });
+    expect(parsed.supportedMimeTypes).toEqual(['image/png', 'image/webp']);
+  });
+
   it('drops missing or invalid instance limits instead of refusing the response', () => {
     const parsed = InstanceSchema.parse({
       configuration: {
