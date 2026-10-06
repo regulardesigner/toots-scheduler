@@ -95,7 +95,18 @@ describe('ScheduledToots', () => {
     expect(alert.text()).toBe('Boom');
   });
 
-  it('opens again on an error, even after being collapsed by hand', async () => {
+  it('shows an error even with no toots and the list collapsed, without opening an empty panel', async () => {
+    const wrapper = await mountList();
+    expect(wrapper.find('.toots-toggle').attributes('aria-expanded')).toBe('false');
+
+    useScheduledTootsStore().setError('Boom');
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').text()).toBe('Boom');
+    expect(wrapper.find('.toots-toggle').attributes('aria-expanded')).toBe('false');
+  });
+
+  it('keeps the user\'s choice to collapse the list when an error comes, and still shows the error', async () => {
     api.getScheduledToots.mockResolvedValue([toot]);
     const wrapper = await mountList();
     await wrapper.find('.toots-toggle').trigger('click');
@@ -104,8 +115,20 @@ describe('ScheduledToots', () => {
     useScheduledTootsStore().setError('Boom');
     await flushPromises();
 
-    expect(wrapper.find('.toots-toggle').attributes('aria-expanded')).toBe('true');
+    expect(wrapper.find('.toots-toggle').attributes('aria-expanded')).toBe('false');
     expect(wrapper.find('[role="alert"]').text()).toBe('Boom');
+  });
+
+  it('shows an error and the list together', async () => {
+    api.getScheduledToots.mockResolvedValue([toot]);
+    const wrapper = await mountList();
+
+    useScheduledTootsStore().setError('Boom');
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').text()).toBe('Boom');
+    expect(wrapper.findAll('.toot-card')).toHaveLength(1);
+    expect(wrapper.find('.toots-toggle').attributes('aria-expanded')).toBe('true');
   });
 
   describe('with two toots', () => {
@@ -220,7 +243,7 @@ describe('ScheduledToots', () => {
       expect(wrapper.find('.error').element.parentElement?.getAttribute('role')).toBe('alert');
     });
 
-    it('moves focus to the list toggle when a failed deletion replaces the list with the error', async () => {
+    it('keeps every toot and leaves focus on the Delete button when the deletion fails', async () => {
       api.deleteScheduledToot.mockRejectedValue(new Error('Record not found'));
       const wrapper = await mountList();
 
@@ -231,8 +254,27 @@ describe('ScheduledToots', () => {
       await wrapper.find('.btn-delete').trigger('click');
       await flushPromises();
 
-      expect(wrapper.find('.toot-card').exists()).toBe(false);
-      expect(document.activeElement).toBe(wrapper.find('#scheduled-toots-title button').element);
+      expect(wrapper.find('[role="alert"]').text()).toBe('Record not found');
+      expect(wrapper.findAll('.toot-card')).toHaveLength(2);
+      expect(document.activeElement).toBe(deleteButton.element);
+    });
+
+    it('puts focus back on the Delete button after a failed deletion even if disabling it dropped focus', async () => {
+      api.deleteScheduledToot.mockImplementation(async () => {
+        // Browsers may drop focus from a control that becomes disabled.
+        (document.activeElement as HTMLElement | null)?.blur();
+        throw new Error('Record not found');
+      });
+      const wrapper = await mountList();
+
+      const deleteButton = wrapper.findAll<HTMLButtonElement>('.delete-button')[0];
+      deleteButton.element.focus();
+      await deleteButton.trigger('click');
+      await flushPromises();
+      await wrapper.find('.btn-delete').trigger('click');
+      await flushPromises();
+
+      expect(document.activeElement).toBe(deleteButton.element);
     });
 
     it('leaves focus where the user moved it while the deletion was running', async () => {

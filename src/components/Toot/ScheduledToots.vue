@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import TootCard from './TootCard.vue';
 import ModalView from '../Modals/ModalView.vue';
 import DeleteConfirmModal from '../Modals/DeleteConfirmModal.vue';
@@ -12,15 +12,11 @@ const store = useScheduledTootsStore();
 
 /** The user's own choice (open/closed); null until they click, so the list follows the data. */
 const userToggled = ref<boolean | null>(null);
-const isOpen = computed(() => userToggled.value ?? (store.count > 0 || !!store.error));
+// The error is shown above the panel, open or not: it neither opens the panel nor overrides the user's choice.
+const isOpen = computed(() => userToggled.value ?? store.count > 0);
 
 /** First load, nothing to show yet. */
 const isFirstLoad = computed(() => store.isLoading && store.count === 0);
-
-// A new error must be seen, even if the list was collapsed by hand.
-watch(() => store.error, (error) => {
-  if (error) userToggled.value = null;
-});
 
 /** The list's toggle: focus lands here once a deleted toot's card is gone. */
 const listToggle = ref<HTMLButtonElement | null>(null);
@@ -74,12 +70,12 @@ async function handleDeleteConfirm() {
 
   await deleting;
   await nextTick();
-  // Success removes the card, failure replaces the list with the error: either way the focused
-  // button is gone. Keep keyboard focus in the list, unless the user has moved it elsewhere meanwhile.
+  // Unless the user moved focus elsewhere meanwhile: a failure keeps the card, so focus stays on (or
+  // returns to, if disabling it dropped focus) its Delete button; a success removes it, so the list's toggle.
   const active = document.activeElement;
-  if (!active || active === document.body || active === opener || !active.isConnected) {
-    listToggle.value?.focus();
-  }
+  if (active && active !== document.body && active !== opener && active.isConnected) return;
+  if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+  else listToggle.value?.focus();
 }
 
 /**
@@ -145,14 +141,14 @@ onMounted(() => {
       </div>
 
       <div
-        v-else-if="!store.error && store.count === 0"
+        v-else-if="store.count === 0"
         class="empty-state"
       >
         No scheduled toots yet.
       </div>
 
       <div
-        v-else-if="!store.error"
+        v-else
         class="toots-list"
       >
         <TransitionGroup 
