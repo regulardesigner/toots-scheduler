@@ -63,7 +63,7 @@ Audit: [docs/audits/2026-10-01-red-team-report.md](../../audits/2026-10-01-red-t
   - string slots need Vue's template compiler, so tests use render functions (`h()`);
   - no CSS is computed: contrast is checked by axe in Task 9.
 - **Dry run:** every code block below was dry-run on a scratch clone of this branch.
-  - Unit checks: 250 tests pass, typecheck is clean, lint reports 0 errors and 4 warnings, and the build succeeds.
+  - Unit checks (final, after the review fixes): 339 tests pass, typecheck is clean, lint reports 0 errors and 4 warnings, and the build succeeds.
   - axe-core 4.14 was run with Playwright on the production build, against the scratchpad's mock instance. The 12 states listed in Task 9 (L4-4) showed **no violation at all**, and there was **no CSP violation**. Before the contrast fixes, it flagged the colors listed in Task 4, Step 6.
 
 ## File map
@@ -94,7 +94,7 @@ Audit: [docs/audits/2026-10-01-red-team-report.md](../../audits/2026-10-01-red-t
 | `src/components/ControlsBar.vue` (+ test) | Modify | 4, 7 | Contrast; time zone hint |
 | `package.json`, `package-lock.json`, `src/stores/features.ts`, `README.md` | Modify | 8 | Release 0.16.0 |
 
-Test count after each task: 196 → **209** (T1) → **219** (T2) → **226** (T3) → **229** (T4) → **236** (T5) → **246** (T6) → **250** (T7) → 250 (T8). Each task leaves typecheck, lint and tests green.
+Test count after each task: 196 → **209** (T1) → **219** (T2) → **226** (T3) → **229** (T4) → **236** (T5) → **246** (T6) → **250** (T7) → 250 (T8) → **339** after the final-review fixes. Each task leaves typecheck, lint and tests green.
 
 ---
 
@@ -3604,11 +3604,11 @@ The controller then reports what passed and what only the user can check, and as
 **Acceptance Criteria:**
 - [ ] `npm run build`, then `npx vite preview --port 4173 --strictPort`, then `node e2e.mjs`: all checks pass:
   - the 24 existing checks (#1–#16, L3-1–L3-8);
-  - L4-1 to L4-9 below;
+  - L4-1 to L4-14 below;
   - L3-8, zero CSP violations, now also covering every Lot 4 flow and the axe injection
 - [ ] The user has been told what the run proves and what still needs a real instance, a screen reader and Lighthouse, and has answered
 
-**Verify:** the e2e output ends with `33/33 passed`
+**Verify:** the e2e output ends with `38/38 passed`
 
 **Steps:**
 
@@ -3648,17 +3648,22 @@ async function axeScan(page, name) {
 
 | Id | Check | Pass when |
 |---|---|---|
-| L4-1 | Keyboard-only journey, `page.keyboard` only, no clicks:<br>1. Tab to "Get started", Enter.<br>2. Type the instance, Enter.<br>3. On the composer: type the text; Tab to the date and time and type them; Tab to "Schedule", Enter.<br>4. Tab to the new card's "Edit", Enter; change the text; submit.<br>5. Tab to "Delete", Enter; Escape.<br>6. Delete again, Tab to the dialog's "Delete", Enter. | Step 1: the login dialog opens with focus in `#instance`.<br>Step 3: the toot is listed.<br>Step 4: focus is in the textarea with the toot's text, and the update is listed.<br>Step 5: the dialog opens with focus on "Cancel"; after Escape it is closed and focus is back on that card's "Delete".<br>Step 6: the card is gone and focus is on the `.toots-summary`. |
+| L4-1 | Keyboard-only journey, `page.keyboard` only, no clicks:<br>1. Tab to "Get started", Enter.<br>2. Type the instance, Enter.<br>3. On the composer: type the text; Tab to the date and time and type them; Tab to "Schedule", Enter.<br>4. Tab to the new card's "Edit", Enter; change the text; submit.<br>5. Tab to "Delete", Enter; Escape.<br>6. Delete again, Tab to the dialog's "Delete", Enter. | Step 1: the login dialog opens with focus in `#instance`.<br>Step 3: the toot is listed.<br>Step 4: focus is in the textarea with the toot's text, and the update is listed.<br>Step 5: the dialog opens with focus on "Cancel"; after Escape it is closed and focus is back on that card's "Delete".<br>Step 6: the card is gone and focus is on the list toggle, `#scheduled-toots-title button`. |
 | L4-2 | Dialog names: login, delete, Thanks, What's New, alt text | Each `[role=dialog]`'s `aria-labelledby` resolves to a visible heading or label with the expected text. The close button's accessible name is "Close". |
 | L4-3 | Mobile menu at 390×844 | 1. The burger is named "Menu", with `aria-expanded="false"`.<br>2. Tab from the burger while closed never focuses "Logout".<br>3. Enter sets `aria-expanded="true"`.<br>4. Escape closes it and focuses the burger.<br>5. Thanks from the menu, then Escape, gives focus back to the burger. |
 | L4-4 | axe scans: landing; login dialog; login error; composer; composer with an image attached and 470 characters typed; edit mode; composer error; the delete, Thanks and What's New dialogs; mobile menu open; mobile right after load (the "What's New" bubble visible) | 0 `serious` and 0 `critical` violations everywhere; print any `moderate`/`minor` in the report. The dry run found none at all. Scan while no toast is shown (see residuals). |
-| L4-5 | Mocked limits: `instanceConfig = { configuration: { statuses: { max_characters: 1000, max_media_attachments: 2 }, media_attachments: { image_size_limit: 2097152, supported_mime_types: ['image/png', 'video/mp4'] } } }`, then sign in | `textarea[maxlength="1000"]` and the counter shows 1000.<br>The hint is `Up to 2 images, max 2 MB each (PNG)` and `accept` is `image/png,.png`.<br>A dropped JPEG, then 3 PNGs, are each refused with **no** `/api/v2/media` call.<br>A 600-character toot is scheduled. |
-| L4-6 | Fallback: `instanceFails = true` (500), then sign in | `maxlength="500"` and the default hint `Up to 4 images, max 8 MB each (JPEG, PNG, GIF, WebP, AVIF or HEIC)`; the composer schedules a toot.<br>After sign-out and sign-in as account B with `instanceConfig` set, the new limits apply: no stale limits across accounts. |
+| L4-5 | Mocked limits: `instanceConfig = { configuration: { statuses: { max_characters: 1000, max_media_attachments: 2 }, media_attachments: { image_size_limit: 2097152, supported_mime_types: ['image/png', 'video/mp4'] } } }`, then sign in | The textarea has no `maxlength` and the counter shows 1000.<br>The hint is `Up to 2 images, max 2 MB each (PNG)` and `accept` is `image/png,.png`.<br>A dropped JPEG, then 3 PNGs, are each refused with **no** `/api/v2/media` call.<br>A 600-character toot is scheduled. |
+| L4-6 | Fallback: `instanceFails = true` (500 on v2), then sign in. The mock's `/api/v1/instance` answers 404 | The app asks `/api/v2/instance`, then `/api/v1/instance`, then uses the defaults: the counter shows 500 and is never red, a 600-character toot is not refused by the composer, the textarea has no `maxlength`, and the default hint is `Up to 4 images, max 8 MB each (JPEG, PNG, GIF, WebP, AVIF or HEIC)`. The composer schedules a short toot.<br>After sign-out and sign-in as account B with `instanceConfig` set, the new limits apply: no stale limits across accounts. |
 | L4-7 | Two sensitive toots: give account A two scheduled toots, `s1` and a new `s2`, both with `sensitive: true` and a `spoiler_text` | The ids `sensitive-s1` and `sensitive-s2` are distinct, each `label[for]` matches its own input, and clicking the second label unblurs only the second card. |
-| L4-8 | Time zone, context `timezoneId: 'Asia/Tokyo'` | The hint is `Time zone: Asia/Tokyo`, each card's date ends with `Asia/Tokyo`, and scheduling 2031-02-01 12:00 posts `scheduled_at` `2031-02-01T03:00:00.000Z`. |
-| L4-9 | Live region: with the fallback 500, fill 455 characters, then 456 | `[aria-live="polite"]` reads `45 characters left` and does not change at 456. Every error shown in L4-1, L4-5 and L4-6 has `role="alert"`. |
+| L4-8 | Time zone, context `timezoneId: 'Asia/Tokyo'` | The hint is `Time zone: Asia/Tokyo`, each card's date ends with `(Asia/Tokyo)`, and scheduling 2031-02-01 12:00 posts `scheduled_at` `2031-02-01T03:00:00.000Z`. |
+| L4-9 | Live region: mock `instanceConfig = { configuration: { statuses: { max_characters: 500 } } }`, sign in, fill 455 characters, then 456 | `[aria-live="polite"]` reads `45 characters left` and does not change at 456. With the fallback (L4-6) it stays empty. Every error shown in L4-1, L4-5 and L4-6 has `role="alert"`. |
+| L4-10 | v1 fallback: `/api/v2/instance` answers 404; add `instanceV1Config` to the mock, served at `/api/v1/instance`, set to `{ max_toot_chars: 5000 }` (Pleroma/Akkoma style), then sign in | Both endpoints are called, in that order; the counter shows 5000, and a 600-character toot is scheduled. |
+| L4-11 | Layout at 1280×900, signed in; then at 390×844 | Desktop: the top of `.user-info` is below the bottom of the fixed `.header` (bounding boxes), so nothing is hidden under it. Mobile: the screenshot matches the pre-Lot-4 layout. |
+| L4-12 | What's New: open it from the header (desktop) with new features listed | The dialog has focus, its `scrollTop` is 0 and its heading `#whats-new-title` is within the dialog's visible area. Tab moves focus to "Got it!". |
+| L4-13 | Create in flight: account A with two scheduled toots; hold the mock's `POST /api/v1/statuses` answer, then submit a new toot | While the POST is pending, every card's Edit and Delete is `disabled` and no card says "Deleting…" or "Updating…". Once it answers, the new toot is listed and the buttons are enabled again. |
+| L4-14 | v1 merge: `instanceConfig = { configuration: { statuses: { max_media_attachments: 2 } } }` (no `max_characters`) and `instanceV1Config = { max_toot_chars: 5000 }`, then sign in | Both endpoints are called; the counter shows 5000 and the upload hint says `Up to 2 images`. |
 
-Then make L3-8 also cover the L4 flows. Expected end of run: `33/33 passed`.
+Then make L3-8 also cover the L4 flows. Expected end of run: `38/38 passed`.
 
 - [ ] **Step 3: Run**
 
@@ -3702,7 +3707,7 @@ AskUserQuestion:
 ```
 
 ```json:metadata
-{"files": [], "verifyCommand": "node e2e.mjs", "acceptanceCriteria": ["24 existing checks still pass", "L4-1..L4-9 pass (keyboard journey, axe serious/critical = 0, limits and fallback, unique ids, time zone, live region)", "zero CSP violations across all flows", "user informed of real-instance, VoiceOver and Lighthouse checks and answered"], "requiresUserVerification": true, "userVerificationPrompt": "The automated checks pass (keyboard journey, axe with no serious or critical violation, instance limits and fallback, unique ids, time zone, no CSP violation). Do the real-world checks pass: limits on a real instance allowing more than 500 characters, a VoiceOver pass, and Lighthouse accessibility of at least 95?"}
+{"files": [], "verifyCommand": "node e2e.mjs", "acceptanceCriteria": ["24 existing checks still pass", "L4-1..L4-14 pass (keyboard journey, axe serious/critical = 0, limits, v1 fallback and merge, unique ids, time zone, live region, layout, What's New at the top, cards disabled during a create)", "zero CSP violations across all flows", "user informed of real-instance, VoiceOver and Lighthouse checks and answered"], "requiresUserVerification": true, "userVerificationPrompt": "The automated checks pass (keyboard journey, axe with no serious or critical violation, instance limits and fallback, unique ids, time zone, no CSP violation). Do the real-world checks pass: limits on a real instance allowing more than 500 characters, a VoiceOver pass, and Lighthouse accessibility of at least 95?"}
 ```
 
 ---
@@ -3717,17 +3722,20 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-4-a1
   - `ModalView`, Task 3:
     - `labelledBy` → `aria-labelledby`, close button `aria-label="Close"`;
     - focus restored only after a real opening; Escape closes;
-    - dead `<slot @close-child-modal>` removed; `close` unified (LoginForm, LandingPage, WhatsNew); a heading id on every usage.
+    - dead `<slot @close-child-modal>` removed; `close` unified (LoginForm, LandingPage, WhatsNew); a heading id on every usage;
+    - document-level Tab trap, top-most Escape via `openStack`, scroll lock, `initialFocus` (What's New opens on the dialog itself).
   - Burger, Task 5: `aria-label`, `aria-expanded`, `aria-controls`, Escape.
   - Page structure, Task 5: one `<h1>` per view and `<main>` around `RouterView`. The only `<main>` is App's: LandingPage's own is removed, and a grep plus `App.test.ts` and `LandingPage.test.ts` check it.
   - `TootCard`, Task 6:
     - `sensitive-${id}` ids; the redundant `@click` removed;
     - `emit('edit' | 'delete')`;
-    - `pendingId` (and `pendingAction`) in the store instead of the global `isLoading`.
+    - `pendingId` (and `pendingAction`) in the store instead of the global `isLoading`;
+    - `busy` prop, a single pending slot shared with `createToot`, and `BusyError` for a refused change.
   - Counter `aria-live="polite"`, `role="alert"` on errors, media and poll labels (visually hidden), `.visually-hidden` utility → Task 4.
   - `instance` store → Task 1:
     - `/api/v2/instance` after login and after session restore, zod with `parseApiResponse`;
-    - the four limits, with fallbacks (500, 4, 8 MB, Lot 3 types) on failure and per missing or invalid field;
+    - the four limits, each with its default (500, 4, 8 MB, Lot 3 types) when missing or invalid; per-limit flags `hasCharacterLimit` / `hasMediaLimit`, so a default is never enforced as the instance's own;
+    - `/api/v1/instance` as the fallback when v2 fails (not on a 401), and merged when v2 gives no `max_characters`;
     - reset on sign-out and account switch.
   - Store wiring → Task 2:
     - ContentArea and the composer check;
@@ -3752,43 +3760,72 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-4-a1
     - the mobile "What's New" bubble (Task 5).
 
     Only palette values already in the code are used, and hovers use `filter: brightness()`. The `ui-design-system` skill is updated so future UI doesn't bring the failing pairs back: its listed error `#e74c3c`, edit `#2b90d9` and white-on-neutral all failed AA.
-  - **`supportedMimeTypes` holds the usable image types** (the instance's list kept to Lot 3's images), never the raw list, and it is never empty. A list with no supported image is treated as invalid and gives the default list, rather than "no image allowed"; the instance still checks every upload. The raw list only lives in `InstanceConfiguration`.
+  - **`supportedMimeTypes` holds the usable image types** (the instance's list kept to Lot 3's images, non-string entries dropped), never the raw list, and it is never empty. A list with no supported image is treated as invalid and gives the default list; the instance still checks every upload.
   - **When it loads:** the store watches `auth.accessToken`, so neither `OAuthCallback` nor the auth store had to change. Sign-in, a restored session, a cross-tab account switch and sign-out are all covered by one watcher, and an answer for an old session is ignored. App.vue creates the store.
+  - **`/api/v1/instance` fallback (added in review).** When v2 fails with anything but a 401, the limits are read from v1: Mastodon 3.4.2+ `configuration`, or Pleroma/Akkoma's top-level `max_toot_chars`. When v2 answers without `max_characters`, v1 is asked too, and its text limit is merged, with v2's other values kept. If that v1 call fails, v2's answer stands. Both endpoints are reduced to the same limits by `InstanceSchema` / `InstanceV1Schema`. A 401 on v2 is not retried: it ends the session as everywhere else. A 401 on the merge's v1 call is caught there, but the shared client (Lot 2) has already ended the session.
+  - **Per-limit gating: `hasCharacterLimit` and `hasMediaLimit` (added in review).** Each flag is true only when the instance actually gave that limit. Until then the default is a guess and is not enforced:
+    - without a text limit, the composer does not refuse a long toot, the counter is never red and the live region stays silent;
+    - without an image limit, the submit check does not refuse the image count.
+
+    The instance remains the judge, and its 422 message is shown.
+  - **Mastodon-style counting, no `maxlength` (added in review).** `src/utils/tootLength.ts` counts as Mastodon's StatusLengthValidator does: each URL is 23 characters, `@user@domain` counts as `@user`, and the rest is counted in graphemes (`Intl.Segmenter`, code points without it). The content warning is counted when it is enabled, trimmed, in the counter and in the submit check alike. The textarea has no `maxlength`: a cap counted in UTF-16 units would truncate text Mastodon accepts (long URLs, emoji), so the counter goes negative and the submit check explains instead.
   - **Image size fallback stays 8 MB** (Lot 3), although Mastodon 4.x defaults to 16 MB: only the instance's own value raises it.
-  - **`ModalView`'s close button moved after the slot** in the DOM; its position on screen is unchanged. So "first focusable" is the dialog's own content:
-    - the instance field in the login dialog;
-    - Cancel in the Delete and Thanks dialogs, the safe default;
-    - "Got it!" in What's New;
-    - the description field in the alt-text dialog.
-
-    `labelledBy` is required, so a dialog without a name fails typecheck. Escape is listened to only while the dialog is open.
-  - **Headings:** the header's "Toot Scheduler" is a `<p>` on every route. The spec allowed `<p>` or `<h1>` depending on the route; one rule is simpler. The composer gets a visually hidden `<h1>Schedule a toot</h1>`, and OAuthCallback's "Authenticating..." becomes its `<h1>`.
-  - **`MobileNav` extracted from App.vue** (the spec lists App.vue) so it can be tested without mounting the whole app. Two additions:
-    - the closed menu gets `visibility: hidden`: otherwise Tab reached its off-screen items, which defeats `aria-expanded`;
-    - choosing an item focuses the burger first, so a dialog opened from the menu returns focus to a visible element.
-  - **Composer toggles are now controlled** (`showMedia` and `showPoll` props) instead of keeping their own state. The dry run found that they went out of sync:
-    - after scheduling, they stayed checked with the section closed;
-    - when editing a toot with images, they showed unchecked, and a click hid the images.
-
-    A toggle whose checked state lies is an accessibility bug. The labels say "Add images", since only images can be attached, and "Add a poll".
-  - **Live region strategy:** it speaks only when the remaining count reaches or leaves 50, 20, 10 or 0, with the exact count; the reasons are in Task 4. The visible counter carries hidden "characters left" text, and the textarea is described by it.
-  - **Cards:**
-    - "Editing…" is removed: Edit only loads the toot, nothing is pending. "Updating…" shows during an update.
-    - The list now stays visible while it refreshes ("Loading…" only when empty). Before, the list was replaced, so no per-card state could ever be seen.
-    - After Edit, the textarea gets focus; after a deletion, the list summary does. The Delete button that had focus disappears with its card.
-  - **Time zone:** shown as the IANA name (for example `Europe/Stockholm`), with no UTC offset, which would change with daylight saving time. The helper returns `your local time zone` when the browser gives none.
-  - **New test files** beyond the spec: `App.test.ts`, `LandingPage.test.ts`, `MobileNav.test.ts`, `ScheduledToots.test.ts`, `ContentArea.test.ts`, `TootCard.test.ts`, `timeZone.test.ts`.
+  - **`ModalView` beyond the plan (review fixes):**
+    - its close button moved after the slot in the DOM; its position on screen is unchanged. So "first focusable" is the dialog's own content: the instance field in the login dialog, Cancel in the Delete and Thanks dialogs, and the description field in the alt-text dialog;
+    - `labelledBy` is required, so a dialog without a name fails typecheck;
+    - `initialFocus: 'first' | 'dialog'` (default `'first'`). What's New uses `'dialog'`: its only control, "Got it!", is at the end of long content, so the dialog itself takes focus and opens scrolled to the top. Tab from there goes to the first control;
+    - a document-level keydown handler, active only while the dialog is open: Tab and Shift+Tab wrap inside it and bring focus back when it fell out (onto `<body>`, say). Escape is ignored during IME composition;
+    - a module-level `openStack`: only the top-most dialog reacts to Escape and Tab;
+    - a `body.modal-open` class locks page scroll while any dialog is open;
+    - the opener is captured synchronously when `isOpen` turns true, before the content can take focus. Focus goes back to it on close or unmount, only if it is still in the page;
+    - a dialog closed or unmounted before it activated leaves no trace;
+    - What's New closed by Escape, the overlay or the close button counts as seen.
+  - **Headings and layout:** the header's "Toot Scheduler" is a `<p>` on every route. The spec allowed `<p>` or `<h1>` depending on the route; one rule is simpler. The composer gets a visually hidden `<h1>Schedule a toot</h1>`, OAuthCallback's "Authenticating..." becomes its `<h1>`, and the landing `<h1>` has `tabindex="-1"` so focus lands there after logout. `.app-main` is a flex column, so the routed pages stay flex items as they were directly under `.app`, and their top margins don't collapse (the composer no longer slides under the fixed header).
+  - **Scheduled list: an accordion instead of `<details>` (added in review).** The `<summary>` with an `<h1>` inside became an `<h2>` holding a real toggle `<button>` (`aria-expanded`, `aria-controls="scheduled-toots-panel"`), with the panel under `v-show`. The list opens by itself when it has toots or an error. A collapse by hand is remembered until a new error, which opens it again.
+  - **`MobileNav` extracted from App.vue** (the spec lists App.vue) so it can be tested without mounting the whole app. Beyond the plan:
+    - the closed menu gets `visibility: hidden`: otherwise Tab reached its off-screen items;
+    - choosing an item closes the menu and focuses the burger first, so a dialog opened from the menu returns focus to a visible element;
+    - it closes when focus moves to an element outside it (`focusout` with a target);
+    - Escape is left to an open dialog (`body.modal-open`) or to a handler that already handled it, so one press never closes both;
+    - desktop and mobile navs are `<nav aria-label="Account">` landmarks;
+    - transitions and the bubble animation stop under `prefers-reduced-motion`.
+  - **Composer toggles are now controlled** (`showMedia` and `showPoll` props) instead of keeping their own state. The dry run found that they went out of sync after scheduling and when editing a toot with images. The labels say "Add images" and "Add a poll".
+  - **Live region strategy:** it speaks only when the remaining count reaches or leaves 50, 20, 10, 0 or −1, with the exact count. Over the limit it says "N characters over the limit", never a minus sign. The visible counter carries hidden text with the same wording, and the textarea is described by it. A repeated composer error is cleared and inserted again on the next tick so it is announced again. LoginForm puts focus back on the instance field after a failed attempt.
+  - **One operation at a time (added in review; goes beyond `pendingId`).**
+    - Creating, updating and deleting all take the store's single pending slot:
+      - `createToot` holds it as `'new'`, so no card shows progress but all are disabled;
+      - `updateToot` and `deleteToot` hold it with the toot's id.
+    - While it is held, every card's buttons are disabled (`busy` prop). Only the toot concerned says "Deleting…" or "Updating…" and is `aria-busy`.
+    - A second change is refused before anything is sent: `createToot` and `updateToot` throw `BusyError`, and `deleteToot` returns `false`. The composer shows the `BusyError` and keeps the form, without reloading the list. A deletion confirmed while busy is not attempted. Edit is ignored while busy.
+    - Update and create failures are shown by the composer, not put in the list error, and any failure other than `BusyError` reloads the list.
+    - A `fetchSeq` guard lets only the latest list reload write the list and its loading state.
+    - Late results from a previous session are ignored, and the pending state is reset on an account switch.
+  - **Cards and the composer:**
+    - "Editing…" is removed: Edit only loads the toot, nothing is pending.
+    - The list stays visible while it refreshes ("Loading…" only when empty).
+    - After Edit, the composer's text box (found by `data-toot-text`) gets focus, and the scroll is instant under `prefers-reduced-motion`.
+    - After a deletion (success or failure), focus goes to the list toggle, unless the user moved it elsewhere meanwhile.
+    - When the toot being edited is deleted, the store leaves edit mode. The composer's watcher empties the form whenever edit mode ends outside it, and a `$onAction` hook shows "The toot you were editing was deleted." Cancel and a saved edit show no notice.
+    - The sensitive toggle's label has a visually hidden prefix ("Show the content behind this warning:").
+  - **Time zone:** shown as the IANA name (for example `Europe/Stockholm`), with no UTC offset, which would change with daylight saving time. It appears as `Time zone: …` under the date and time fields (their `aria-describedby`) and in parentheses after each card's date, `… 14:30 (Europe/Stockholm)`. The helper returns `your local time zone` when the browser gives none.
+  - **What's New 0.16.0** has four entries: instance limits, keyboard and screen reader, time zone, and the per-toot fix.
+  - **New test files** beyond the spec: `App.test.ts`, `LandingPage.test.ts`, `MobileNav.test.ts`, `ScheduledToots.test.ts`, `ContentArea.test.ts`, `TootCard.test.ts`, `timeZone.test.ts`, `tootLength.test.ts`. The suite ends at **339 tests**, not the 250 planned, because of the review fixes.
+  - **Task 9 follows what shipped:**
+    - L4-1: focus after the deletion goes to `#scheduled-toots-title button`.
+    - L4-5 and L4-6: check the counter, not `maxlength`. The fallback goes through `/api/v1/instance` before the defaults.
+    - L4-8: the card's date ends with `(Asia/Tokyo)`.
+    - L4-9: run it with `max_characters: 500` mocked, since an unknown limit keeps the live region silent.
+    - L4-10 to L4-14 are added for the review fixes: the v1 fallback, the desktop layout, What's New opening at the top, cards disabled during a create, and the v1 merge. The run ends at `38/38 passed`.
   - **No new project dependency.** axe-core is installed in the scratchpad's e2e folder only.
 - **Known residuals:**
-  - **Character counting:**
-    - the app counts raw string length (UTF-16, so an emoji counts 2);
-    - Mastodon counts each URL as 23 characters and adds the content warning to the total.
-
-    The counter can therefore differ slightly from the instance's count; the instance stays the judge, and its 422 message is shown.
-  - When `/api/v2/instance` fails on an instance with a higher limit, the fallback of 500 blocks longer toots until a reload. This includes editing an existing long toot. The store has `load()`, but nothing retries it.
-  - Instances without `/api/v2/instance` (Mastodon before 4.0, Pleroma/Akkoma) get the defaults; the v1 `max_toot_chars` is not read.
+  - **Character counting** follows Mastodon's rules (URLs as 23, remote mentions shortened, graphemes, content warning included) with simpler patterns: the URL pattern is `https?://\S+`, so trailing punctuation or scheme-less links may count differently. Without `Intl.Segmenter`, code points are counted. The instance stays the judge, and its 422 message is shown.
+  - **Unknown limits are not retried:** when both instance endpoints fail, or give no value, the corresponding flag stays false until the next sign-in or reload. The store's `load()` is never called again.
+  - **MediaUpload always checks its defaults** (4 images, 8 MB, the Lot 3 type list) when the instance gives none, while the submit check enforces the image count only when `hasMediaLimit` is true. An instance that allows more images, or larger ones, without saying so is held to the defaults in the upload area.
+  - **A deletion refused because another change started while its dialog was open** is not attempted. Focus then returns to the card's disabled Delete button and falls to `<body>`. The UI cannot reach this today: Delete is disabled while busy, and an open dialog blocks the composer.
   - Closing the media section keeps the uploaded images, which are still sent. This predates the lot and differs from the poll, fixed in Lot 1; it is left for a later lot.
-  - Only one card shows progress at a time (`pendingId` is a single value); with two quick deletions, the first card's label clears early.
-  - Dialogs set `aria-modal="true"` but do not make the rest of the page `inert`. The open mobile menu has no focus trap; this is the disclosure pattern, and Escape closes it.
+  - Dialogs set `aria-modal="true"` and trap Tab, but do not make the rest of the page `inert`. The scroll lock is `overflow: hidden` on `<body>`, which iOS Safari may not honour.
+  - The open mobile menu has no focus trap; this is the disclosure pattern, and Escape closes it. A click that gives focus to nothing (non-focusable text, or Safari not focusing buttons) leaves it open.
+  - The scheduled list is fetched twice when the composer mounts (by the composer and by the list). `fetchSeq` keeps the result correct; the extra request is left for Lot 5.
+  - A failed deletion replaces the whole list with the error until the next reload, as before.
   - Toasts (vue-toastification's default colors, for example white on green) may fail contrast while shown. Task 9 scans while no toast is visible. Restyling the library's toasts is left for Lot 5.
   - Dark mode is not addressed (`prefers-color-scheme` is not handled in these components), as before.
