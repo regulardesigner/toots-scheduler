@@ -61,6 +61,8 @@ watch(() => auth.sessionEndReason, (reason) => {
 }, { immediate: true });
 
 function handleWhatsNewClose() {
+  // Escape, the close button and the overlay count as having seen it (a no-op repeat after WhatsNew's own button).
+  featuresStore.markFeaturesAsSeen();
   showWhatsNew.value = false;
 }
 

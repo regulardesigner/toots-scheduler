@@ -30,6 +30,10 @@ function focusedButton(): HTMLButtonElement {
   return button;
 }
 
+function pressTab(shiftKey = false): void {
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true }));
+}
+
 function pressEscape(): void {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 }
@@ -111,5 +115,67 @@ describe('ModalView', () => {
     mounted.splice(mounted.indexOf(wrapper), 1);
 
     expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it('brings focus back into the dialog on Tab when it fell out', async () => {
+    const wrapper = mountModal(false);
+    await wrapper.setProps({ isOpen: true });
+    await nextTick();
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+
+    pressTab();
+
+    expect(document.activeElement?.id).toBe('first-field');
+  });
+
+  it('wraps Tab from the last focusable to the first, and Shift+Tab back', async () => {
+    const wrapper = mountModal(false);
+    await wrapper.setProps({ isOpen: true });
+    await nextTick();
+    (wrapper.find('.close-button').element as HTMLElement).focus();
+
+    pressTab();
+    expect(document.activeElement?.id).toBe('first-field');
+
+    pressTab(true);
+    expect(document.activeElement).toBe(wrapper.find('.close-button').element);
+  });
+
+  it('closes only the top-most dialog on Escape', async () => {
+    const first = mountModal(false);
+    const second = mountModal(false);
+    await first.setProps({ isOpen: true });
+    await nextTick();
+    await second.setProps({ isOpen: true });
+    await nextTick();
+
+    pressEscape();
+
+    expect(first.emitted('close')).toBeUndefined();
+    expect(second.emitted('close')).toHaveLength(1);
+  });
+
+  it('locks page scroll with a body class while open', async () => {
+    const wrapper = mountModal(false);
+    expect(document.body.classList.contains('modal-open')).toBe(false);
+
+    await wrapper.setProps({ isOpen: true });
+    await nextTick();
+    expect(document.body.classList.contains('modal-open')).toBe(true);
+
+    await wrapper.setProps({ isOpen: false });
+    expect(document.body.classList.contains('modal-open')).toBe(false);
+  });
+
+  it('returns focus to the opener even if focus moved before the content rendered', async () => {
+    const opener = focusedButton();
+    const wrapper = mountModal(false);
+
+    await wrapper.setProps({ isOpen: true });
+    (wrapper.find('#first-field').element as HTMLElement).focus();
+    await wrapper.setProps({ isOpen: false });
+
+    expect(document.activeElement).toBe(opener);
   });
 });

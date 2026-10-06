@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import { normalizeUrl } from '../../utils/url';
 import { createPkcePair, createRandomToken } from '../../utils/pkce';
@@ -10,6 +10,7 @@ const emit = defineEmits<{
 }>();
 
 const instance = ref('');
+const instanceInput = ref<HTMLInputElement | null>(null);
 const api = useMastodonApi();
 const error = ref('');
 const isLoading = ref(false);
@@ -41,6 +42,11 @@ async function handleLogin() {
   } finally {
     isLoading.value = false;
   }
+  // The field was disabled while loading, which dropped focus; put it back after a failed attempt.
+  if (error.value) {
+    await nextTick();
+    instanceInput.value?.focus();
+  }
 }
 </script>
 
@@ -57,6 +63,7 @@ async function handleLogin() {
         <label for="instance">Enter your instance address</label>
         <input
           id="instance"
+          ref="instanceInput"
           v-model="instance"
           type="text"
           inputmode="url"

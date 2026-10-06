@@ -53,4 +53,16 @@ describe('LoginForm', () => {
     expect(api.registerApplication).not.toHaveBeenCalled();
     expect(assign).not.toHaveBeenCalled();
   });
+
+  it('puts focus back on the instance field after a failed attempt', async () => {
+    api.registerApplication.mockRejectedValue(new Error('boom'));
+    const wrapper = mount(LoginForm, { attachTo: document.body });
+
+    await wrapper.find('#instance').setValue('mastodon.social');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(document.activeElement).toBe(wrapper.find('#instance').element);
+    wrapper.unmount();
+  });
 });

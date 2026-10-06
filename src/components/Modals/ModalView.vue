@@ -1,4 +1,15 @@
+<script lang="ts">
+/** Dialogs currently open, oldest first: only the last one reacts to the keyboard. */
+const openStack: symbol[] = [];
+
+function syncScrollLock(): void {
+  document.body.classList.toggle('modal-open', openStack.length > 0);
+}
+</script>
+
 <script setup lang="ts">
+import { ref, watch, nextTick, onUnmounted } from 'vue';
+
 // What can take focus inside the dialog; disabled controls are skipped, as the browser does.
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -8,8 +19,6 @@ const FOCUSABLE_SELECTOR = [
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
-
-import { ref, watch, nextTick, onUnmounted } from 'vue';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -30,8 +39,10 @@ function close(): void {
   emit('close');
 }
 
-function handleDocumentKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') close();
+const id = Symbol('modal');
+
+function isTopMost(): boolean {
+  return openStack[openStack.length - 1] === id;
 }
 
 function getFocusableElements(): HTMLElement[] {
@@ -39,18 +50,27 @@ function getFocusableElements(): HTMLElement[] {
   return Array.from(modalRef.value.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
 }
 
-/** Keeps Tab and Shift+Tab inside the dialog. */
-function handleTrapKeydown(event: KeyboardEvent): void {
-  if (event.key !== 'Tab') return;
+/** Escape closes the top-most dialog; Tab and Shift+Tab stay inside it, even when focus has fallen out (e.g. onto the body). */
+function handleDocumentKeydown(event: KeyboardEvent): void {
+  if (!isTopMost()) return;
+  if (event.key === 'Escape' && !event.isComposing) {
+    close();
+    return;
+  }
+  if (event.key !== 'Tab' || !modalRef.value) return;
   const focusable = getFocusableElements();
   if (focusable.length === 0) {
     event.preventDefault();
+    modalRef.value.focus();
     return;
   }
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
   const active = document.activeElement;
-  if (event.shiftKey && (active === first || active === modalRef.value)) {
+  if (!modalRef.value.contains(active)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  } else if (event.shiftKey && (active === first || active === modalRef.value)) {
     event.preventDefault();
     last.focus();
   } else if (!event.shiftKey && active === last) {
@@ -62,7 +82,8 @@ function handleTrapKeydown(event: KeyboardEvent): void {
 function activate(): void {
   // Closed again before the content rendered: nothing to do.
   if (!props.isOpen) return;
-  returnFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  openStack.push(id);
+  syncScrollLock();
   document.addEventListener('keydown', handleDocumentKeydown);
   // The close button is last in the DOM, so this is the dialog's own first field or action.
   const [first] = getFocusableElements();
@@ -71,13 +92,20 @@ function activate(): void {
 
 function deactivate(): void {
   document.removeEventListener('keydown', handleDocumentKeydown);
+  const index = openStack.indexOf(id);
+  if (index !== -1) openStack.splice(index, 1);
+  syncScrollLock();
   const target = returnFocusTo;
   returnFocusTo = null;
   if (target?.isConnected) target.focus();
 }
 
 watch(() => props.isOpen, (open) => {
-  if (open) void nextTick(activate);
+  if (open) {
+    // The real opener, captured before anything inside the dialog can take focus.
+    returnFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    void nextTick(activate);
+  }
   else deactivate();
 }, { immediate: true });
 
@@ -101,7 +129,6 @@ onUnmounted(deactivate);
       role="dialog"
       aria-modal="true"
       :aria-labelledby="labelledBy"
-      @keydown="handleTrapKeydown"
     >
       <slot />
       <!-- Last in the DOM, shown top-right: keyboard focus starts on the dialog's content. -->

@@ -83,3 +83,8 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Page scroll is locked while a dialog is open (class set by ModalView). */
+body.modal-open {
+  overflow: hidden;
+}
