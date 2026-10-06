@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { h, nextTick } from 'vue';
 import ModalView from './ModalView.vue';
+import { settleFocus } from '../../test-utils/settle';
 
 const mounted: VueWrapper[] = [];
 
@@ -55,7 +56,7 @@ describe('ModalView', () => {
 
   it('closes on Escape, the close button and the overlay', async () => {
     const wrapper = mountModal(true);
-    await nextTick();
+    await settleFocus();
 
     pressEscape();
     await wrapper.find('.close-button').trigger('click');
@@ -66,7 +67,7 @@ describe('ModalView', () => {
 
   it('ignores Escape while closed', async () => {
     const wrapper = mountModal(false);
-    await nextTick();
+    await settleFocus();
 
     pressEscape();
 
@@ -77,16 +78,45 @@ describe('ModalView', () => {
     const wrapper = mountModal(false);
 
     await wrapper.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
 
     expect(document.activeElement?.id).toBe('first-field');
+  });
+
+  it('waits a frame after rendering before moving focus inside, so Safari can name the dialog', async () => {
+    const opener = focusedButton();
+    const wrapper = mountModal(false);
+
+    await wrapper.setProps({ isOpen: true });
+    await nextTick();
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+    expect(document.body.classList.contains('modal-open')).toBe(true);
+    expect(document.activeElement).toBe(opener);
+
+    await settleFocus();
+    expect(document.activeElement?.id).toBe('first-field');
+  });
+
+  it('moves no focus when closed before the deferred focus runs', async () => {
+    const opener = focusedButton();
+    const wrapper = mountModal(false);
+
+    await wrapper.setProps({ isOpen: true });
+    await nextTick();
+    await wrapper.setProps({ isOpen: false });
+    const elsewhere = focusedButton();
+    await settleFocus();
+
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+    expect(document.activeElement).toBe(elsewhere);
+    expect(document.activeElement).not.toBe(opener);
   });
 
   it('puts focus on the dialog itself, scrolled to the top, with initialFocus="dialog"', async () => {
     const wrapper = mountModal(false, 'dialog');
 
     await wrapper.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
 
     const dialog = wrapper.find('[role="dialog"]').element as HTMLElement;
     expect(document.activeElement).toBe(dialog);
@@ -96,7 +126,7 @@ describe('ModalView', () => {
   it('moves Tab from the dialog itself to its first focusable element', async () => {
     const wrapper = mountModal(false, 'dialog');
     await wrapper.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
 
     pressTab();
 
@@ -108,7 +138,7 @@ describe('ModalView', () => {
     const wrapper = mountModal(false);
 
     await wrapper.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
     await wrapper.setProps({ isOpen: false });
 
     expect(document.activeElement).toBe(trigger);
@@ -129,7 +159,7 @@ describe('ModalView', () => {
     focusedButton();
     const wrapper = mountModal(false);
     await wrapper.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
     await wrapper.setProps({ isOpen: false });
     const elsewhere = focusedButton();
 
@@ -142,7 +172,7 @@ describe('ModalView', () => {
   it('brings focus back into the dialog on Tab when it fell out', async () => {
     const wrapper = mountModal(false);
     await wrapper.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
     (document.activeElement as HTMLElement).blur();
     expect(document.activeElement).toBe(document.body);
 
@@ -154,7 +184,7 @@ describe('ModalView', () => {
   it('wraps Tab from the last focusable to the first, and Shift+Tab back', async () => {
     const wrapper = mountModal(false);
     await wrapper.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
     (wrapper.find('.close-button').element as HTMLElement).focus();
 
     pressTab();
@@ -168,9 +198,9 @@ describe('ModalView', () => {
     const first = mountModal(false);
     const second = mountModal(false);
     await first.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
     await second.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
 
     pressEscape();
 
@@ -183,7 +213,7 @@ describe('ModalView', () => {
     expect(document.body.classList.contains('modal-open')).toBe(false);
 
     await wrapper.setProps({ isOpen: true });
-    await nextTick();
+    await settleFocus();
     expect(document.body.classList.contains('modal-open')).toBe(true);
 
     await wrapper.setProps({ isOpen: false });
@@ -205,7 +235,7 @@ describe('ModalView', () => {
     const wrapper = mountModal(true);
     wrapper.unmount();
     mounted.splice(mounted.indexOf(wrapper), 1);
-    await nextTick();
+    await settleFocus();
 
     expect(document.body.classList.contains('modal-open')).toBe(false);
   });

@@ -86,12 +86,9 @@ function handleDocumentKeydown(event: KeyboardEvent): void {
   }
 }
 
-function activate(): void {
-  // Closed again, or unmounted (the template ref is nulled), before the content rendered: nothing to do.
-  if (!props.isOpen || !modalRef.value) return;
-  openStack.push(id);
-  syncScrollLock();
-  document.addEventListener('keydown', handleDocumentKeydown);
+function focusInitial(): void {
+  // Closed, unmounted or covered by another dialog while the focus was deferred: leave focus alone.
+  if (!props.isOpen || !modalRef.value || !isTopMost()) return;
   if (props.initialFocus === 'dialog') {
     modalRef.value.focus({ preventScroll: true });
     modalRef.value.scrollTop = 0;
@@ -100,6 +97,18 @@ function activate(): void {
   // The close button is last in the DOM, so this is the dialog's own first field or action.
   const [first] = getFocusableElements();
   (first ?? modalRef.value)?.focus();
+}
+
+function activate(): void {
+  // Closed again, or unmounted (the template ref is nulled), before the content rendered: nothing to do.
+  if (!props.isOpen || !modalRef.value) return;
+  openStack.push(id);
+  syncScrollLock();
+  document.addEventListener('keydown', handleDocumentKeydown);
+  // Safari builds a node's accessibility object after it is inserted: focus moved in the same frame
+  // makes VoiceOver read only the field, never "<name>, web dialog". Waiting a frame and a task lets
+  // WebKit register the dialog first. A Tab pressed in that gap is already caught by the keydown trap.
+  requestAnimationFrame(() => setTimeout(focusInitial, 0));
 }
 
 function deactivate(): void {

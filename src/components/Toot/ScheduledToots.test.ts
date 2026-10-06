@@ -8,6 +8,7 @@ vi.mock('../../composables/useMastodonApi', () => ({ useMastodonApi: () => api }
 
 import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore } from '../../stores/scheduledToots';
+import { settleFocus } from '../../test-utils/settle';
 
 let pinia: Pinia;
 let wrapper: VueWrapper | null = null;
@@ -165,7 +166,7 @@ describe('ScheduledToots', () => {
       const deleteButton = wrapper.findAll<HTMLButtonElement>('.delete-button')[0];
       deleteButton.element.focus();
       await deleteButton.trigger('click');
-      await flushPromises();
+      await settleFocus();
       expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull();
 
       await wrapper.find('.btn-delete').trigger('click');
