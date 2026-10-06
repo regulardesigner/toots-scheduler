@@ -93,7 +93,6 @@ onMounted(() => {
   <div class="scheduled-toots">
     <h2
       id="scheduled-toots-title"
-      tabindex="-1"
     >
       <button
         type="button"
@@ -183,12 +182,9 @@ h2 {
   margin: 0;
 }
 
-h2:focus {
-  outline: none;
-}
-
 .toots-toggle {
   all: unset;
+  display: block; /* all: unset makes it inline; width and ::after need a block box */
   box-sizing: border-box;
   position: relative;
   width: 100%;
