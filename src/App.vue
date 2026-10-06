@@ -34,7 +34,13 @@ const route = useRoute();
 const router = useRouter();
 
 async function handleLogout(): Promise<void> {
-  await auth.logout();
+  // The session is cleared synchronously; the token revocation may take a while, so don't wait for it to move on.
+  const loggingOut = auth.logout();
+  if (route.name !== 'home') await router.push({ name: 'home' });
+  await nextTick();
+  // The button that was used has disappeared: land on the page's heading instead of <body>.
+  document.querySelector<HTMLElement>('.app-main h1')?.focus();
+  await loggingOut;
   toast.success('You have been logged out successfully.');
 }
 
@@ -106,6 +112,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
       <nav
         v-if="auth.accessToken"
         class="nav-buttons desktop-nav"
+        aria-label="Account"
       >
         <button 
           v-if="hasNewFeatures"

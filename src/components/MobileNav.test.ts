@@ -75,6 +75,35 @@ describe('MobileNav', () => {
     expect(button.attributes('aria-expanded')).toBe('true');
   });
 
+  it('closes when focus moves to something outside the menu', async () => {
+    const button = mountNav().find('.burger-menu');
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    await button.trigger('click');
+
+    wrapper.find('.logout-button').element.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
+    await wrapper.vm.$nextTick();
+
+    expect(button.attributes('aria-expanded')).toBe('false');
+  });
+
+  it('stays open when focus is lost without a target, or moves inside the menu', async () => {
+    const button = mountNav().find('.burger-menu');
+    await button.trigger('click');
+    const logout = wrapper.find('.logout-button').element;
+
+    logout.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+    logout.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: wrapper.find('.thanks-button').element }));
+    await wrapper.vm.$nextTick();
+
+    expect(button.attributes('aria-expanded')).toBe('true');
+  });
+
+  it('is an Account navigation landmark', () => {
+    expect(mountNav().element.tagName).toBe('NAV');
+    expect(wrapper.attributes('aria-label')).toBe('Account');
+  });
+
   it('closes before running the chosen action', async () => {
     const button = mountNav().find('.burger-menu');
     await button.trigger('click');

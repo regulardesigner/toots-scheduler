@@ -16,7 +16,10 @@ function handleCloseLoginForm() {
 
 <template>
   <div class="landing-hero">
-    <h1 class="landing-title winky-sans-900">
+    <h1
+      class="landing-title winky-sans-900"
+      tabindex="-1"
+    >
       The first toot scheduling <br>service of all time!
     </h1>
 

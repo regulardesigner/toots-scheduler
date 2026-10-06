@@ -82,12 +82,19 @@ onMounted(() => {
 
 <template>
   <div class="scheduled-toots">
+    <!-- Outside <summary>, whose children may lose their heading role; the summary is drawn over this row. -->
+    <h2
+      id="scheduled-toots-title"
+      tabindex="-1"
+    >
+      Scheduled Toots ({{ store.count }})
+    </h2>
     <details
       class="toots-details"
       :open="store.count > 0 || !!store.error"
     >
       <summary class="toots-summary">
-        <h2>Scheduled Toots ({{ store.count }})</h2>
+        <span class="visually-hidden">Show or hide the scheduled toots</span>
       </summary>
       
       <div
@@ -162,6 +169,8 @@ onMounted(() => {
 
 .toots-details {
   width: 100%;
+  /* Pulls the summary up over the heading row (2.25rem = h2 line height). */
+  margin-top: -2.25rem;
 }
 
 .toots-summary {
@@ -175,7 +184,13 @@ onMounted(() => {
 
 .toots-summary {
   position: relative;
+  height: 2.25rem;
   padding-right: 2rem;
+}
+
+.toots-summary:focus-visible {
+  outline: 2px solid #333;
+  outline-offset: 2px;
 }
 
 .toots-summary::after {
@@ -198,7 +213,16 @@ h2 {
   font-weight: 600;
   margin: 0;
   color: #333;
-  display: inline-block;
+  display: block;
+  padding-right: 2rem;
+}
+
+h2:focus {
+  outline: none;
+}
+
+.toots-details > :not(summary) {
+  margin-top: 0.5rem;
 }
 
 .loading, .error, .empty-state {

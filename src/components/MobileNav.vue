@@ -15,6 +15,7 @@ const emit = defineEmits<{
 
 const isOpen = ref(false);
 const menuButton = ref<HTMLButtonElement | null>(null);
+const root = ref<HTMLElement | null>(null);
 
 function toggle(): void {
   isOpen.value = !isOpen.value;
@@ -29,6 +30,12 @@ function choose(action: MenuAction): void {
   // Focus moves to the menu button first: a dialog opened next gives focus back there, not to a hidden item.
   closeAndFocusButton();
   emit(action);
+}
+
+/** Tab past the last item (or a click elsewhere) must not leave the menu open over the page. A null target (blank panel, a dialog taking focus) keeps it. */
+function handleFocusOut(event: FocusEvent): void {
+  const next = event.relatedTarget as Node | null;
+  if (isOpen.value && next && !root.value?.contains(next)) isOpen.value = false;
 }
 
 function handleKeydown(event: KeyboardEvent): void {
@@ -47,7 +54,12 @@ onUnmounted(() => document.removeEventListener('keydown', handleKeydown));
 </script>
 
 <template>
-  <div class="mobile-nav">
+  <nav
+    ref="root"
+    class="mobile-nav"
+    aria-label="Account"
+    @focusout="handleFocusOut"
+  >
     <span
       v-if="hasNewFeatures"
       class="notification-dot"
@@ -57,7 +69,6 @@ onUnmounted(() => document.removeEventListener('keydown', handleKeydown));
     <span
       v-if="hasNewFeatures"
       class="whats-new-mobile-label"
-      :class="{ 'whats-new-mobile-label--none': isOpen }"
       aria-hidden="true"
     >What's New</span>
     <button
@@ -105,7 +116,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleKeydown));
         Logout
       </button>
     </div>
-  </div>
+  </nav>
 </template>
 
 <style scoped>
@@ -219,6 +230,18 @@ onUnmounted(() => document.removeEventListener('keydown', handleKeydown));
   right: 0;
   visibility: visible;
   transition: right 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu,
+  .mobile-menu.is-open,
+  .burger-menu span {
+    transition: none;
+  }
+
+  .whats-new-mobile-label {
+    animation: none;
+  }
 }
 
 @media (max-width: 768px) {

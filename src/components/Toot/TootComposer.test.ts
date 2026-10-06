@@ -62,7 +62,7 @@ describe('TootComposer', () => {
     await flushPromises();
 
     expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Schedule a toot']);
-    expect(wrapper.find('.toots-summary h2').text()).toBe('Scheduled Toots (0)');
+    expect(wrapper.find('h2#scheduled-toots-title').text()).toBe('Scheduled Toots (0)');
   });
 
   it('sends a single request when the form is submitted twice quickly', async () => {
