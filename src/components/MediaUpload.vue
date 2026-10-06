@@ -272,13 +272,15 @@ async function saveMediaMetadata() {
       </div>
     </div>
 
-    <p
-      v-if="uploadError"
-      class="error"
-      role="alert"
-    >
-      {{ uploadError }}
-    </p>
+    <!-- Always in the DOM, only its content changes: Safari ignores an alert inserted already filled. -->
+    <div role="alert">
+      <p
+        v-if="uploadError"
+        class="error"
+      >
+        {{ uploadError }}
+      </p>
+    </div>
   </div>
 </template>
 

@@ -80,6 +80,21 @@ describe('ScheduledToots', () => {
     expect(wrapper.find('.toots-toggle').text()).toBe('Scheduled Toots (1)');
   });
 
+  it('keeps its alert container in place and visible, empty until an error fills it', async () => {
+    const wrapper = await mountList();
+    const alert = wrapper.find('[role="alert"]');
+    expect(alert.exists()).toBe(true);
+    expect(alert.text()).toBe('');
+    // Outside the collapsible panel: a live region inside a hidden subtree is not in the accessibility tree.
+    expect(alert.element.closest('#scheduled-toots-panel')).toBeNull();
+
+    useScheduledTootsStore().setError('Boom');
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').element).toBe(alert.element);
+    expect(alert.text()).toBe('Boom');
+  });
+
   it('opens again on an error, even after being collapsed by hand', async () => {
     api.getScheduledToots.mockResolvedValue([toot]);
     const wrapper = await mountList();
@@ -202,7 +217,7 @@ describe('ScheduledToots', () => {
       await flushPromises();
 
       expect(wrapper.find('.error').text()).toBe('Record not found');
-      expect(wrapper.find('.error').attributes('role')).toBe('alert');
+      expect(wrapper.find('.error').element.parentElement?.getAttribute('role')).toBe('alert');
     });
 
     it('moves focus to the list toggle when a failed deletion replaces the list with the error', async () => {

@@ -340,7 +340,25 @@ describe('TootComposer', () => {
 
     expect(api.scheduleToot).not.toHaveBeenCalled();
     expect(wrapper.find('.error').text()).toBe('Your toot is 12 characters long, but your instance allows 10.');
-    expect(wrapper.find('.error').attributes('role')).toBe('alert');
+    expect(wrapper.find('.error').element.parentElement?.getAttribute('role')).toBe('alert');
+  });
+
+  it('keeps its alert container in place, empty until an error fills it', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const alert = wrapper.find('form > [role="alert"]');
+    expect(alert.exists()).toBe(true);
+    expect(alert.text()).toBe('');
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.hasCharacterLimit = true;
+    await fillForm(wrapper, 'Hello world!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('form > [role="alert"]').element).toBe(alert.element);
+    expect(alert.text()).toBe('Your toot is 12 characters long, but your instance allows 10.');
   });
 
   it('inserts a repeated error again so it is announced again', async () => {

@@ -50,9 +50,30 @@ describe('LoginForm', () => {
     await flushPromises();
 
     expect(wrapper.find('.error').text()).toBe('The instance address must use https://');
-    expect(wrapper.find('.error').attributes('role')).toBe('alert');
+    expect(wrapper.find('.error').element.parentElement?.getAttribute('role')).toBe('alert');
     expect(api.registerApplication).not.toHaveBeenCalled();
     expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('keeps an empty alert container in place, then fills it and links the field to the error', async () => {
+    api.registerApplication.mockRejectedValue(new Error('Network Error'));
+    const wrapper = mount(LoginForm);
+    const alert = wrapper.find('[role="alert"]');
+    const field = wrapper.find('#instance');
+
+    expect(alert.exists()).toBe(true);
+    expect(alert.text()).toBe('');
+    expect(field.attributes('aria-invalid')).toBeUndefined();
+    expect(field.attributes('aria-describedby')).toBeUndefined();
+
+    await field.setValue('mastodon.social');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').element).toBe(alert.element);
+    expect(alert.text()).toBe('Network Error');
+    expect(field.attributes('aria-invalid')).toBe('true');
+    expect(field.attributes('aria-describedby')).toBe(alert.attributes('id'));
   });
 
   it('puts focus back on the instance field after a failed attempt', async () => {

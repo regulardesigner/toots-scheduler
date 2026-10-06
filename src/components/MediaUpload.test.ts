@@ -45,6 +45,19 @@ describe('MediaUpload', () => {
     expect(wrapper.find('.preview-placeholder').text()).toBe('Processing…');
   });
 
+  it('keeps its alert container in place, empty until an error fills it', async () => {
+    const wrapper = mountUpload();
+    const alert = wrapper.find('[role="alert"]');
+    expect(alert.exists()).toBe(true);
+    expect(alert.text()).toBe('');
+
+    await drop(wrapper, [new File(['%PDF'], 'doc.pdf', { type: 'application/pdf' })]);
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').element).toBe(alert.element);
+    expect(alert.text()).toContain('is not a supported image');
+  });
+
   it('refuses a dropped file that is not a supported image, without uploading it', async () => {
     const wrapper = mountUpload();
 
@@ -53,7 +66,7 @@ describe('MediaUpload', () => {
 
     expect(api.uploadMedia).not.toHaveBeenCalled();
     expect(wrapper.find('.error').text()).toBe('"doc.pdf" is not a supported image (JPEG, PNG, GIF, WebP, AVIF or HEIC).');
-    expect(wrapper.find('.error').attributes('role')).toBe('alert');
+    expect(wrapper.find('.error').element.parentElement?.getAttribute('role')).toBe('alert');
   });
 
   it('keeps every image when several are uploaded at once', async () => {

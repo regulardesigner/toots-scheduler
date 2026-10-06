@@ -304,13 +304,15 @@ async function handleSubmit() {
         @cancel="handleCancelEdit"
       />
 
-      <p
-        v-if="error"
-        class="error"
-        role="alert"
-      >
-        {{ error }}
-      </p>
+      <!-- Always in the DOM, only its content changes: Safari ignores an alert inserted already filled. -->
+      <div role="alert">
+        <p
+          v-if="error"
+          class="error"
+        >
+          {{ error }}
+        </p>
+      </div>
     </form>
 
     <ScheduledToots />

@@ -14,6 +14,9 @@ const store = useScheduledTootsStore();
 const userToggled = ref<boolean | null>(null);
 const isOpen = computed(() => userToggled.value ?? (store.count > 0 || !!store.error));
 
+/** First load, nothing to show yet. */
+const isFirstLoad = computed(() => store.isLoading && store.count === 0);
+
 // A new error must be seen, even if the list was collapsed by hand.
 watch(() => store.error, (error) => {
   if (error) userToggled.value = null;
@@ -118,34 +121,38 @@ onMounted(() => {
         Scheduled Toots ({{ store.count }})
       </button>
     </h2>
+    <!--
+      Always in the DOM and outside the collapsible panel, only its content changes: Safari ignores
+      an alert inserted already filled, and one inside a hidden panel is not in the accessibility tree.
+    -->
+    <div role="alert">
+      <p
+        v-if="store.error && !isFirstLoad"
+        class="error"
+      >
+        {{ store.error }}
+      </p>
+    </div>
     <div
       v-show="isOpen"
       id="scheduled-toots-panel"
     >
       <div
-        v-if="store.isLoading && store.count === 0"
+        v-if="isFirstLoad"
         class="loading"
       >
         Loading scheduled toots...
       </div>
-      
+
       <div
-        v-else-if="store.error"
-        class="error"
-        role="alert"
-      >
-        {{ store.error }}
-      </div>
-      
-      <div
-        v-else-if="store.count === 0"
+        v-else-if="!store.error && store.count === 0"
         class="empty-state"
       >
         No scheduled toots yet.
       </div>
-      
+
       <div
-        v-else
+        v-else-if="!store.error"
         class="toots-list"
       >
         <TransitionGroup 
@@ -250,6 +257,7 @@ h2 {
 }
 
 .error {
+  margin: 0.5rem 0 0;
   color: #c0392b;
   background-color: #fde8e7;
   border-radius: 0.5rem;

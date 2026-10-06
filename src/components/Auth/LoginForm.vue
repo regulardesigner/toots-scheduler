@@ -73,15 +73,22 @@ async function handleLogin() {
           placeholder="mastodon.social"
           required
           :disabled="isLoading"
+          :aria-invalid="error ? 'true' : undefined"
+          :aria-describedby="error ? 'login-error' : undefined"
         >
       </div>
-      <p
-        v-if="error"
-        class="error"
+      <!-- Always in the DOM, only its content changes: Safari ignores an alert inserted already filled. -->
+      <div
+        id="login-error"
         role="alert"
       >
-        {{ error }}
-      </p>
+        <p
+          v-if="error"
+          class="error"
+        >
+          {{ error }}
+        </p>
+      </div>
       <button
         type="submit"
         :disabled="isLoading"
