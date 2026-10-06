@@ -82,39 +82,42 @@ function handleShowPoll() {
 }
 
 // Watch for editing toot changes
-watch(() => store.editingToot, (newToot) => {
-  if (newToot) {
-    content.value = newToot.params?.text || '';
-    
-    // Parse the scheduled date and time
-    if (newToot.scheduled_at) {
-      const date = parseISO(newToot.scheduled_at);
-      scheduledDate.value = format(date, 'yyyy-MM-dd');
-      scheduledTime.value = format(date, 'HH:mm');
-    }
-    
-    visibility.value = newToot.params?.visibility as ScheduledToot['visibility'] || 'public';
-    language.value = newToot.params?.language || 'en';
-    isSensitive.value = newToot.params?.sensitive || false;
-    spoilerText.value = newToot.params?.spoiler_text || '';
-    mediaAttachments.value = newToot.media_attachments || [];
+watch(() => store.editingToot, (newToot, oldToot) => {
+  // Edit mode ended outside the form (the toot was deleted, or the session changed): drop its content.
+  if (!newToot) {
+    if (oldToot) resetForm();
+    return;
+  }
+  content.value = newToot.params?.text || '';
+  
+  // Parse the scheduled date and time
+  if (newToot.scheduled_at) {
+    const date = parseISO(newToot.scheduled_at);
+    scheduledDate.value = format(date, 'yyyy-MM-dd');
+    scheduledTime.value = format(date, 'HH:mm');
+  }
+  
+  visibility.value = newToot.params?.visibility as ScheduledToot['visibility'] || 'public';
+  language.value = newToot.params?.language || 'en';
+  isSensitive.value = newToot.params?.sensitive || false;
+  spoilerText.value = newToot.params?.spoiler_text || '';
+  mediaAttachments.value = newToot.media_attachments || [];
 
-    // Show media section if there are media attachments
-    showMedia.value = newToot.media_attachments?.length > 0;
+  // Show media section if there are media attachments
+  showMedia.value = newToot.media_attachments?.length > 0;
 
-    const poll = newToot.params?.poll;
-    if (poll) {
-      showPoll.value = true;
-      pollData.value = {
-        options: poll.options || [],
-        expiresIn: Number(poll.expires_in) || DEFAULT_POLL_EXPIRATION_SECONDS,
-        multiple: poll.multiple || false,
-        hideTotals: poll.hide_totals || false
-      };
-    } else {
-      showPoll.value = false;
-      pollData.value = createEmptyPoll();
-    }
+  const poll = newToot.params?.poll;
+  if (poll) {
+    showPoll.value = true;
+    pollData.value = {
+      options: poll.options || [],
+      expiresIn: Number(poll.expires_in) || DEFAULT_POLL_EXPIRATION_SECONDS,
+      multiple: poll.multiple || false,
+      hideTotals: poll.hide_totals || false
+    };
+  } else {
+    showPoll.value = false;
+    pollData.value = createEmptyPoll();
   }
 }, { immediate: true });
 
@@ -216,7 +219,8 @@ async function handleSubmit() {
     console.error('Error scheduling toot:', err);
     error.value = err instanceof Error ? err.message : 'Failed to schedule toot. Please try again.';
     // The request may have reached the instance despite the error: refresh so any created toot shows up.
-    void store.fetchScheduledToots();
+    // Unless another change is still running (the edit was refused): it refreshes the list itself.
+    if (store.pendingId === null) void store.fetchScheduledToots();
   } finally {
     isSubmitting.value = false;
   }

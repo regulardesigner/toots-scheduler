@@ -46,7 +46,7 @@ describe('ScheduledToots', () => {
     wrapper?.unmount();
     wrapper = null;
     document.body.innerHTML = '';
-    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it('has a toggle button inside the heading, named with the count', async () => {
@@ -109,6 +109,31 @@ describe('ScheduledToots', () => {
       expect(wrapper.findAll('.delete-button').map(button => button.text())).toEqual(['Deleting…', 'Delete']);
     });
 
+    it('disables every card while one operation is in progress, so operations never overlap', async () => {
+      const wrapper = await mountList();
+      const store = useScheduledTootsStore();
+      store.pendingId = 'a';
+      store.pendingAction = 'update';
+      await flushPromises();
+
+      const buttons = wrapper.findAll('.toot-card button');
+      expect(buttons).toHaveLength(4);
+      for (const button of buttons) expect(button.attributes('disabled')).toBeDefined();
+    });
+
+    it('ignores Edit while another operation is in progress', async () => {
+      const wrapper = await mountList();
+      const store = useScheduledTootsStore();
+      store.pendingId = 'a';
+      store.pendingAction = 'update';
+
+      // A click that slipped through before the re-render.
+      wrapper.findAllComponents({ name: 'TootCard' })[1].vm.$emit('edit', 'b');
+      await flushPromises();
+
+      expect(store.editingToot).toBeNull();
+    });
+
     it('deletes after confirmation and moves focus to the list toggle once the card is gone', async () => {
       api.deleteScheduledToot.mockResolvedValue(undefined);
       const wrapper = await mountList();
@@ -157,18 +182,69 @@ describe('ScheduledToots', () => {
       expect(wrapper.find('.error').attributes('role')).toBe('alert');
     });
 
+    it('moves focus to the list toggle when a failed deletion replaces the list with the error', async () => {
+      api.deleteScheduledToot.mockRejectedValue(new Error('Record not found'));
+      const wrapper = await mountList();
+
+      const deleteButton = wrapper.findAll<HTMLButtonElement>('.delete-button')[0];
+      deleteButton.element.focus();
+      await deleteButton.trigger('click');
+      await flushPromises();
+      await wrapper.find('.btn-delete').trigger('click');
+      await flushPromises();
+
+      expect(wrapper.find('.toot-card').exists()).toBe(false);
+      expect(document.activeElement).toBe(wrapper.find('#scheduled-toots-title button').element);
+    });
+
+    it('leaves focus where the user moved it while the deletion was running', async () => {
+      let finish!: () => void;
+      api.deleteScheduledToot.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+      const elsewhere = document.createElement('input');
+      document.body.appendChild(elsewhere);
+      const wrapper = await mountList();
+      api.getScheduledToots.mockResolvedValue([scheduledToot('b', 2)]);
+
+      const deleteButton = wrapper.findAll<HTMLButtonElement>('.delete-button')[0];
+      deleteButton.element.focus();
+      await deleteButton.trigger('click');
+      await flushPromises();
+      await wrapper.find('.btn-delete').trigger('click');
+      await flushPromises();
+
+      elsewhere.focus();
+      finish();
+      await flushPromises();
+
+      expect(wrapper.findAll('.toot-card')).toHaveLength(1);
+      expect(document.activeElement).toBe(elsewhere);
+    });
+
     it('loads the toot into the composer and focuses its text box on Edit', async () => {
       const textarea = document.createElement('textarea');
       textarea.setAttribute('aria-label', 'Toot text');
       document.body.appendChild(textarea);
       const wrapper = await mountList();
-      vi.useFakeTimers();
 
       await wrapper.findAll('.edit-button')[1].trigger('click');
-      expect(useScheduledTootsStore().editingToot?.id).toBe('b');
-      vi.advanceTimersByTime(100);
+      await flushPromises();
 
+      expect(useScheduledTootsStore().editingToot?.id).toBe('b');
       expect(document.activeElement).toBe(textarea);
+    });
+
+    it('scrolls to the text box without animation when the user prefers reduced motion', async () => {
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)' }));
+      const textarea = document.createElement('textarea');
+      textarea.setAttribute('aria-label', 'Toot text');
+      textarea.scrollIntoView = vi.fn();
+      document.body.appendChild(textarea);
+      const wrapper = await mountList();
+
+      await wrapper.findAll('.edit-button')[0].trigger('click');
+      await flushPromises();
+
+      expect(textarea.scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'center' });
     });
   });
 });

@@ -61,4 +61,19 @@ describe('TootCard', () => {
 
     expect(mountCard({ pendingAction: 'update' }).find('.edit-button').text()).toBe('Updating…');
   });
+
+  it('disables its buttons, without claiming progress, while another toot is being changed', () => {
+    const wrapper = mountCard({ busy: true });
+
+    expect(wrapper.find('.edit-button').text()).toBe('Edit');
+    expect(wrapper.find('.delete-button').text()).toBe('Delete');
+    expect(wrapper.find('.edit-button').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('.delete-button').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('.toot-card').attributes('aria-busy')).toBeUndefined();
+  });
+
+  it('is marked busy only while something is being done to it', () => {
+    expect(mountCard().find('.toot-card').attributes('aria-busy')).toBeUndefined();
+    expect(mountCard({ pendingAction: 'delete' }).find('.toot-card').attributes('aria-busy')).toBe('true');
+  });
 });

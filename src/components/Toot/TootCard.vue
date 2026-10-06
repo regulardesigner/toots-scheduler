@@ -16,6 +16,8 @@ interface Props {
   spoiler_text?: string;
   /** What is being done to this toot right now; other cards are not affected. */
   pendingAction?: PendingAction | null;
+  /** Another toot is being changed: one operation at a time, so this card waits too. */
+  busy?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -63,6 +65,8 @@ const sensitiveId = computed(() => `sensitive-${props.id}`);
 
 const isPending = computed(() => !!props.pendingAction);
 
+const isDisabled = computed(() => props.busy || isPending.value);
+
 const hasMedia = computed(() => {
   return props.medias && props.medias.length > 0;
 });
@@ -74,7 +78,10 @@ const hasPoll = computed(() => {
 </script>
 
 <template>
-  <div class="toot-card">
+  <div
+    class="toot-card"
+    :aria-busy="isPending ? 'true' : undefined"
+  >
     <div class="toot-header">
       <div class="meta-row">
         <span class="meta-label">Scheduled for:
@@ -85,7 +92,7 @@ const hasPoll = computed(() => {
         <button
           type="button"
           class="edit-button"
-          :disabled="isPending"
+          :disabled="isDisabled"
           @click="emit('edit', props.id)"
         >
           {{ props.pendingAction === 'update' ? 'Updating…' : 'Edit' }}
@@ -93,7 +100,7 @@ const hasPoll = computed(() => {
         <button
           type="button"
           class="delete-button"
-          :disabled="isPending"
+          :disabled="isDisabled"
           @click="emit('delete', props.id)"
         >
           {{ props.pendingAction === 'delete' ? 'Deleting…' : 'Delete' }}

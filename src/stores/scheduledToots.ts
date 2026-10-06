@@ -5,6 +5,9 @@ import { useMastodonApi } from '../composables/useMastodonApi';
 import { useAuthStore } from './auth';
 import { isOnlyScheduleChange } from '../utils/isOnlyScheduleChange';
 
+/** Shown when a change is attempted while another one is still being saved. */
+const BUSY_MESSAGE = 'Another change is still being saved. Please try again in a moment.';
+
 /** Mastodon refuses scheduling less than 5 minutes ahead; past that point the original may publish mid-edit. */
 const EDIT_LOCK_MS = 5 * 60 * 1000;
 
@@ -92,17 +95,24 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
 
   /**
    * Deletes a scheduled toot, then reloads the list. Only that toot is marked as in progress.
+   * Refused while another operation is pending: overlapping changes could bring a deleted toot back.
    * @param {string} id - The ID of the scheduled toot.
-   * @returns {Promise<boolean>} True once deleted; false on failure (the error is in `error`).
+   * @returns {Promise<boolean>} True once deleted; false if refused or failed (a failure is in `error`).
    */
   async function deleteToot(id: string): Promise<boolean> {
+    if (pendingId.value !== null) return false;
+    const token = auth.accessToken;
     startPending(id, 'delete');
     try {
       setError('');
       await useMastodonApi().deleteScheduledToot(id);
+      // The composer must not keep editing, and later re-create, a toot that no longer exists.
+      if (editingToot.value?.id === id) setEditingToot(null);
       await fetchScheduledToots();
       return true;
     } catch (err) {
+      // Another session took over meanwhile: this failure is not its concern.
+      if (auth.accessToken !== token) return false;
       setError(err instanceof Error ? err.message : 'Failed to delete toot');
       return false;
     } finally {
@@ -118,13 +128,16 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
    * @param {ScheduledToot} updated - The payload built from the edited form.
    * @param {string} idempotencyKey - The draft's idempotency key.
    * @returns {Promise<UpdateTootResult>} Whether the previous version was removed.
-   * @throws {Error} If the original is due within 5 minutes or no longer exists, or rescheduling/creating fails (the original is kept).
+   * @throws {Error} If another change is still being saved (nothing is sent), the original is due within 5 minutes or no longer exists, or rescheduling/creating fails (the original is kept).
    */
   async function updateToot(
     original: MastodonStatus,
     updated: ScheduledToot,
     idempotencyKey: string,
   ): Promise<UpdateTootResult> {
+    // Thrown before anything starts, and not put in `error`: the list stays as it is, the composer says why.
+    if (pendingId.value !== null) throw new Error(BUSY_MESSAGE);
+    const token = auth.accessToken;
     try {
       startPending(original.id, 'update');
       setError('');
@@ -157,6 +170,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       return { previousVersionRemoved };
     } catch (err) {
       console.error('Error updating toot:', err);
+      if (auth.accessToken !== token) throw err;
       setError(err instanceof Error ? err.message : 'Failed to update toot');
       throw err;
     } finally {
@@ -170,6 +184,8 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     if (token === previous) return;
     setToots([]);
     setEditingToot(null);
+    pendingId.value = null;
+    pendingAction.value = null;
     if (token && previous) void fetchScheduledToots();
   });
 

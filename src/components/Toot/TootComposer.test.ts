@@ -169,6 +169,42 @@ describe('TootComposer', () => {
     expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('previous version could not be removed'));
   });
 
+  it('empties the form when the toot being edited is deleted from the list', async () => {
+    api.deleteScheduledToot.mockResolvedValue(undefined);
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.setEditingToot(makeScheduledToot());
+    await flushPromises();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Bonjour');
+
+    await store.deleteToot('42');
+    await flushPromises();
+
+    expect(store.editingToot).toBeNull();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('');
+    expect((wrapper.find('#scheduled-date').element as HTMLInputElement).value).toBe('');
+  });
+
+  it('says so when an edit is saved while another change is still in progress', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.setEditingToot(makeScheduledToot());
+    await flushPromises();
+    await fillForm(wrapper, 'Bonjour !');
+    store.pendingId = 'other';
+    store.pendingAction = 'delete';
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(api.rescheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('[role="alert"]').text()).toContain('Another change is still being saved');
+    expect(store.editingToot?.id).toBe('42');
+  });
+
   it('refuses a toot longer than the instance allows, without sending it', async () => {
     const wrapper = mountComposer();
     await flushPromises();

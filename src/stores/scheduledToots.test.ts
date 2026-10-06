@@ -85,6 +85,49 @@ describe('scheduledToots store', () => {
       expect(store.error).toBe('Record not found');
       expect(store.pendingId).toBeNull();
     });
+
+    it('refuses a second deletion while one is in progress', async () => {
+      const store = useScheduledTootsStore();
+      let finish!: () => void;
+      api.deleteScheduledToot.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+
+      const first = store.deleteToot('a');
+      expect(await store.deleteToot('b')).toBe(false);
+      expect(api.deleteScheduledToot).toHaveBeenCalledTimes(1);
+      expect(store.pendingId).toBe('a');
+
+      finish();
+      expect(await first).toBe(true);
+      expect(store.pendingId).toBeNull();
+      expect(store.pendingAction).toBeNull();
+    });
+
+    it('refuses an update while a deletion is in progress, without touching the list error', async () => {
+      const store = useScheduledTootsStore();
+      let finish!: () => void;
+      api.deleteScheduledToot.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+
+      const deleting = store.deleteToot('a');
+      await expect(store.updateToot(original, makeUpdated(), 'key-1')).rejects.toThrow('Another change is still being saved');
+      expect(api.rescheduleToot).not.toHaveBeenCalled();
+      expect(store.error).toBe('');
+      expect(store.pendingId).toBe('a');
+
+      finish();
+      await deleting;
+    });
+
+    it('leaves edit mode when the toot being edited is deleted', async () => {
+      const store = useScheduledTootsStore();
+      api.deleteScheduledToot.mockResolvedValue(undefined);
+      store.setEditingToot(original);
+
+      await store.deleteToot('other');
+      expect(store.editingToot).toEqual(original);
+
+      await store.deleteToot('42');
+      expect(store.editingToot).toBeNull();
+    });
   });
 
   describe('updateToot', () => {
@@ -250,6 +293,44 @@ describe('scheduledToots store', () => {
       await loading;
 
       expect(store.toots).toEqual([]);
+    });
+
+    it('forgets the progress of the previous account, and its late failure', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      const store = useScheduledTootsStore();
+      await nextTick();
+      let fail!: (err: Error) => void;
+      api.deleteScheduledToot.mockReturnValueOnce(new Promise<void>((_, reject) => { fail = reject; }));
+
+      const deleting = store.deleteToot('42');
+      auth.completeLogin({ ...credentials, accessToken: 'token-b' });
+      await nextTick();
+      expect(store.pendingId).toBeNull();
+      expect(store.pendingAction).toBeNull();
+
+      fail(new Error('Record not found'));
+      expect(await deleting).toBe(false);
+      expect(store.error).toBe('');
+      expect(store.pendingId).toBeNull();
+    });
+
+    it('does not show a late update failure of the previous account', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      const store = useScheduledTootsStore();
+      await nextTick();
+      let fail!: (err: Error) => void;
+      api.rescheduleToot.mockReturnValueOnce(new Promise<void>((_, reject) => { fail = reject; }));
+
+      const updating = store.updateToot(original, makeUpdated(), 'key-1');
+      auth.accessToken = null;
+      await nextTick();
+      expect(store.pendingId).toBeNull();
+
+      fail(new Error('Boom'));
+      await expect(updating).rejects.toThrow('Boom');
+      expect(store.error).toBe('');
     });
   });
 });

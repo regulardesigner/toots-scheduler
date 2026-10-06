@@ -28,6 +28,10 @@ const tootToDelete = ref<MastodonStatus | null>(null);
 /** Truncated preview text shown inside the confirmation modal. */
 const tootDeletePreview = ref('');
 
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 /**
  * Opens the delete confirmation modal for the given toot ID.
  * @param {string} id - The ID of the toot to delete.
@@ -58,29 +62,37 @@ async function handleDeleteConfirm() {
   const id = tootToDelete.value.id;
   handleDeleteCancel();
 
-  if (!(await store.deleteToot(id))) return;
-  // The focused Delete button disappears with its card: keep keyboard focus in the list.
-  // After the re-render, so the dialog has long given focus back to its opener and nothing moves it again.
+  const deleting = store.deleteToot(id);
+  // The dialog has now closed and given focus back to its opener, this card's Delete button.
   await nextTick();
-  listToggle.value?.focus();
+  const opener = document.activeElement;
+
+  await deleting;
+  await nextTick();
+  // Success removes the card, failure replaces the list with the error: either way the focused
+  // button is gone. Keep keyboard focus in the list, unless the user has moved it elsewhere meanwhile.
+  const active = document.activeElement;
+  if (!active || active === document.body || active === opener || !active.isConnected) {
+    listToggle.value?.focus();
+  }
 }
 
 /**
  * Loads a toot into the composer, then scrolls to and focuses its text.
  * @param {string} id - The ID of the toot to edit.
  */
-function handleEdit(id: string) {
+async function handleEdit(id: string) {
+  // One operation at a time: a toot being saved or deleted must not be swapped out of the composer.
+  if (store.pendingId !== null) return;
   const toot = store.toots.find(t => t.id === id);
-  if (toot) {
-    store.setEditingToot(toot);
+  if (!toot) return;
+  store.setEditingToot(toot);
 
-    // After a short delay, so the composer has rendered the toot.
-    setTimeout(() => {
-      const textarea = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Toot text"]');
-      textarea?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      textarea?.focus({ preventScroll: true });
-    }, 100);
-  }
+  // Once the composer has rendered the toot.
+  await nextTick();
+  const textarea = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Toot text"]');
+  textarea?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+  textarea?.focus({ preventScroll: true });
 }
 
 onMounted(() => {
@@ -152,6 +164,7 @@ onMounted(() => {
             :poll="toot.params?.poll"
             :medias="toot.media_attachments"
             :pending-action="store.pendingId === toot.id ? store.pendingAction : null"
+            :busy="store.pendingId !== null"
             @edit="handleEdit"
             @delete="handleDeleteRequest"
           />
