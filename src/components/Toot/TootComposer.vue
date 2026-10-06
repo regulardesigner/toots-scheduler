@@ -219,8 +219,8 @@ async function handleSubmit() {
         toast.warning('Your toot was updated, but the previous version could not be removed. Please delete it from the list.');
       }
     } else {
-      await api.scheduleToot(toot, key);
-      await store.fetchScheduledToots();
+      // createToot refreshes the list; Edit and Delete stay disabled until it is done.
+      await store.createToot(toot, key);
     }
 
     resetForm();
@@ -229,7 +229,7 @@ async function handleSubmit() {
     console.error('Error scheduling toot:', err);
     error.value = err instanceof Error ? err.message : 'Failed to schedule toot. Please try again.';
     // The request may have reached the instance despite the error: refresh so any created toot shows up.
-    // Unless the edit was refused before anything was sent: the change still running refreshes the list itself.
+    // Unless it was refused before anything was sent: the change still running refreshes the list itself.
     if (!(err instanceof BusyError)) void store.fetchScheduledToots();
   } finally {
     isSubmitting.value = false;

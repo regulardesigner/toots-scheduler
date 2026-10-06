@@ -205,8 +205,7 @@ describe('TootComposer', () => {
     expect(store.editingToot?.id).toBe('42');
   });
 
-  it('still reloads the list when a new toot fails while a deletion is running', async () => {
-    api.scheduleToot.mockRejectedValue(new Error('Network Error'));
+  it('refuses a new toot while a deletion is running, without sending or reloading', async () => {
     const wrapper = mountComposer();
     await flushPromises();
     const store = useScheduledTootsStore();
@@ -218,8 +217,51 @@ describe('TootComposer', () => {
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('[role="alert"]').text()).toContain('Another change is still being saved');
+    expect(api.getScheduledToots).not.toHaveBeenCalled();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('New toot');
+  });
+
+  it('still reloads the list when a new toot fails', async () => {
+    api.scheduleToot.mockRejectedValue(new Error('Network Error'));
+    const wrapper = mountComposer();
+    await flushPromises();
+    api.getScheduledToots.mockClear();
+
+    await fillForm(wrapper, 'New toot');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
     expect(wrapper.find('[role="alert"]').text()).toBe('Network Error');
     expect(api.getScheduledToots).toHaveBeenCalledTimes(1);
+  });
+
+  it('makes Edit impossible while a new toot is being sent', async () => {
+    let finish!: () => void;
+    api.scheduleToot.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+    api.getScheduledToots.mockResolvedValue([makeScheduledToot({ id: 'b' })]);
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+
+    await fillForm(wrapper, 'New toot');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    const editButton = wrapper.find('.toot-card .edit-button');
+    expect(editButton.attributes('disabled')).toBeDefined();
+    // A click that slipped through before the re-render.
+    wrapper.findComponent({ name: 'TootCard' }).vm.$emit('edit', 'b');
+    await flushPromises();
+    expect(store.editingToot).toBeNull();
+
+    finish();
+    await flushPromises();
+
+    expect(store.editingToot).toBeNull();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('');
+    expect(wrapper.find('button[type="submit"]').text()).not.toContain('Update');
   });
 
   it('does not reload the list when an edit is refused because another change is running', async () => {

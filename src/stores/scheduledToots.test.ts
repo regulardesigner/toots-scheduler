@@ -132,6 +132,100 @@ describe('scheduledToots store', () => {
     });
   });
 
+  describe('createToot', () => {
+    it('schedules the toot with its idempotency key, then reloads the list', async () => {
+      const store = useScheduledTootsStore();
+      api.scheduleToot.mockResolvedValue({});
+
+      await store.createToot(makeUpdated(), 'key-1');
+
+      expect(api.scheduleToot).toHaveBeenCalledWith(makeUpdated(), 'key-1');
+      expect(api.getScheduledToots).toHaveBeenCalled();
+      expect(store.pendingId).toBeNull();
+      expect(store.pendingAction).toBeNull();
+    });
+
+    it('holds the pending slot while the toot is created, without naming any toot', async () => {
+      const store = useScheduledTootsStore();
+      store.setToots([original]);
+      let finish!: () => void;
+      api.scheduleToot.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+
+      const creating = store.createToot(makeUpdated(), 'key-1');
+      expect(store.pendingId).not.toBeNull();
+      expect(store.pendingAction).toBe('create');
+      expect(store.toots.some(toot => toot.id === store.pendingId)).toBe(false);
+
+      finish();
+      await creating;
+      expect(store.pendingId).toBeNull();
+      expect(store.pendingAction).toBeNull();
+    });
+
+    it('refuses deletions and updates while a toot is being created', async () => {
+      const store = useScheduledTootsStore();
+      let finish!: () => void;
+      api.scheduleToot.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+
+      const creating = store.createToot(makeUpdated(), 'key-1');
+      expect(await store.deleteToot('42')).toBe(false);
+      await expect(store.updateToot(original, makeUpdated(), 'key-2')).rejects.toBeInstanceOf(BusyError);
+      expect(api.deleteScheduledToot).not.toHaveBeenCalled();
+      expect(api.rescheduleToot).not.toHaveBeenCalled();
+
+      finish();
+      await creating;
+    });
+
+    it('is refused, without sending anything, while another change is running', async () => {
+      const store = useScheduledTootsStore();
+      let finish!: () => void;
+      api.deleteScheduledToot.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+
+      const deleting = store.deleteToot('42');
+      await expect(store.createToot(makeUpdated(), 'key-1')).rejects.toBeInstanceOf(BusyError);
+      expect(api.scheduleToot).not.toHaveBeenCalled();
+      expect(store.pendingId).toBe('42');
+
+      finish();
+      await deleting;
+    });
+
+    it('rethrows a failure without putting it in the list error, and frees the slot', async () => {
+      const store = useScheduledTootsStore();
+      api.scheduleToot.mockRejectedValue(new Error('Validation failed'));
+
+      await expect(store.createToot(makeUpdated(), 'key-1')).rejects.toThrow('Validation failed');
+
+      expect(store.error).toBe('');
+      expect(store.pendingId).toBeNull();
+    });
+
+    it('does not free the slot of the next session when a create of the previous one finishes late', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin({ instance: 'https://masto.example', clientId: 'id', clientSecret: 'secret', accessToken: 'token-a' });
+      const store = useScheduledTootsStore();
+      await nextTick();
+      let finish!: () => void;
+      api.scheduleToot.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+
+      const creating = store.createToot(makeUpdated(), 'key-1');
+      auth.completeLogin({ instance: 'https://masto.example', clientId: 'id', clientSecret: 'secret', accessToken: 'token-b' });
+      await nextTick();
+      expect(store.pendingId).toBeNull();
+      let finishDelete!: () => void;
+      api.deleteScheduledToot.mockReturnValueOnce(new Promise<void>(resolve => { finishDelete = resolve; }));
+      const deleting = store.deleteToot('42');
+
+      finish();
+      await creating;
+      expect(store.pendingId).toBe('42');
+
+      finishDelete();
+      await deleting;
+    });
+  });
+
   describe('updateToot', () => {
     it('marks the edited toot as in progress while it is updated', async () => {
       const store = useScheduledTootsStore();

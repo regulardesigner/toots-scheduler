@@ -3,7 +3,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 import type { MastodonStatus } from '../../types/mastodon';
 
-const api = vi.hoisted(() => ({ deleteScheduledToot: vi.fn(), getScheduledToots: vi.fn() }));
+const api = vi.hoisted(() => ({ deleteScheduledToot: vi.fn(), getScheduledToots: vi.fn(), scheduleToot: vi.fn() }));
 vi.mock('../../composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
 
 import ScheduledToots from './ScheduledToots.vue';
@@ -132,6 +132,28 @@ describe('ScheduledToots', () => {
       await flushPromises();
 
       expect(store.editingToot).toBeNull();
+    });
+
+    it('disables every card, without showing progress on any, while a new toot is being created', async () => {
+      let finish!: () => void;
+      api.scheduleToot.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+      const wrapper = await mountList();
+      const store = useScheduledTootsStore();
+
+      const creating = store.createToot({ status: 'New', scheduled_at: '2031-02-01T12:00:00.000Z', visibility: 'public', language: 'en', sensitive: false, media_ids: [] }, 'key-1');
+      await flushPromises();
+
+      const buttons = wrapper.findAll('.toot-card button');
+      expect(buttons).toHaveLength(4);
+      for (const button of buttons) expect(button.attributes('disabled')).toBeDefined();
+      expect(buttons.map(button => button.text())).toEqual(['Edit', 'Delete', 'Edit', 'Delete']);
+
+      wrapper.findAllComponents({ name: 'TootCard' })[1].vm.$emit('edit', 'b');
+      await flushPromises();
+      expect(store.editingToot).toBeNull();
+
+      finish();
+      await creating;
     });
 
     it('deletes after confirmation and moves focus to the list toggle once the card is gone', async () => {

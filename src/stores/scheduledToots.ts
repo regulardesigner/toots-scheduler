@@ -16,8 +16,11 @@ export class BusyError extends Error {
 /** Mastodon refuses scheduling less than 5 minutes ahead; past that point the original may publish mid-edit. */
 const EDIT_LOCK_MS = 5 * 60 * 1000;
 
-/** What can be in progress on one scheduled toot; only its card shows it. */
-export type PendingAction = 'delete' | 'update';
+/** What can be in progress: on one scheduled toot (only its card shows it), or the creation of a new one. */
+export type PendingAction = 'delete' | 'update' | 'create';
+
+/** Pending id while a new toot is created: no card has it, so none shows progress, yet all are disabled. */
+const NEW_TOOT_PENDING_ID = 'new';
 
 /** Outcome of an edit, so the UI can warn when a stale copy is left behind. */
 export interface UpdateTootResult {
@@ -134,6 +137,28 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
   }
 
   /**
+   * Schedules a new toot, then reloads the list. Holds the pending slot meanwhile, so no
+   * toot can be edited or deleted while it is being sent.
+   * Failures are not put in `error`: the composer shows them.
+   * @param {ScheduledToot} toot - The payload built from the form.
+   * @param {string} idempotencyKey - The draft's idempotency key.
+   * @throws {BusyError} If another change is still being saved (nothing is sent).
+   * @throws {Error} If scheduling fails.
+   */
+  async function createToot(toot: ScheduledToot, idempotencyKey: string): Promise<void> {
+    if (pendingId.value !== null) throw new BusyError();
+    try {
+      startPending(NEW_TOOT_PENDING_ID, 'create');
+      await useMastodonApi().scheduleToot(toot, idempotencyKey);
+      // A reload started for a previous session discards itself.
+      await fetchScheduledToots();
+    } finally {
+      // Another session took over meanwhile: its own operation, if any, keeps its slot.
+      finishPending(NEW_TOOT_PENDING_ID);
+    }
+  }
+
+  /**
    * Applies an edit to a scheduled toot without ever losing the original.
    * A date-only change is rescheduled in place. Any other change creates the new
    * version first and deletes the original only once the new one exists.
@@ -218,6 +243,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     setEditingToot,
     fetchScheduledToots,
     deleteToot,
+    createToot,
     updateToot,
   };
 });
