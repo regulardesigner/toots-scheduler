@@ -12,7 +12,9 @@ A modern Vue.js application that allows you to schedule Mastodon posts (toots) f
 - 🌍 Multi-language support
 - 🔒 Privacy settings (public, unlisted, private, direct)
 - 📱 Responsive design
-- 🎯 Real-time validation
+- 🎯 Real-time validation, following your instance's own limits (toot length, images per toot, image size and types)
+- ♿ Usable with the keyboard alone and with a screen reader
+- 🕒 Shows the time zone your toots are scheduled in
 - 📊 View and manage scheduled toots
 
 ## Tech Stack

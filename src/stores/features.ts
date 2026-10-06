@@ -11,6 +11,32 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.16.0',
+      date: '2026-10-06',
+      features: [
+        {
+          id: 'instance-limits',
+          title: '📏 Your Instance, Your Limits',
+          description: 'The composer now follows your instance\'s own limits: toot length, number of images, image size and image types. Links count as 23 characters and emoji as one, just like on Mastodon, and older servers are supported too.'
+        },
+        {
+          id: 'keyboard-and-screen-readers',
+          title: '♿ Better With a Keyboard and a Screen Reader',
+          description: 'Dialogs, the mobile menu and the composer now work fully with the keyboard: Escape closes them and focus goes back where you were. Screen readers hear errors right away, and a warning as you get close to the character limit.'
+        },
+        {
+          id: 'time-zone-shown',
+          title: '🕒 Time Zone Shown',
+          description: 'The time zone your toots are scheduled in is now shown under the date and time fields and on every scheduled toot.'
+        },
+        {
+          id: 'per-toot-progress',
+          title: '🐛 Fix: The Right Toot, Every Time',
+          description: 'Revealing a toot behind a content warning no longer reveals another one, and progress only shows on the toot concerned. Changes now run one at a time, and you are told if the toot you were editing gets deleted.'
+        },
+      ],
+    },
+    {
       version: '0.15.0',
       date: '2026-10-04',
       features: [
