@@ -20,11 +20,18 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   isOpen: boolean;
   /** Id of the heading (or label) inside the slot that names the dialog. */
   labelledBy: string;
-}>();
+  /**
+   * Where focus lands on opening: the first focusable element, or the dialog itself
+   * (for long content whose first control is at the end, so it opens at the top).
+   */
+  initialFocus?: 'first' | 'dialog';
+}>(), {
+  initialFocus: 'first',
+});
 
 const emit = defineEmits<{
   (e: 'close'): void;
@@ -73,7 +80,7 @@ function handleDocumentKeydown(event: KeyboardEvent): void {
   } else if (event.shiftKey && (active === first || active === modalRef.value)) {
     event.preventDefault();
     last.focus();
-  } else if (!event.shiftKey && active === last) {
+  } else if (!event.shiftKey && (active === last || active === modalRef.value)) {
     event.preventDefault();
     first.focus();
   }
@@ -85,6 +92,11 @@ function activate(): void {
   openStack.push(id);
   syncScrollLock();
   document.addEventListener('keydown', handleDocumentKeydown);
+  if (props.initialFocus === 'dialog') {
+    modalRef.value.focus({ preventScroll: true });
+    modalRef.value.scrollTop = 0;
+    return;
+  }
   // The close button is last in the DOM, so this is the dialog's own first field or action.
   const [first] = getFocusableElements();
   (first ?? modalRef.value)?.focus();

@@ -6,9 +6,9 @@ import ModalView from './ModalView.vue';
 const mounted: VueWrapper[] = [];
 
 /** A dialog titled "Edit" with a text field and a Save button. */
-function mountModal(isOpen: boolean): VueWrapper {
+function mountModal(isOpen: boolean, initialFocus?: 'first' | 'dialog'): VueWrapper {
   const wrapper = mount(ModalView, {
-    props: { isOpen, labelledBy: 'dialog-title' },
+    props: { isOpen, labelledBy: 'dialog-title', initialFocus },
     slots: {
       default: () => [
         h('h2', { id: 'dialog-title' }, 'Edit'),
@@ -78,6 +78,27 @@ describe('ModalView', () => {
 
     await wrapper.setProps({ isOpen: true });
     await nextTick();
+
+    expect(document.activeElement?.id).toBe('first-field');
+  });
+
+  it('puts focus on the dialog itself, scrolled to the top, with initialFocus="dialog"', async () => {
+    const wrapper = mountModal(false, 'dialog');
+
+    await wrapper.setProps({ isOpen: true });
+    await nextTick();
+
+    const dialog = wrapper.find('[role="dialog"]').element as HTMLElement;
+    expect(document.activeElement).toBe(dialog);
+    expect(dialog.scrollTop).toBe(0);
+  });
+
+  it('moves Tab from the dialog itself to its first focusable element', async () => {
+    const wrapper = mountModal(false, 'dialog');
+    await wrapper.setProps({ isOpen: true });
+    await nextTick();
+
+    pressTab();
 
     expect(document.activeElement?.id).toBe('first-field');
   });

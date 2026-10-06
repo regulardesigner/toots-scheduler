@@ -156,6 +156,7 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
     <ModalView
       :is-open="showWhatsNew"
       labelled-by="whats-new-title"
+      initial-focus="dialog"
       @close="handleWhatsNewClose"
     >
       <WhatsNew @close="handleWhatsNewClose" />
