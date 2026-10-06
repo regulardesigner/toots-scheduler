@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { mount, type VueWrapper } from '@vue/test-utils';
-import { h, nextTick } from 'vue';
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
+import { h, nextTick, ref, defineComponent } from 'vue';
 import ModalView from './ModalView.vue';
 import { settleFocus } from '../../test-utils/settle';
 
@@ -117,6 +117,7 @@ describe('ModalView', () => {
     await wrapper.setProps({ isOpen: true });
     await nextTick();
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
     const elsewhere = focusedButton();
     await settleFocus();
 
@@ -177,6 +178,7 @@ describe('ModalView', () => {
     await wrapper.setProps({ isOpen: true });
     await settleFocus();
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
 
     expect(document.activeElement).toBe(trigger);
   });
@@ -194,6 +196,7 @@ describe('ModalView', () => {
     await settleFocus();
     expect(document.activeElement?.id).toBe('first-field');
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
 
     expect(document.activeElement).toBe(opener);
   });
@@ -207,6 +210,7 @@ describe('ModalView', () => {
     await wrapper.setProps({ isOpen: true });
     await settleFocus();
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
 
     expect(document.activeElement).not.toBe(opener);
   });
@@ -217,6 +221,7 @@ describe('ModalView', () => {
     await wrapper.setProps({ isOpen: true });
     await settleFocus();
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
     expect(document.activeElement).toBe(opener);
     opener.blur();
 
@@ -224,6 +229,7 @@ describe('ModalView', () => {
     await wrapper.setProps({ isOpen: true });
     await settleFocus();
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
 
     expect(document.activeElement).not.toBe(opener);
   });
@@ -238,7 +244,36 @@ describe('ModalView', () => {
 
     opener.remove();
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
 
+    expect(document.activeElement).toBe(fallback);
+  });
+
+  it('sees an opener removed in the same update that closes it, even when rendered before it', async () => {
+    const fallback = document.createElement('button');
+    document.body.appendChild(fallback);
+    const isOpen = ref(false);
+    const Parent = defineComponent({
+      setup: () => () => [
+        // The dialog first: it is updated before the opener is removed from the DOM.
+        h(ModalView, { isOpen: isOpen.value, labelledBy: 'dialog-title', returnFocus: () => fallback }, {
+          default: () => [h('h2', { id: 'dialog-title' }, 'News'), h('input', { id: 'first-field' })],
+        }),
+        isOpen.value || !opened ? h('button', { id: 'opener' }, 'News') : null,
+      ],
+    });
+    let opened = false;
+    const wrapper = mount(Parent, { attachTo: document.body });
+    mounted.push(wrapper);
+    (document.getElementById('opener') as HTMLButtonElement).focus();
+    isOpen.value = true;
+    opened = true;
+    await settleFocus();
+
+    isOpen.value = false;
+    await flushPromises();
+
+    expect(document.getElementById('opener')).toBeNull();
     expect(document.activeElement).toBe(fallback);
   });
 
@@ -251,6 +286,7 @@ describe('ModalView', () => {
     await settleFocus();
 
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
 
     expect(document.activeElement).toBe(opener);
   });
@@ -272,6 +308,7 @@ describe('ModalView', () => {
     await wrapper.setProps({ isOpen: true });
     await settleFocus();
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
     const elsewhere = focusedButton();
 
     wrapper.unmount();
@@ -328,6 +365,7 @@ describe('ModalView', () => {
     expect(document.body.classList.contains('modal-open')).toBe(true);
 
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
     expect(document.body.classList.contains('modal-open')).toBe(false);
   });
 
@@ -338,6 +376,7 @@ describe('ModalView', () => {
     await wrapper.setProps({ isOpen: true });
     (wrapper.find('#first-field').element as HTMLElement).focus();
     await wrapper.setProps({ isOpen: false });
+    await nextTick();
 
     expect(document.activeElement).toBe(opener);
   });

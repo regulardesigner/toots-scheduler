@@ -63,18 +63,19 @@ async function handleDeleteConfirm() {
   // Another change started while the dialog was open: deleteToot would refuse, and nothing moved, so neither does focus.
   if (store.pendingId !== null) return;
 
-  const deleting = store.deleteToot(id);
-  // The dialog has now closed and given focus back to its opener, this card's Delete button.
+  const deleted = await store.deleteToot(id);
   await nextTick();
-  const opener = document.activeElement;
-
-  await deleting;
-  await nextTick();
-  // Unless the user moved focus elsewhere meanwhile: a failure keeps the card, so focus stays on (or
-  // returns to, if disabling it dropped focus) its Delete button; a success removes it, so the list's toggle.
+  // The card's own Delete button: the dialog's opener. Not read from document.activeElement, which the
+  // button loses while it is disabled during the request.
+  const deleteButton = Array.from(document.querySelectorAll<HTMLElement>('[data-toot-id]'))
+    .find(card => card.dataset.tootId === id)
+    ?.querySelector<HTMLElement>('.delete-button');
+  // Unless the user moved focus elsewhere meanwhile.
   const active = document.activeElement;
-  if (active && active !== document.body && active !== opener && active.isConnected) return;
-  if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+  if (active && active !== document.body && active !== deleteButton && active.isConnected) return;
+  // Decided on the outcome, not on the DOM: a deleted card stays in the page while it animates out.
+  // A failure keeps the card, so focus goes back to its Delete button; a success, to the list's toggle.
+  if (!deleted && deleteButton) deleteButton.focus();
   else listToggle.value?.focus();
 }
 
@@ -161,6 +162,7 @@ onMounted(() => {
             v-for="toot in store.sortedToots"
             :id="toot.id"
             :key="toot.id"
+            :data-toot-id="toot.id"
             :scheduled-at="toot.scheduled_at || ''"
             :text="toot.params?.text"
             :visibility="toot.params?.visibility"
@@ -281,5 +283,13 @@ h2 {
 
 .toot-list-leave-active {
   position: absolute;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toot-list-move,
+  .toot-list-enter-active,
+  .toot-list-leave-active {
+    transition: none;
+  }
 }
 </style> 

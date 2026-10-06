@@ -226,6 +226,23 @@ describe('ScheduledToots', () => {
       expect(document.activeElement).toBe(wrapper.find('#scheduled-toots-title button').element);
     });
 
+    it('moves focus to the toggle after a successful deletion even while the card is still in the page', async () => {
+      api.deleteScheduledToot.mockResolvedValue(undefined);
+      const wrapper = await mountList();
+      // Stands for the leave transition, which keeps the deleted card (and its Delete button) for a while.
+      api.getScheduledToots.mockResolvedValue([scheduledToot('a', 1), scheduledToot('b', 2)]);
+
+      const deleteButton = wrapper.findAll<HTMLButtonElement>('.delete-button')[0];
+      deleteButton.element.focus();
+      await deleteButton.trigger('click');
+      await settleFocus();
+      await wrapper.find('.btn-delete').trigger('click');
+      await flushPromises();
+
+      expect(deleteButton.element.isConnected).toBe(true);
+      expect(document.activeElement).toBe(wrapper.find('#scheduled-toots-title button').element);
+    });
+
     it('keeps focus on the toggle even if the list is collapsed after the deletion', async () => {
       api.deleteScheduledToot.mockResolvedValue(undefined);
       const wrapper = await mountList();

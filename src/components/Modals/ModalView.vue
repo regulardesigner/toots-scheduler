@@ -161,9 +161,13 @@ function deactivate(): void {
   returnFocusTo = null;
   // Never opened, or already closed: focus is not ours to move.
   if (!opener && !wasActive) return;
-  // The opener left the page (or there was none): the stable place the parent named, if any.
-  const target = opener?.isConnected ? opener : props.returnFocus?.();
-  if (target?.isConnected) target.focus();
+  // After the update that closed the dialog: whatever else it removed (e.g. the What's New button,
+  // rendered after this dialog or not) is gone by then, whatever the render order.
+  void nextTick(() => {
+    // The opener left the page (or there was none): the stable place the parent named, if any.
+    const target = opener?.isConnected ? opener : props.returnFocus?.();
+    if (target?.isConnected) target.focus();
+  });
 }
 
 watch(() => props.isOpen, (open) => {
