@@ -5,6 +5,26 @@ const openStack: symbol[] = [];
 function syncScrollLock(): void {
   document.body.classList.toggle('modal-open', openStack.length > 0);
 }
+
+/** What a click can activate: the opener focus goes back to, when the click did not focus it. */
+const ACTIVATABLE_SELECTOR = 'button, a[href], input, select, textarea, summary, [tabindex]';
+
+/**
+ * The control last clicked. Safari does not focus a button on click (nor, likely, on VoiceOver
+ * activation), so document.activeElement is the body when a dialog opens and focus would be lost on close.
+ */
+let lastActivated: HTMLElement | null = null;
+let isTrackingActivation = false;
+
+/** Listens once, in the capture phase so the opener is known before its own click handler opens a dialog. */
+function trackActivation(): void {
+  if (isTrackingActivation) return;
+  isTrackingActivation = true;
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target.closest(ACTIVATABLE_SELECTOR) : null;
+    if (target instanceof HTMLElement) lastActivated = target;
+  }, true);
+}
 </script>
 
 <script setup lang="ts">
@@ -41,6 +61,8 @@ const modalRef = ref<HTMLElement | null>(null);
 
 /** What had focus before the dialog opened. Null unless it really opened, so focus is never moved for nothing. */
 let returnFocusTo: HTMLElement | null = null;
+
+trackActivation();
 
 function close(): void {
   emit('close');
@@ -123,8 +145,11 @@ function deactivate(): void {
 
 watch(() => props.isOpen, (open) => {
   if (open) {
-    // The real opener, captured before anything inside the dialog can take focus.
-    returnFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // The real opener, captured before anything inside the dialog can take focus; in Safari, the clicked one.
+    const active = document.activeElement;
+    returnFocusTo = active instanceof HTMLElement && active !== document.body
+      ? active
+      : lastActivated?.isConnected ? lastActivated : null;
     void nextTick(activate);
   }
   else deactivate();

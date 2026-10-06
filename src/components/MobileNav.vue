@@ -19,6 +19,8 @@ const root = ref<HTMLElement | null>(null);
 
 function toggle(): void {
   isOpen.value = !isOpen.value;
+  // Safari does not focus a clicked button: without focus, its new expanded state is never announced.
+  menuButton.value?.focus();
 }
 
 function closeAndFocusButton(): void {

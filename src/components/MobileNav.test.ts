@@ -36,6 +36,16 @@ describe('MobileNav', () => {
     expect(button.attributes('aria-expanded')).toBe('false');
   });
 
+  it('focuses the menu button when it is clicked, so its expanded state is announced (Safari)', async () => {
+    const button = mountNav().find('.burger-menu');
+    expect(document.activeElement).toBe(document.body);
+
+    await button.trigger('click');
+
+    expect(button.attributes('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(button.element);
+  });
+
   it('closes on Escape and gives focus back to the menu button', async () => {
     const button = mountNav().find('.burger-menu');
     await button.trigger('click');

@@ -144,6 +144,23 @@ describe('ModalView', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it('gives focus back to the clicked opener even when the click did not focus it (Safari)', async () => {
+    const opener = document.createElement('button');
+    opener.append(document.createElement('span'));
+    document.body.appendChild(opener);
+    const wrapper = mountModal(false);
+    // Safari neither focuses a clicked button nor, likely, one activated by VoiceOver.
+    opener.querySelector('span')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.activeElement).toBe(document.body);
+
+    await wrapper.setProps({ isOpen: true });
+    await settleFocus();
+    expect(document.activeElement?.id).toBe('first-field');
+    await wrapper.setProps({ isOpen: false });
+
+    expect(document.activeElement).toBe(opener);
+  });
+
   it('never moves focus when it was never opened', async () => {
     focusedButton();
     const wrapper = mountModal(false);
