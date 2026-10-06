@@ -164,7 +164,9 @@ describe('TootComposer', () => {
   it('refuses a toot longer than the instance allows, without sending it', async () => {
     const wrapper = mountComposer();
     await flushPromises();
-    useInstanceStore().maxCharacters = 10;
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.isLoaded = true;
     await fillForm(wrapper, 'Hello world!');
 
     await wrapper.find('form').trigger('submit');
@@ -172,6 +174,54 @@ describe('TootComposer', () => {
 
     expect(api.scheduleToot).not.toHaveBeenCalled();
     expect(wrapper.find('.error').text()).toBe('Your toot is 12 characters long, but your instance allows 10.');
+  });
+
+  it('does not block a toot while the instance limits are unknown', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    api.deleteScheduledToot.mockResolvedValue(undefined);
+    const wrapper = mountComposer();
+    await flushPromises();
+    useScheduledTootsStore().setEditingToot(makeScheduledToot({ params: { text: 'a'.repeat(600), visibility: 'public', language: 'fr', poll: null } }));
+    await flushPromises();
+    await wrapper.find('textarea').setValue('b'.repeat(600));
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts the content warning with the text', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.isLoaded = true;
+    await fillForm(wrapper, 'Hello');
+    await wrapper.find('#spoiler-text').setValue('Warning!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('.error').text()).toBe('Your toot is 13 characters long, but your instance allows 10.');
+  });
+
+  it('refuses more images than the instance allows, without sending', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxMediaAttachments = 1;
+    instance.isLoaded = true;
+    const image = { id: 'a', type: 'image', url: 'https://x/a.png', preview_url: 'https://x/a.png' };
+    useScheduledTootsStore().setEditingToot(makeScheduledToot({ media_attachments: [image, { ...image, id: 'b' }] as MastodonStatus['media_attachments'] }));
+    await flushPromises();
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('.error').text()).toBe('This toot has 2 images, but your instance allows 1.');
   });
 
   it('does not send a poll that was opened, filled in and closed again', async () => {

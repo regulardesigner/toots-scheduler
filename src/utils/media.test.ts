@@ -53,6 +53,13 @@ describe('getImageRejection', () => {
   });
 });
 
+describe('HEIC and HEIF', () => {
+  it('are interchangeable when checking against the accepted types', () => {
+    expect(getImageRejection(file('photo.heic', 'image/heic'), { imageTypes: ['image/heif'], maxImageBytes: MAX_IMAGE_BYTES })).toBeNull();
+    expect(getImageRejection(file('photo.heif', 'image/heif'), { imageTypes: ['image/heic'], maxImageBytes: MAX_IMAGE_BYTES })).toBeNull();
+  });
+});
+
 describe('usableImageTypes', () => {
   it('keeps the instance image types the app supports, in the app order', () => {
     expect(usableImageTypes(['video/mp4', 'image/webp', 'IMAGE/PNG', 'image/svg+xml', 'image/bmp'])).toEqual(['image/png', 'image/webp']);

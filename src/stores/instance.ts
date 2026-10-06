@@ -18,12 +18,15 @@ export const useInstanceStore = defineStore('instance', () => {
   const maxMediaAttachments = ref(MAX_IMAGES_PER_TOOT);
   const imageSizeLimit = ref(MAX_IMAGE_BYTES);
   const supportedMimeTypes = ref<string[]>([...SUPPORTED_IMAGE_TYPES]);
+  /** True once the instance's own limits were read; until then the values above are guesses. */
+  const isLoaded = ref(false);
 
   function reset(): void {
     maxCharacters.value = DEFAULT_MAX_CHARACTERS;
     maxMediaAttachments.value = MAX_IMAGES_PER_TOOT;
     imageSizeLimit.value = MAX_IMAGE_BYTES;
     supportedMimeTypes.value = [...SUPPORTED_IMAGE_TYPES];
+    isLoaded.value = false;
   }
 
   /**
@@ -41,6 +44,7 @@ export const useInstanceStore = defineStore('instance', () => {
       maxMediaAttachments.value = configuration.maxMediaAttachments ?? MAX_IMAGES_PER_TOOT;
       imageSizeLimit.value = configuration.imageSizeLimit ?? MAX_IMAGE_BYTES;
       supportedMimeTypes.value = usableImageTypes(configuration.supportedMimeTypes);
+      isLoaded.value = true;
     } catch (error) {
       console.error('Could not read the instance limits, using the defaults:', error);
     }
@@ -62,6 +66,8 @@ export const useInstanceStore = defineStore('instance', () => {
     imageSizeLimit,
     /** Image MIME types the app can attach on this instance (images only, never empty). */
     supportedMimeTypes,
+    /** Whether the limits above come from the instance (false: defaults, not to be enforced). */
+    isLoaded,
     /** Reads the limits again for the current session. */
     load,
   };

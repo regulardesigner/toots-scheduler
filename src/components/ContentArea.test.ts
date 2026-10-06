@@ -23,7 +23,6 @@ describe('ContentArea', () => {
   it("uses Mastodon's default limit until the instance answers", () => {
     const wrapper = mountArea();
 
-    expect(wrapper.find('textarea').attributes('maxlength')).toBe('500');
     expect(wrapper.find('.character-count').text()).toMatch(/^495\b/);
   });
 
@@ -32,7 +31,13 @@ describe('ContentArea', () => {
     useInstanceStore().maxCharacters = 1000;
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('textarea').attributes('maxlength')).toBe('1000');
     expect(wrapper.find('.character-count').text()).toMatch(/^995\b/);
+  });
+
+  it('counts a long URL as 23 characters and does not truncate the text', () => {
+    const wrapper = mountArea(`https://example.com/${'a'.repeat(100)}`);
+
+    expect(wrapper.find('textarea').attributes('maxlength')).toBeUndefined();
+    expect(wrapper.find('.character-count').text()).toMatch(/^477\b/);
   });
 });

@@ -61,6 +61,29 @@ describe('instance store', () => {
     });
   });
 
+  it('knows whether the limits were read', async () => {
+    const store = useInstanceStore();
+    expect(store.isLoaded).toBe(false);
+
+    const auth = useAuthStore();
+    auth.completeLogin(credentials);
+    await flushPromises();
+    expect(store.isLoaded).toBe(true);
+
+    await auth.logout();
+    await flushPromises();
+    expect(store.isLoaded).toBe(false);
+  });
+
+  it('does not claim the limits were read when the request failed', async () => {
+    api.getInstanceConfiguration.mockRejectedValue(new Error('boom'));
+    const store = useInstanceStore();
+    useAuthStore().completeLogin(credentials);
+    await flushPromises();
+
+    expect(store.isLoaded).toBe(false);
+  });
+
   it('reads the limits of a restored session', async () => {
     localStorage.setItem('mastodon_auth', JSON.stringify({ ...credentials, lastActivityAt: Date.now() }));
     const store = useInstanceStore();

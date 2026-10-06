@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useInstanceStore } from '../stores/instance';
+import { countTootCharacters } from '../utils/tootLength';
 
 const props = defineProps<{
   modelValue: string;
@@ -16,7 +17,8 @@ const emit = defineEmits<{
 
 const instance = useInstanceStore();
 
-const characterCount = computed(() => props.modelValue.length);
+/** The length Mastodon counts (URLs as 23, remote mentions shortened, graphemes). */
+const characterCount = computed(() => countTootCharacters(props.modelValue));
 /** Against the instance's own limit (Mastodon's default 500 until it answers). */
 const remainingCharacters = computed(() => instance.maxCharacters - characterCount.value);
 
@@ -56,7 +58,6 @@ function handlePollCheckboxChange(event: Event) {
       :value="modelValue"
       :placeholder="'What\'s on your mind?'"
       required
-      :maxlength="instance.maxCharacters"
       rows="4"
       @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />

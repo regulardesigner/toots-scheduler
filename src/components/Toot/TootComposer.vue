@@ -8,6 +8,7 @@ import { useToast } from 'vue-toastification';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import { useAuthStore } from '../../stores/auth';
 import { useInstanceStore } from '../../stores/instance';
+import { countTootCharacters } from '../../utils/tootLength';
 import { format, addMinutes, isBefore, parseISO } from 'date-fns';
 import type { ScheduledToot, MastodonMediaAttachment, PollFormState } from '../../types/mastodon';
 import { buildScheduledToot } from '../../utils/buildScheduledToot';
@@ -158,9 +159,17 @@ async function handleSubmit() {
 
   try {
     // The instance would refuse it: say why before sending (e.g. an edited toot longer than the limit).
-    if (content.value.length > instance.maxCharacters) {
-      error.value = `Your toot is ${content.value.length} characters long, but your instance allows ${instance.maxCharacters}.`;
-      return;
+    // Only against limits the instance gave: the defaults are guesses and must not block anything.
+    if (instance.isLoaded) {
+      const length = countTootCharacters(content.value) + countTootCharacters(spoilerText.value);
+      if (length > instance.maxCharacters) {
+        error.value = `Your toot is ${length} characters long, but your instance allows ${instance.maxCharacters}.`;
+        return;
+      }
+      if (mediaAttachments.value.length > instance.maxMediaAttachments) {
+        error.value = `This toot has ${mediaAttachments.value.length} images, but your instance allows ${instance.maxMediaAttachments}.`;
+        return;
+      }
     }
 
     // Validate scheduled time

@@ -92,7 +92,12 @@ function imageType(file: File): string {
  * @returns {string | null} A message for the user, or null.
  */
 export function getImageRejection(file: File, limits: ImageLimits): string | null {
-  if (!limits.imageTypes.includes(imageType(file))) {
+  const type = imageType(file);
+  // HEIC and HEIF are the same format under two names: an instance listing one accepts the other.
+  const accepted = limits.imageTypes.includes(type)
+    || (type === 'image/heic' && limits.imageTypes.includes('image/heif'))
+    || (type === 'image/heif' && limits.imageTypes.includes('image/heic'));
+  if (!accepted) {
     return `"${file.name}" is not a supported image (${describeImageTypes(limits.imageTypes)}).`;
   }
   if (file.size > limits.maxImageBytes) {
