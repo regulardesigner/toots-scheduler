@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { defineComponent, h } from 'vue';
@@ -12,6 +12,8 @@ import App from './App.vue';
 
 const Page = defineComponent({ render: () => h('h1', { tabindex: -1 }, 'A page') });
 
+let wrapper: VueWrapper | undefined;
+
 async function mountApp(signedIn = false) {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', name: 'home', component: Page }] });
   await router.push('/');
@@ -19,7 +21,7 @@ async function mountApp(signedIn = false) {
   const pinia = createPinia();
   setActivePinia(pinia);
   if (signedIn) useAuthStore().accessToken = 'token';
-  const wrapper = mount(App, { attachTo: document.body, global: { plugins: [pinia, router] } });
+  wrapper = mount(App, { attachTo: document.body, global: { plugins: [pinia, router] } });
   await flushPromises();
   return wrapper;
 }
@@ -27,7 +29,13 @@ async function mountApp(signedIn = false) {
 describe('App', () => {
   beforeEach(() => {
     localStorage.clear();
-    document.body.innerHTML = "";
+    document.body.innerHTML = '';
+  });
+
+  afterEach(() => {
+    wrapper?.unmount();
+    wrapper = undefined;
+    document.body.innerHTML = '';
   });
 
   it('renders the page inside the only <main>, and leaves the <h1> to the page', async () => {
@@ -47,6 +55,5 @@ describe('App', () => {
     await flushPromises();
 
     expect(document.activeElement).toBe(wrapper.find('main h1').element);
-    wrapper.unmount();
   });
 });

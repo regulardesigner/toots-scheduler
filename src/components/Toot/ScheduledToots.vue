@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import TootCard from './TootCard.vue';
 import ModalView from '../Modals/ModalView.vue';
@@ -11,6 +11,15 @@ const PREVIEW_MAX_LENGTH = 120;
 
 const api = useMastodonApi();
 const store = useScheduledTootsStore();
+
+/** The user's own choice (open/closed); null until they click, so the list follows the data. */
+const userToggled = ref<boolean | null>(null);
+const isOpen = computed(() => userToggled.value ?? (store.count > 0 || !!store.error));
+
+// A new error must be seen, even if the list was collapsed by hand.
+watch(() => store.error, (error) => {
+  if (error) userToggled.value = null;
+});
 
 /** The toot pending deletion, or null when no confirmation is open. */
 const tootToDelete = ref<MastodonStatus | null>(null);
@@ -82,21 +91,24 @@ onMounted(() => {
 
 <template>
   <div class="scheduled-toots">
-    <!-- Outside <summary>, whose children may lose their heading role; the summary is drawn over this row. -->
     <h2
       id="scheduled-toots-title"
       tabindex="-1"
     >
-      Scheduled Toots ({{ store.count }})
+      <button
+        type="button"
+        class="toots-toggle"
+        :aria-expanded="isOpen ? 'true' : 'false'"
+        aria-controls="scheduled-toots-panel"
+        @click="userToggled = !isOpen"
+      >
+        Scheduled Toots ({{ store.count }})
+      </button>
     </h2>
-    <details
-      class="toots-details"
-      :open="store.count > 0 || !!store.error"
+    <div
+      id="scheduled-toots-panel"
+      v-show="isOpen"
     >
-      <summary class="toots-summary">
-        <span class="visually-hidden">Show or hide the scheduled toots</span>
-      </summary>
-      
       <div
         v-if="store.isLoading"
         class="loading"
@@ -146,7 +158,7 @@ onMounted(() => {
           />
         </TransitionGroup>
       </div>
-    </details>
+    </div>
   </div>
 
   <ModalView
@@ -167,33 +179,33 @@ onMounted(() => {
   margin-top: 2rem;
 }
 
-.toots-details {
-  width: 100%;
-  /* Pulls the summary up over the heading row (2.25rem = h2 line height). */
-  margin-top: -2.25rem;
+h2 {
+  margin: 0;
 }
 
-.toots-summary {
-  cursor: pointer;
-  list-style: none;
+h2:focus {
+  outline: none;
 }
 
-.toots-summary::-webkit-details-marker {
-  display: none;
-}
-
-.toots-summary {
+.toots-toggle {
+  all: unset;
+  box-sizing: border-box;
   position: relative;
-  height: 2.25rem;
+  width: 100%;
   padding-right: 2rem;
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #333;
 }
 
-.toots-summary:focus-visible {
+.toots-toggle:focus-visible {
   outline: 2px solid #333;
   outline-offset: 2px;
 }
 
-.toots-summary::after {
+.toots-toggle::after {
   content: '▼';
   position: absolute;
   right: 0;
@@ -204,25 +216,18 @@ onMounted(() => {
   transition: transform 0.2s ease;
 }
 
-.toots-details[open] .toots-summary::after {
+.toots-toggle[aria-expanded="true"]::after {
   transform: translateY(-50%) rotate(180deg);
 }
 
-h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0;
-  color: #333;
-  display: block;
-  padding-right: 2rem;
-}
-
-h2:focus {
-  outline: none;
-}
-
-.toots-details > :not(summary) {
+#scheduled-toots-panel {
   margin-top: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toots-toggle::after {
+    transition: none;
+  }
 }
 
 .loading, .error, .empty-state {
