@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
-import { useMastodonApi } from '../../composables/useMastodonApi';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import TootCard from './TootCard.vue';
 import ModalView from '../Modals/ModalView.vue';
 import DeleteConfirmModal from '../Modals/DeleteConfirmModal.vue';
@@ -9,7 +8,6 @@ import type { MastodonStatus } from '../../types/mastodon';
 
 const PREVIEW_MAX_LENGTH = 120;
 
-const api = useMastodonApi();
 const store = useScheduledTootsStore();
 
 /** The user's own choice (open/closed); null until they click, so the list follows the data. */
@@ -20,6 +18,9 @@ const isOpen = computed(() => userToggled.value ?? (store.count > 0 || !!store.e
 watch(() => store.error, (error) => {
   if (error) userToggled.value = null;
 });
+
+/** The list's toggle: focus lands here once a deleted toot's card is gone. */
+const listToggle = ref<HTMLButtonElement | null>(null);
 
 /** The toot pending deletion, or null when no confirmation is open. */
 const tootToDelete = ref<MastodonStatus | null>(null);
@@ -50,36 +51,34 @@ function handleDeleteCancel() {
 }
 
 /**
- * Confirms the deletion of the pending toot and refreshes the list.
+ * Confirms the deletion of the pending toot. Only its card shows progress meanwhile.
  */
 async function handleDeleteConfirm() {
   if (!tootToDelete.value) return;
   const id = tootToDelete.value.id;
   handleDeleteCancel();
 
-  try {
-    store.setLoading(true);
-    await api.deleteScheduledToot(id);
-    await store.fetchScheduledToots();
-  } catch (err) {
-    store.setError(err instanceof Error ? err.message : 'Failed to delete toot');
-  } finally {
-    store.setLoading(false);
-  }
+  if (!(await store.deleteToot(id))) return;
+  // The focused Delete button disappears with its card: keep keyboard focus in the list.
+  // After the re-render, so the dialog has long given focus back to its opener and nothing moves it again.
+  await nextTick();
+  listToggle.value?.focus();
 }
 
+/**
+ * Loads a toot into the composer, then scrolls to and focuses its text.
+ * @param {string} id - The ID of the toot to edit.
+ */
 function handleEdit(id: string) {
   const toot = store.toots.find(t => t.id === id);
   if (toot) {
     store.setEditingToot(toot);
 
-    
-    // Scroll to textarea after a short delay to ensure the content is rendered
+    // After a short delay, so the composer has rendered the toot.
     setTimeout(() => {
-      document.querySelector('.content-area textarea')?.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'center'
-      });
+      const textarea = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Toot text"]');
+      textarea?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      textarea?.focus({ preventScroll: true });
     }, 100);
   }
 }
@@ -95,6 +94,7 @@ onMounted(() => {
       id="scheduled-toots-title"
     >
       <button
+        ref="listToggle"
         type="button"
         class="toots-toggle"
         :aria-expanded="isOpen ? 'true' : 'false'"
@@ -109,7 +109,7 @@ onMounted(() => {
       id="scheduled-toots-panel"
     >
       <div
-        v-if="store.isLoading"
+        v-if="store.isLoading && store.count === 0"
         class="loading"
       >
         Loading scheduled toots...
@@ -151,9 +151,9 @@ onMounted(() => {
             :sensitive="toot.params?.sensitive"
             :poll="toot.params?.poll"
             :medias="toot.media_attachments"
-            :is-loading="store.isLoading"
-            :on-delete="handleDeleteRequest"
-            :on-edit="handleEdit"
+            :pending-action="store.pendingId === toot.id ? store.pendingAction : null"
+            @edit="handleEdit"
+            @delete="handleDeleteRequest"
           />
         </TransitionGroup>
       </div>

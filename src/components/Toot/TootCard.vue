@@ -2,6 +2,7 @@
 import { format } from 'date-fns';
 import { ref, computed } from 'vue';
 import type { PollParams } from '../../types/mastodon';
+import type { PendingAction } from '../../stores/scheduledToots';
 
 interface Props {
   id: string;
@@ -9,16 +10,20 @@ interface Props {
   text?: string;
   visibility?: string;
   language?: string;
-  isLoading?: boolean;
   sensitive?: boolean;
   medias?: Array<{ id: string; description: string; preview_url: string }>;
   poll?: PollParams | null;
   spoiler_text?: string;
-  onDelete: (id: string) => void;
-  onEdit: (id: string) => void;
+  /** What is being done to this toot right now; other cards are not affected. */
+  pendingAction?: PendingAction | null;
 }
 
 const props = defineProps<Props>();
+
+const emit = defineEmits<{
+  (e: 'edit', id: string): void;
+  (e: 'delete', id: string): void;
+}>();
 
 const languages = {
   en: 'English',
@@ -53,9 +58,10 @@ function getLanguageName(code: string | undefined): string {
 
 const showSensitiveContent = ref(!props.sensitive);
 
-const handleShowSensitiveContent = () => {
-  showSensitiveContent.value = !showSensitiveContent.value;
-};
+/** One per card: a shared id made every label toggle the first card. */
+const sensitiveId = computed(() => `sensitive-${props.id}`);
+
+const isPending = computed(() => !!props.pendingAction);
 
 const hasMedia = computed(() => {
   return props.medias && props.medias.length > 0;
@@ -76,19 +82,21 @@ const hasPoll = computed(() => {
         </span>
       </div>
       <div class="actions">
-        <button 
-          class="edit-button" 
-          :disabled="props.isLoading"
-          @click="props.onEdit(props.id)"
+        <button
+          type="button"
+          class="edit-button"
+          :disabled="isPending"
+          @click="emit('edit', props.id)"
         >
-          {{ props.isLoading ? 'Editing...' : 'Edit' }}
+          {{ props.pendingAction === 'update' ? 'Updating…' : 'Edit' }}
         </button>
-        <button 
-          class="delete-button" 
-          :disabled="props.isLoading"
-          @click="props.onDelete(props.id)"
+        <button
+          type="button"
+          class="delete-button"
+          :disabled="isPending"
+          @click="emit('delete', props.id)"
         >
-          {{ props.isLoading ? 'Deleting...' : 'Delete' }}
+          {{ props.pendingAction === 'delete' ? 'Deleting…' : 'Delete' }}
         </button>
       </div>
     </div>
@@ -97,14 +105,12 @@ const hasPoll = computed(() => {
       class="sensitive-warning"
     >
       <input
-        id="sensitive"
+        :id="sensitiveId"
         v-model="showSensitiveContent"
-        name="sensitive"
         type="checkbox"
-        @click="handleShowSensitiveContent"
       >
 
-      <label for="sensitive">{{ props.spoiler_text }}</label>
+      <label :for="sensitiveId"><span class="visually-hidden">Show the content behind this warning: </span>{{ props.spoiler_text }}</label>
     </div>
     <div class="toot-content">
       <p :class="{ blurred: !showSensitiveContent }">

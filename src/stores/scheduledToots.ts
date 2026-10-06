@@ -8,6 +8,9 @@ import { isOnlyScheduleChange } from '../utils/isOnlyScheduleChange';
 /** Mastodon refuses scheduling less than 5 minutes ahead; past that point the original may publish mid-edit. */
 const EDIT_LOCK_MS = 5 * 60 * 1000;
 
+/** What can be in progress on one scheduled toot; only its card shows it. */
+export type PendingAction = 'delete' | 'update';
+
 /** Outcome of an edit, so the UI can warn when a stale copy is left behind. */
 export interface UpdateTootResult {
   /** False when the new version was scheduled but the previous one could not be deleted. */
@@ -29,6 +32,9 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
   const isLoading = ref(false);
   const error = ref('');
   const editingToot = ref<MastodonStatus | null>(null);
+  /** The toot being deleted or updated, and what is being done to it. */
+  const pendingId = ref<string | null>(null);
+  const pendingAction = ref<PendingAction | null>(null);
   const auth = useAuthStore();
 
   const count = computed(() => toots.value.length);
@@ -48,6 +54,18 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
 
   function setEditingToot(toot: MastodonStatus | null): void {
     editingToot.value = toot;
+  }
+
+  function startPending(id: string, action: PendingAction): void {
+    pendingId.value = id;
+    pendingAction.value = action;
+  }
+
+  /** Clears this toot's progress, unless an operation on another toot started meanwhile. */
+  function finishPending(id: string): void {
+    if (pendingId.value !== id) return;
+    pendingId.value = null;
+    pendingAction.value = null;
   }
 
   /**
@@ -73,6 +91,26 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
   }
 
   /**
+   * Deletes a scheduled toot, then reloads the list. Only that toot is marked as in progress.
+   * @param {string} id - The ID of the scheduled toot.
+   * @returns {Promise<boolean>} True once deleted; false on failure (the error is in `error`).
+   */
+  async function deleteToot(id: string): Promise<boolean> {
+    startPending(id, 'delete');
+    try {
+      setError('');
+      await useMastodonApi().deleteScheduledToot(id);
+      await fetchScheduledToots();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete toot');
+      return false;
+    } finally {
+      finishPending(id);
+    }
+  }
+
+  /**
    * Applies an edit to a scheduled toot without ever losing the original.
    * A date-only change is rescheduled in place. Any other change creates the new
    * version first and deletes the original only once the new one exists.
@@ -88,7 +126,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     idempotencyKey: string,
   ): Promise<UpdateTootResult> {
     try {
-      setLoading(true);
+      startPending(original.id, 'update');
       setError('');
       const api = useMastodonApi();
       let previousVersionRemoved = true;
@@ -122,7 +160,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       setError(err instanceof Error ? err.message : 'Failed to update toot');
       throw err;
     } finally {
-      setLoading(false);
+      finishPending(original.id);
     }
   }
 
@@ -140,6 +178,8 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     isLoading,
     error,
     editingToot,
+    pendingId,
+    pendingAction,
     count,
     sortedToots,
     setToots,
@@ -147,6 +187,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     setError,
     setEditingToot,
     fetchScheduledToots,
+    deleteToot,
     updateToot,
   };
 });

@@ -59,7 +59,49 @@ describe('scheduledToots store', () => {
     expect(store.count).toBe(2);
   });
 
+  describe('deleteToot', () => {
+    it('marks only the deleted toot as in progress, then reloads the list', async () => {
+      const store = useScheduledTootsStore();
+      let finish!: () => void;
+      api.deleteScheduledToot.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+
+      const deleting = store.deleteToot('42');
+      expect(store.pendingId).toBe('42');
+      expect(store.pendingAction).toBe('delete');
+      expect(store.isLoading).toBe(false);
+
+      finish();
+      expect(await deleting).toBe(true);
+      expect(api.getScheduledToots).toHaveBeenCalled();
+      expect(store.pendingId).toBeNull();
+      expect(store.pendingAction).toBeNull();
+    });
+
+    it('reports a failed deletion', async () => {
+      const store = useScheduledTootsStore();
+      api.deleteScheduledToot.mockRejectedValue(new Error('Record not found'));
+
+      expect(await store.deleteToot('42')).toBe(false);
+      expect(store.error).toBe('Record not found');
+      expect(store.pendingId).toBeNull();
+    });
+  });
+
   describe('updateToot', () => {
+    it('marks the edited toot as in progress while it is updated', async () => {
+      const store = useScheduledTootsStore();
+      let finish!: () => void;
+      api.rescheduleToot.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+
+      const updating = store.updateToot(original, makeUpdated(), 'key-1');
+      expect(store.pendingId).toBe('42');
+      expect(store.pendingAction).toBe('update');
+
+      finish();
+      await updating;
+      expect(store.pendingId).toBeNull();
+    });
+
     it('reschedules in place when only the date changed', async () => {
       const store = useScheduledTootsStore();
       store.setEditingToot(original);
