@@ -77,30 +77,50 @@ export const ScheduledStatusSchema = z.object({
 /** A limit from the instance: a positive whole number, or dropped (undefined) so the app's default applies. */
 const optionalLimit = z.number().int().positive().optional().catch(undefined);
 
+/** The `configuration` object shared by the v1 and v2 instance endpoints, every part optional. */
+const instanceConfiguration = z.object({
+  statuses: z.object({
+    max_characters: optionalLimit,
+    max_media_attachments: optionalLimit,
+  }).optional().catch(undefined),
+  media_attachments: z.object({
+    image_size_limit: optionalLimit,
+    supported_mime_types: z.array(z.unknown())
+      .transform(types => types.filter((t): t is string => typeof t === 'string'))
+      .optional().catch(undefined),
+  }).optional().catch(undefined),
+}).optional().catch(undefined);
+
+type InstanceConfigurationInput = z.infer<typeof instanceConfiguration>;
+
+/** The limits the composer follows, in the shape both instance endpoints are reduced to. */
+function toInstanceLimits(configuration: InstanceConfigurationInput, maxCharactersFallback?: number) {
+  return {
+    maxCharacters: configuration?.statuses?.max_characters ?? maxCharactersFallback,
+    maxMediaAttachments: configuration?.statuses?.max_media_attachments,
+    imageSizeLimit: configuration?.media_attachments?.image_size_limit,
+    supportedMimeTypes: configuration?.media_attachments?.supported_mime_types,
+  };
+}
+
 /**
  * GET /api/v2/instance, reduced to the limits the composer follows. Every part is optional:
  * a missing or invalid value is dropped and the app keeps its default for it, so an unusual
  * instance never blocks the composer. Only a body that is not an object is refused.
  */
 export const InstanceSchema = z.object({
-  configuration: z.object({
-    statuses: z.object({
-      max_characters: optionalLimit,
-      max_media_attachments: optionalLimit,
-    }).optional().catch(undefined),
-    media_attachments: z.object({
-      image_size_limit: optionalLimit,
-      supported_mime_types: z.array(z.unknown())
-        .transform(types => types.filter((t): t is string => typeof t === 'string'))
-        .optional().catch(undefined),
-    }).optional().catch(undefined),
-  }).optional().catch(undefined),
-}).transform(instance => ({
-  maxCharacters: instance.configuration?.statuses?.max_characters,
-  maxMediaAttachments: instance.configuration?.statuses?.max_media_attachments,
-  imageSizeLimit: instance.configuration?.media_attachments?.image_size_limit,
-  supportedMimeTypes: instance.configuration?.media_attachments?.supported_mime_types,
-}));
+  configuration: instanceConfiguration,
+}).transform(instance => toInstanceLimits(instance.configuration));
+
+/**
+ * GET /api/v1/instance, the fallback for instances without the v2 endpoint (Mastodon before 4.0,
+ * Pleroma, Akkoma). Same lenient reduction as InstanceSchema; Mastodon 3.4.2+ nests the limits
+ * in `configuration`, Pleroma and Akkoma send a top-level `max_toot_chars`.
+ */
+export const InstanceV1Schema = z.object({
+  configuration: instanceConfiguration,
+  max_toot_chars: optionalLimit,
+}).transform(instance => toInstanceLimits(instance.configuration, instance.max_toot_chars));
 
 /** POST /api/v1/apps */
 export const AppRegistrationSchema = z.object({

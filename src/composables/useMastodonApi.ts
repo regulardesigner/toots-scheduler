@@ -7,6 +7,7 @@ import {
   AccountSchema,
   AppRegistrationSchema,
   InstanceSchema,
+  InstanceV1Schema,
   MediaAttachmentSchema,
   ScheduledStatusSchema,
   TokenResponseSchema,
@@ -103,7 +104,7 @@ export function useMastodonApi() {
   }
 
   /**
-   * Reads the limits of the signed-in instance (GET /api/v2/instance, Mastodon 4.0+).
+   * Reads the limits of the signed-in instance (GET /api/v2/instance, Mastodon 4.0+; falls back to /api/v1/instance for older Mastodon, Pleroma and Akkoma).
    * The endpoint is public; the shared client still sends the token only to this instance.
    * @returns {Promise<InstanceConfiguration>} The limits it reported; missing or invalid ones are left out.
    * @throws {Error} If the instance URL is not set, the request fails or the body is not an object.
@@ -111,8 +112,16 @@ export function useMastodonApi() {
   async function getInstanceConfiguration(): Promise<InstanceConfiguration> {
     if (!auth.instance) throw new Error('No instance URL set');
     try {
-      const response = await api.get(`${auth.instance}/api/v2/instance`);
-      return parseApiResponse(InstanceSchema, response.data, 'instance information');
+      try {
+        const response = await api.get(`${auth.instance}/api/v2/instance`);
+        return parseApiResponse(InstanceSchema, response.data, 'instance information');
+      } catch (error) {
+        // Not signed in or not allowed: the older endpoint would say the same. Anything else
+        // (404 on older Mastodon, Pleroma, Akkoma...) is worth a second try.
+        if (axios.isAxiosError(error) && error.response?.status === 401) throw error;
+        const response = await api.get(`${auth.instance}/api/v1/instance`);
+        return parseApiResponse(InstanceV1Schema, response.data, 'instance information');
+      }
     } catch (error) {
       throw new Error(handleApiError(error), { cause: error });
     }
