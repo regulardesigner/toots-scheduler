@@ -7,6 +7,7 @@ import { ref, onMounted, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import { useAuthStore } from '../../stores/auth';
+import { useInstanceStore } from '../../stores/instance';
 import { format, addMinutes, isBefore, parseISO } from 'date-fns';
 import type { ScheduledToot, MastodonMediaAttachment, PollFormState } from '../../types/mastodon';
 import { buildScheduledToot } from '../../utils/buildScheduledToot';
@@ -28,6 +29,7 @@ function createEmptyPoll(): PollFormState {
 }
 
 const auth = useAuthStore();
+const instance = useInstanceStore();
 const toast = useToast();
 const content = ref('');
 const scheduledDate = ref('');
@@ -155,6 +157,12 @@ async function handleSubmit() {
   error.value = '';
 
   try {
+    // The instance would refuse it: say why before sending (e.g. an edited toot longer than the limit).
+    if (content.value.length > instance.maxCharacters) {
+      error.value = `Your toot is ${content.value.length} characters long, but your instance allows ${instance.maxCharacters}.`;
+      return;
+    }
+
     // Validate scheduled time
     const scheduledDateTime = new Date(`${scheduledDate.value}T${scheduledTime.value}`);
     const minTime = addMinutes(new Date(), MIN_SCHEDULE_AHEAD_MINUTES);

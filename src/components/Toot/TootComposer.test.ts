@@ -20,6 +20,7 @@ vi.mock('vue-toastification', () => ({ useToast: () => toast }));
 
 import TootComposer from './TootComposer.vue';
 import { useScheduledTootsStore } from '../../stores/scheduledToots';
+import { useInstanceStore } from '../../stores/instance';
 
 let pinia: Pinia;
 
@@ -158,6 +159,19 @@ describe('TootComposer', () => {
     await flushPromises();
 
     expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('previous version could not be removed'));
+  });
+
+  it('refuses a toot longer than the instance allows, without sending it', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    useInstanceStore().maxCharacters = 10;
+    await fillForm(wrapper, 'Hello world!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('.error').text()).toBe('Your toot is 12 characters long, but your instance allows 10.');
   });
 
   it('does not send a poll that was opened, filled in and closed again', async () => {

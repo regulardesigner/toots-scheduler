@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useInstanceStore } from '../stores/instance';
 
 const props = defineProps<{
   modelValue: string;
@@ -13,8 +14,11 @@ const emit = defineEmits<{
   (e: 'add-poll'): void;
 }>();
 
+const instance = useInstanceStore();
+
 const characterCount = computed(() => props.modelValue.length);
-const remainingCharacters = computed(() => 500 - characterCount.value);
+/** Against the instance's own limit (Mastodon's default 500 until it answers). */
+const remainingCharacters = computed(() => instance.maxCharacters - characterCount.value);
 
 const isMediaChecked = ref(false);
 const isPollChecked = ref(false);
@@ -52,7 +56,7 @@ function handlePollCheckboxChange(event: Event) {
       :value="modelValue"
       :placeholder="'What\'s on your mind?'"
       required
-      :maxlength="500"
+      :maxlength="instance.maxCharacters"
       rows="4"
       @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />
