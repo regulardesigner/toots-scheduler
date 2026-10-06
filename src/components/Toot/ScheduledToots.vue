@@ -106,8 +106,8 @@ onMounted(() => {
       </button>
     </h2>
     <div
-      id="scheduled-toots-panel"
       v-show="isOpen"
+      id="scheduled-toots-panel"
     >
       <div
         v-if="store.isLoading"
