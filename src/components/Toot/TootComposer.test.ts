@@ -177,6 +177,24 @@ describe('TootComposer', () => {
     expect(wrapper.find('.error').attributes('role')).toBe('alert');
   });
 
+  it('inserts a repeated error again so it is announced again', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.isLoaded = true;
+    await fillForm(wrapper, 'Hello world!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    const first = wrapper.find('.error').element;
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').element).not.toBe(first);
+  });
+
   it('does not block a toot while the instance limits are unknown', async () => {
     api.scheduleToot.mockResolvedValue({});
     api.deleteScheduledToot.mockResolvedValue(undefined);

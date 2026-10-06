@@ -3,7 +3,7 @@
 const MIN_SCHEDULE_AHEAD_MINUTES = 5;
 const DEFAULT_POLL_EXPIRATION_SECONDS = 86400; // 24 hours
 
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import { useAuthStore } from '../../stores/auth';
@@ -43,6 +43,8 @@ const isSensitive = ref(false);
 const showMedia = ref(false);
 const showPoll = ref(false);
 const spoilerText = ref('');
+/** The content warning counts toward the limit, in the counter and in the submit check alike. */
+const spoilerLength = computed(() => countGraphemes(spoilerText.value));
 const mediaAttachments = ref<MastodonMediaAttachment[]>([]);
 const pollData = ref<PollFormState>(createEmptyPoll());
 
@@ -155,13 +157,15 @@ async function handleSubmit() {
   // Ignore resubmissions (double click, Enter key) while a request is in flight.
   if (isSubmitting.value) return;
   isSubmitting.value = true;
+  // Clear and wait a tick so an identical message is inserted again and announced again.
   error.value = '';
+  await nextTick();
 
   try {
     // The instance would refuse it: say why before sending (e.g. an edited toot longer than the limit).
     // Only against limits the instance gave: the defaults are guesses and must not block anything.
     if (instance.isLoaded) {
-      const length = countTootCharacters(content.value) + countGraphemes(spoilerText.value);
+      const length = countTootCharacters(content.value) + spoilerLength.value;
       if (length > instance.maxCharacters) {
         error.value = `Your toot is ${length} characters long, but your instance allows ${instance.maxCharacters}.`;
         return;
@@ -258,6 +262,7 @@ async function handleSubmit() {
         :has-media="mediaAttachments.length > 0"
         :show-media="showMedia"
         :show-poll="showPoll"
+        :extra-characters="spoilerLength"
         @add-media="handleShowMedia"
         @add-poll="handleShowPoll"
       />

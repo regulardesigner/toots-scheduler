@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // The live region speaks when the remaining count reaches one of these steps, never on every keystroke.
-const ANNOUNCE_STEPS = [50, 20, 10, 0];
+const ANNOUNCE_STEPS = [50, 20, 10, 0, -1];
 
 import { computed, ref, watch } from 'vue';
 import { useInstanceStore } from '../stores/instance';
 import { countTootCharacters } from '../utils/tootLength';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string;
   hasPoll: boolean;
   hasMedia: boolean;
@@ -14,7 +14,9 @@ const props = defineProps<{
   showMedia: boolean;
   /** Whether the composer shows the poll section. */
   showPoll: boolean;
-}>();
+  /** Characters counted with the text but typed elsewhere (the content warning). */
+  extraCharacters?: number;
+}>(), { extraCharacters: 0 });
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void;
@@ -25,7 +27,7 @@ const emit = defineEmits<{
 const instance = useInstanceStore();
 
 /** The length Mastodon counts (URLs as 23, remote mentions shortened, graphemes). */
-const characterCount = computed(() => countTootCharacters(props.modelValue));
+const characterCount = computed(() => countTootCharacters(props.modelValue) + props.extraCharacters);
 /** Against the instance's own limit (Mastodon's default 500 until it answers). */
 const remainingCharacters = computed(() => instance.maxCharacters - characterCount.value);
 
@@ -96,7 +98,7 @@ watch(announceLevel, (level) => {
         class="character-count"
         :class="{ 'near-limit': instance.isLoaded && remainingCharacters < 50 }"
       >
-        {{ remainingCharacters }}<span class="visually-hidden"> characters left</span>
+        {{ remainingCharacters }}<span class="visually-hidden">{{ remainingCharacters < 0 ? ' characters over the limit' : ' characters left' }}</span>
       </span>
       <span
         class="visually-hidden"

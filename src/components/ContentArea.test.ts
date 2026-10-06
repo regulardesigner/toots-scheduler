@@ -97,4 +97,35 @@ describe('ContentArea', () => {
     expect((wrapper.find('#poll').element as HTMLInputElement).checked).toBe(false);
     expect(wrapper.find('#poll').attributes('disabled')).toBeDefined();
   });
+
+  it('announces going one character over the limit', async () => {
+    const instance = useInstanceStore();
+    instance.maxCharacters = 100;
+    instance.isLoaded = true;
+    const wrapper = mountArea('');
+    const liveRegion = () => wrapper.find('[aria-live="polite"]').text();
+
+    await wrapper.setProps({ modelValue: 'x'.repeat(100) });
+    expect(liveRegion()).toBe('Character limit reached');
+
+    await wrapper.setProps({ modelValue: 'x'.repeat(101) });
+    expect(liveRegion()).toBe('1 character over the limit');
+  });
+
+  it('reads "characters over the limit" in the hidden counter text when over', () => {
+    useInstanceStore().maxCharacters = 10;
+    const wrapper = mountArea('x'.repeat(13));
+
+    expect(wrapper.find('.character-count').text()).toBe('-3 characters over the limit');
+    expect(wrapper.find('.character-count').text()).not.toContain('left');
+  });
+
+  it('counts the extra characters of the content warning', () => {
+    const wrapper = mount(ContentArea, {
+      props: { modelValue: 'Hello', hasPoll: false, hasMedia: false, showMedia: false, showPoll: false, extraCharacters: 10 },
+      global: { plugins: [pinia] },
+    });
+
+    expect(wrapper.find('.character-count').text()).toMatch(/^485\b/);
+  });
 });
