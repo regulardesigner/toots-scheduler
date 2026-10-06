@@ -235,9 +235,11 @@ async function saveMediaMetadata() {
 
         <ModalView
           :is-open="editingMediaIndex === index"
-          @close-modal="editingMediaIndex = null"
+          labelled-by="media-edit-title"
+          @close="editingMediaIndex = null"
         >
           <label
+            id="media-edit-title"
             class="winky-sans-700 media-edit-label"
             for="media-edit-input"
           >Add a description</label>

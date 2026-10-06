@@ -11,7 +11,10 @@ const emit = defineEmits<{
 
 <template>
   <div class="thanks-confirm">
-    <h2 class="thanks-title">
+    <h2
+      id="thanks-title"
+      class="thanks-title"
+    >
       Send a thank-you?
     </h2>
     <p class="thanks-description">

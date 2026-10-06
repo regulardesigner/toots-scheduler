@@ -11,18 +11,21 @@ const isFirstVisit = computed(() => {
 });
 
 const emit = defineEmits<{
-  (e: 'close-child-modal'): void;
+  (e: 'close'): void;
 }>();
 
 function handleClose() {
   featuresStore.markFeaturesAsSeen();
-  emit('close-child-modal');
+  emit('close');
 }
 </script>
 
 <template>
   <div class="whats-new-content">
-    <h2 class="winky-sans-700">
+    <h2
+      id="whats-new-title"
+      class="winky-sans-700"
+    >
       {{ isFirstVisit ? "What's new" : "What's new since last time!" }}
     </h2>
     <div

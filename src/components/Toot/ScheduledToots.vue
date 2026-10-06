@@ -143,7 +143,8 @@ onMounted(() => {
 
   <ModalView
     :is-open="!!tootToDelete"
-    @close-modal="handleDeleteCancel"
+    labelled-by="delete-title"
+    @close="handleDeleteCancel"
   >
     <DeleteConfirmModal
       :toot-preview="tootDeletePreview"

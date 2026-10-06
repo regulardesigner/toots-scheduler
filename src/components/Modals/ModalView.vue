@@ -1,111 +1,88 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+// What can take focus inside the dialog; disabled controls are skipped, as the browser does.
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+import { ref, watch, nextTick, onUnmounted } from 'vue';
 
 const props = defineProps<{
   isOpen: boolean;
+  /** Id of the heading (or label) inside the slot that names the dialog. */
+  labelledBy: string;
 }>();
 
 const emit = defineEmits<{
-  (e: 'close-modal'): void;
+  (e: 'close'): void;
 }>();
 
 const modalRef = ref<HTMLElement | null>(null);
 
-const previousActiveElement = ref<HTMLElement | null>(null);
+/** What had focus before the dialog opened. Null unless it really opened, so focus is never moved for nothing. */
+let returnFocusTo: HTMLElement | null = null;
 
-function handleClose() {
-  emit('close-modal');
+function close(): void {
+  emit('close');
 }
 
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && props.isOpen) {
-    handleClose();
-  }
+function handleDocumentKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') close();
 }
 
 function getFocusableElements(): HTMLElement[] {
   if (!modalRef.value) return [];
-  
-  return Array.from(
-    modalRef.value.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-  ) as HTMLElement[];
+  return Array.from(modalRef.value.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
 }
 
-function handleModalKeydown(event: KeyboardEvent) {
-  if (!modalRef.value) return;
-  
-  const focusableElements = getFocusableElements();
-  if (focusableElements.length === 0) return;
-
-  const firstFocusableElement = focusableElements[0];
-  const lastFocusableElement = focusableElements[focusableElements.length - 1];
-  const activeElement = document.activeElement as HTMLElement;
-
-  // Handle Tab key
-  if (event.key === 'Tab') {
-    if (event.shiftKey) {
-      // Backward tab
-      if (activeElement === firstFocusableElement) {
-        event.preventDefault();
-        lastFocusableElement.focus();
-      }
-    } else {
-      // Forward tab
-      if (activeElement === lastFocusableElement) {
-        event.preventDefault();
-        firstFocusableElement.focus();
-      }
-    }
+/** Keeps Tab and Shift+Tab inside the dialog. */
+function handleTrapKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Tab') return;
+  const focusable = getFocusableElements();
+  if (focusable.length === 0) {
+    event.preventDefault();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey && (active === first || active === modalRef.value)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
   }
 }
 
-function setupFocusTrap() {
-  previousActiveElement.value = document.activeElement as HTMLElement;
-  
-  // Focus the first focusable element
-  const focusableElements = getFocusableElements();
-  if (focusableElements.length > 0) {
-    focusableElements[0].focus();
-  } else {
-    modalRef.value?.focus();
-  }
-
-  // Add keydown handler
-  modalRef.value?.addEventListener('keydown', handleModalKeydown);
+function activate(): void {
+  // Closed again before the content rendered: nothing to do.
+  if (!props.isOpen) return;
+  returnFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  document.addEventListener('keydown', handleDocumentKeydown);
+  // The close button is last in the DOM, so this is the dialog's own first field or action.
+  const [first] = getFocusableElements();
+  (first ?? modalRef.value)?.focus();
 }
 
-function removeFocusTrap() {
-  modalRef.value?.removeEventListener('keydown', handleModalKeydown);
-  previousActiveElement.value?.focus();
+function deactivate(): void {
+  document.removeEventListener('keydown', handleDocumentKeydown);
+  const target = returnFocusTo;
+  returnFocusTo = null;
+  if (target?.isConnected) target.focus();
 }
 
-// Focus management
-onMounted(() => {
-  document.addEventListener('keydown', handleKeydown);
-  if (props.isOpen) {
-    nextTick(() => {
-      setupFocusTrap();
-    });
-  }
-});
+watch(() => props.isOpen, (open) => {
+  if (open) void nextTick(activate);
+  else deactivate();
+}, { immediate: true });
 
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeydown);
-  removeFocusTrap();
-});
-
-// Watch for isOpen changes to manage focus
-watch(() => props.isOpen, (newValue) => {
-  if (newValue) {
-    nextTick(() => {
-      setupFocusTrap();
-    });
-  } else {
-    removeFocusTrap();
-  }
-});
+// Unmounted while open (e.g. sign-out): give focus back. Already closed: returnFocusTo is null, nothing moves.
+onUnmounted(deactivate);
 </script>
 
 <template>
@@ -115,23 +92,27 @@ watch(() => props.isOpen, (newValue) => {
   >
     <div
       class="modal-overlay"
-      @click="handleClose"
+      @click="close"
     />
-    <div 
+    <div
       ref="modalRef"
       class="modal-content"
       tabindex="-1"
       role="dialog"
       aria-modal="true"
-      aria-label="Modal dialog"
+      :aria-labelledby="labelledBy"
+      @keydown="handleTrapKeydown"
     >
+      <slot />
+      <!-- Last in the DOM, shown top-right: keyboard focus starts on the dialog's content. -->
       <button
+        type="button"
         class="close-button"
-        @click="handleClose"
+        aria-label="Close"
+        @click="close"
       >
         &times;
       </button>
-      <slot @close-child-modal="handleClose" />
     </div>
   </div>
 </template>

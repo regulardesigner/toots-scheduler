@@ -7,6 +7,7 @@ describe('ThanksConfirmModal', () => {
     const wrapper = mount(ThanksConfirmModal, { props: { message: '<b>Hi</b> CC: @dams@disabled.social' } });
     expect(wrapper.find('.thanks-preview').text()).toBe('<b>Hi</b> CC: @dams@disabled.social');
     expect(wrapper.find('.thanks-preview b').exists()).toBe(false);
+    expect(wrapper.find('#thanks-title').text()).toBe('Send a thank-you?');
   });
 
   it('emits confirm or cancel', async () => {

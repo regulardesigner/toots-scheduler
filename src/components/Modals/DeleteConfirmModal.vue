@@ -11,7 +11,10 @@ const emit = defineEmits<{
 
 <template>
   <div class="delete-confirm">
-    <h2 class="delete-title">
+    <h2
+      id="delete-title"
+      class="delete-title"
+    >
       Delete scheduled toot?
     </h2>
     <p class="delete-description">

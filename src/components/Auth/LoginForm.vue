@@ -6,7 +6,7 @@ import { createPkcePair, createRandomToken } from '../../utils/pkce';
 import { buildAuthorizeUrl, savePendingLogin } from '../../utils/oauthFlow';
 
 const emit = defineEmits<{
-  (e: 'close-child-modal'): void;
+  (e: 'close'): void;
 }>();
 
 const instance = ref('');
@@ -33,7 +33,7 @@ async function handleLogin() {
       codeVerifier: verifier,
     });
 
-    emit('close-child-modal');
+    emit('close');
     window.location.assign(buildAuthorizeUrl(instanceUrl, appData.client_id, state, challenge));
   } catch (err) {
     console.error('Login error:', err);
@@ -46,7 +46,10 @@ async function handleLogin() {
 
 <template>
   <div class="login-form">
-    <h2 class="winky-sans-700">
+    <h2
+      id="login-title"
+      class="winky-sans-700"
+    >
       Instance Sign In
     </h2>
     <form @submit.prevent="handleLogin">

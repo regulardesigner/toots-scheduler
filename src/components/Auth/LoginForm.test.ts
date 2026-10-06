@@ -39,6 +39,7 @@ describe('LoginForm', () => {
     expect(url.searchParams.get('state')).toBe(pending?.state);
     expect(url.searchParams.get('code_challenge_method')).toBe('S256');
     expect(url.searchParams.get('code_challenge')).toBe(await createCodeChallenge(pending!.codeVerifier));
+    expect(wrapper.emitted('close')).toHaveLength(1);
   });
 
   it('refuses a plain http instance without contacting it', async () => {

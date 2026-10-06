@@ -7,6 +7,7 @@ describe('DeleteConfirmModal', () => {
     const wrapper = mount(DeleteConfirmModal, { props: { tootPreview: '<b>Hello</b>' } });
     expect(wrapper.find('.toot-preview').text()).toBe('<b>Hello</b>');
     expect(wrapper.find('.toot-preview b').exists()).toBe(false);
+    expect(wrapper.find('#delete-title').text()).toBe('Delete scheduled toot?');
   });
 
   it('hides the preview block when the preview is empty', () => {

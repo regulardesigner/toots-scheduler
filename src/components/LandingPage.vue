@@ -89,9 +89,10 @@ function handleCloseLoginForm() {
 
     <ModalView
       :is-open="showLoginForm"
-      @close-modal="handleCloseLoginForm"
+      labelled-by="login-title"
+      @close="handleCloseLoginForm"
     >
-      <LoginForm @close-modal="handleCloseLoginForm" />
+      <LoginForm @close="handleCloseLoginForm" />
     </ModalView>
   </main>
 </template>

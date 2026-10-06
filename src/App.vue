@@ -193,14 +193,16 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
 
     <ModalView
       :is-open="showWhatsNew"
-      @close-modal="handleWhatsNewClose"
+      labelled-by="whats-new-title"
+      @close="handleWhatsNewClose"
     >
-      <WhatsNew @close-child-modal="handleWhatsNewClose" />
+      <WhatsNew @close="handleWhatsNewClose" />
     </ModalView>
 
     <ModalView
       :is-open="thanksMessage !== null"
-      @close-modal="cancelThanks"
+      labelled-by="thanks-title"
+      @close="cancelThanks"
     >
       <ThanksConfirmModal
         :message="thanksMessage ?? ''"
