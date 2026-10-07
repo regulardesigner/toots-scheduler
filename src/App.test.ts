@@ -5,7 +5,7 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import { defineComponent, h } from 'vue';
 import { useAuthStore } from './stores/auth';
 import { settleFocus } from './test-utils/settle';
-import { ANNOUNCE_DELAY_MS } from './composables/useAnnouncer';
+import { READY_DELAY_MS, resetAnnouncer } from './composables/useAnnouncer';
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn(), dismiss: vi.fn() }));
 vi.mock('vue-toastification', () => ({ useToast: () => toast }));
@@ -15,8 +15,8 @@ vi.mock('./composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
 
 import App from './App.vue';
 
-/** Lets the announcer fill its region. */
-const waitAnnouncement = () => new Promise(resolve => setTimeout(resolve, ANNOUNCE_DELAY_MS + 20));
+/** Lets the announcer fill its region (the first message after mounting waits READY_DELAY_MS). */
+const waitAnnouncement = () => new Promise(resolve => setTimeout(resolve, READY_DELAY_MS + 50));
 const politeRegion = () => document.querySelector('[role="status"][aria-live="polite"]');
 const assertiveRegion = () => document.querySelector('[role="alert"][aria-live="assertive"]');
 
@@ -47,6 +47,7 @@ async function mountApp(signedIn = false, path = '/') {
 
 describe('App', () => {
   beforeEach(() => {
+    resetAnnouncer();
     localStorage.clear();
     document.body.innerHTML = '';
   });

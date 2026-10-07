@@ -5,7 +5,7 @@ import { useSessionTimeout } from './composables/useSessionTimeout';
 import { useFeaturesStore } from './stores/features';
 import { useInstanceStore } from './stores/instance';
 import { storeToRefs } from 'pinia';
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMastodonApi } from './composables/useMastodonApi';
 import { useNotify } from './composables/useNotify';
@@ -24,7 +24,10 @@ const { newFeatures } = storeToRefs(featuresStore);
 const showWhatsNew = ref(false);
 const mastodonApi = useMastodonApi();
 const notify = useNotify();
-const { politeMessage, assertiveMessage } = useAnnouncer();
+const { politeMessage, assertiveMessage, markReady } = useAnnouncer();
+
+// The live regions are in the page from now on: the announcer lets Safari register them before the first message.
+onMounted(markReady);
 
 // Initialize session timeout
 useSessionTimeout();
