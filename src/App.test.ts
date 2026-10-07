@@ -11,17 +11,26 @@ vi.mock('vue-toastification', () => ({ useToast: () => toast }));
 
 import App from './App.vue';
 
-const Page = defineComponent({ render: () => h('h1', { tabindex: -1 }, 'A page') });
+/** Two pages, each with its own focusable main heading, as in the app. */
+const headingPage = (text: string) => defineComponent({ render: () => h('h1', { tabindex: -1 }, text) });
+const Page = headingPage('A page');
+const Protected = headingPage('A protected page');
 
 let wrapper: VueWrapper | undefined;
 
-async function mountApp(signedIn = false) {
-  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', name: 'home', component: Page }] });
-  await router.push('/');
-  await router.isReady();
+async function mountApp(signedIn = false, path = '/') {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', name: 'home', component: Page },
+      { path: '/composer', name: 'composer', component: Protected, meta: { requiresAuth: true } },
+    ],
+  });
   const pinia = createPinia();
   setActivePinia(pinia);
   if (signedIn) useAuthStore().accessToken = 'token';
+  await router.push(path);
+  await router.isReady();
   wrapper = mount(App, { attachTo: document.body, global: { plugins: [pinia, router] } });
   await flushPromises();
   return wrapper;
@@ -71,6 +80,17 @@ describe('App', () => {
     await wrapper.find('.desktop-nav .logout-button').trigger('click');
     await flushPromises();
 
+    expect(document.activeElement).toBe(wrapper.find('main h1').element);
+  });
+
+  it('logging out from a protected page lands focus on the home heading, not on the page being left', async () => {
+    const wrapper = await mountApp(true, '/composer');
+    expect(wrapper.find('main h1').text()).toBe('A protected page');
+
+    await wrapper.find('.desktop-nav .logout-button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('main h1').text()).toBe('A page');
     expect(document.activeElement).toBe(wrapper.find('main h1').element);
   });
 });

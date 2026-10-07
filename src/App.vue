@@ -33,20 +33,31 @@ useInstanceStore();
 const route = useRoute();
 const router = useRouter();
 
+/**
+ * True while handleLogout navigates home itself: the session watcher below must not start a second
+ * navigation, which would cancel this one and leave focus on the heading of the page being left.
+ */
+let isLoggingOut = false;
+
 async function handleLogout(): Promise<void> {
   // The session is cleared synchronously; the token revocation may take a while, so don't wait for it to move on.
+  isLoggingOut = true;
   const loggingOut = auth.logout();
-  if (route.name !== 'home') await router.push({ name: 'home' });
-  await nextTick();
-  // The button that was used has disappeared: land on the page's heading instead of <body>.
-  document.querySelector<HTMLElement>('.app-main h1')?.focus();
+  try {
+    if (route.name !== 'home') await router.push({ name: 'home' });
+    await nextTick();
+    // The button that was used has disappeared: land on the page's heading instead of <body>.
+    document.querySelector<HTMLElement>('.app-main h1')?.focus();
+  } finally {
+    isLoggingOut = false;
+  }
   await loggingOut;
   toast.success('You have been logged out successfully.');
 }
 
 // Whatever ended the session (logout, inactivity, rejected token, another tab), leave protected pages.
 watch(() => auth.accessToken, (token) => {
-  if (!token && route.meta.requiresAuth) {
+  if (!token && route.meta.requiresAuth && !isLoggingOut) {
     router.push({ name: 'home' });
   }
 });
