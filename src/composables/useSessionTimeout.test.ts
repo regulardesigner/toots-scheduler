@@ -9,11 +9,15 @@ const toast = vi.hoisted(() => ({ warning: vi.fn(() => 'warning-id'), success: v
 
 vi.mock('axios', () => ({ default: http }));
 vi.mock('vue-toastification', () => ({ useToast: () => toast }));
+const announce = vi.hoisted(() => vi.fn());
+vi.mock('./useAnnouncer', () => ({ useAnnouncer: () => ({ announce }) }));
 
 import { useSessionTimeout } from './useSessionTimeout';
 import { useAuthStore } from '../stores/auth';
 
 const MINUTE = 60 * 1000;
+const WARNING = 'Your session is about to expire. Press any key or click anywhere to stay signed in.';
+const EXTENDED = 'Session extended for 30 minutes';
 const NOW = new Date('2030-01-01T12:00:00.000Z').getTime();
 const credentials = { instance: 'https://masto.example', clientId: 'id', clientSecret: 'secret', accessToken: 'token' };
 
@@ -161,5 +165,52 @@ describe('useSessionTimeout', () => {
     await vi.advanceTimersByTimeAsync(31 * MINUTE);
 
     expect(auth.accessToken).toBe('token');
+  });
+
+  it('says how to stay signed in without pointing at the toast (any key or click)', async () => {
+    signInAndMount();
+
+    await vi.advanceTimersByTimeAsync(25 * MINUTE);
+
+    expect(toast.warning).toHaveBeenCalledWith(WARNING, expect.objectContaining({ closeOnClick: false }));
+    expect(announce).toHaveBeenCalledWith(WARNING, { assertive: true });
+  });
+
+  it('a key pressed during the warning dismisses it and confirms the extension, aloud too', async () => {
+    const auth = signInAndMount();
+    await vi.advanceTimersByTimeAsync(25 * MINUTE);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift' }));
+    await flushPromises();
+
+    expect(toast.dismiss).toHaveBeenCalledWith('warning-id');
+    expect(toast.success).toHaveBeenCalledTimes(1);
+    expect(toast.success).toHaveBeenCalledWith(EXTENDED, undefined);
+    expect(announce).toHaveBeenCalledWith(EXTENDED, { assertive: false });
+    await vi.advanceTimersByTimeAsync(10 * MINUTE);
+    expect(auth.accessToken).toBe('token');
+  });
+
+  it('a click on the warning confirms once, though its pointerdown already counted as activity', async () => {
+    signInAndMount();
+    await vi.advanceTimersByTimeAsync(25 * MINUTE);
+    const options = (toast.warning.mock.calls[0] as unknown[])[1] as { onClick: () => void };
+
+    window.dispatchEvent(new Event('pointerdown'));
+    options.onClick();
+    await flushPromises();
+
+    expect(toast.success).toHaveBeenCalledTimes(1);
+  });
+
+  it('confirms nothing when activity arrives without a warning shown', async () => {
+    signInAndMount();
+    await vi.advanceTimersByTimeAsync(20 * MINUTE);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+    await flushPromises();
+
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(announce).not.toHaveBeenCalled();
   });
 });

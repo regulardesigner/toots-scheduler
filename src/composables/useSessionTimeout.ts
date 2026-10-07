@@ -35,13 +35,24 @@ export function useSessionTimeout() {
     await auth.expireIfIdle();
   }
 
+  /**
+   * Records activity; while the warning is shown, also dismisses it and confirms the extension.
+   * A click on the warning arrives twice (its pointerdown, then onClick): only the first one confirms.
+   */
   function extendSession(): void {
-    auth.recordActivity();
+    const now = Date.now();
+    const warning = warningToastId;
+    auth.recordActivity(now);
+    // Not extended if the session had already expired (a late timer) or another tab replaced it.
+    if (warning === null || auth.lastActivityAt !== now) return;
+    notify.dismiss(warning);
+    warningToastId = null;
     notify.success('Session extended for 30 minutes');
   }
 
   function showWarning(): void {
-    warningToastId = notify.warning('Your session is about to expire. Click here to stay signed in.', {
+    // Any key or click counts (the toast itself cannot be focused): WCAG 2.2.1 and 2.1.1.
+    warningToastId = notify.warning('Your session is about to expire. Press any key or click anywhere to stay signed in.', {
       timeout: SESSION_WARNING_MS,
       closeOnClick: false,
       onClick: extendSession,
@@ -63,7 +74,8 @@ export function useSessionTimeout() {
 
   function handleActivity(): void {
     // The store only writes (and so only reschedules) every ACTIVITY_WRITE_INTERVAL_MS.
-    auth.recordActivity();
+    if (warningToastId !== null) extendSession();
+    else auth.recordActivity();
   }
 
   function handleVisibilityChange(): void {
