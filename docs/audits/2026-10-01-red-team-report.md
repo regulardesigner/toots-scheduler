@@ -218,7 +218,7 @@ Un nouveau client axios est créé à chaque `useMastodonApi()`. `uploadMedia` c
 | HTTPS imposé | ✅ (SEC-05, 0.14.0) |
 | `redirect_uri` depuis `window.location.origin` | ✅ |
 | Upload : taille et type | ✅ 8 Mo et liste blanche, drop inclus (SEC-11, 0.15.0) |
-| Longueur des inputs bornée | ⚠️ textarea oui ; CW, alt text et options de sondage non |
+| Longueur des inputs bornée | ⚠️ texte et CW vérifiés avant envoi contre la limite de l'instance, comptés comme Mastodon (0.16.0) ; alt text et options de sondage non |
 | CSP | ✅ `<meta>` stricte, sans `unsafe-inline` ni script inline ; pas de `frame-ancestors` possible sur GitHub Pages (SEC-03 / WEB-04, 0.15.0) |
 | `.env` ignoré, `.env.example` présent | ✅ |
 | `npm audit` propre | ✅ vérifié en CI (SEC-01, 0.13.1) |
@@ -235,6 +235,6 @@ Un nouveau client axios est créé à chaque `useMastodonApi()`. `uploadMedia` c
 - La modale possède un focus trap et gère `Escape`, la confirmation de suppression est in-app.
 - La surface est réduite : pas de backend, aucune donnée stockée côté service.
 
-**Statut :** CC-01, CC-02, SEC-01 et SEC-10 sont corrigés en 0.13.1 (Lot 0). BUG-01 à BUG-05, BUG-07 et CC-03 sont corrigés en 0.13.2 (Lot 1). SEC-02, SEC-03 (stockage et documentation ; la CSP reste au Lot 3), SEC-04, SEC-04b, SEC-05, SEC-06, SEC-08, SEC-09 et WEB-03 sont corrigés en 0.14.0 (Lot 2), ainsi que CC-05 en partie. Le reste de SEC-03 (CSP), WEB-04, SEC-07, SEC-11, SEC-12, BUG-10 et BUG-11 sont corrigés en 0.15.0 (Lot 3).
+**Statut :** CC-01, CC-02, SEC-01 et SEC-10 sont corrigés en 0.13.1 (Lot 0). BUG-01 à BUG-05, BUG-07 et CC-03 sont corrigés en 0.13.2 (Lot 1). SEC-02, SEC-03 (stockage et documentation ; la CSP reste au Lot 3), SEC-04, SEC-04b, SEC-05, SEC-06, SEC-08, SEC-09 et WEB-03 sont corrigés en 0.14.0 (Lot 2), ainsi que CC-05 en partie. Le reste de SEC-03 (CSP), WEB-04, SEC-07, SEC-11, SEC-12, BUG-10 et BUG-11 sont corrigés en 0.15.0 (Lot 3). WEB-01, WEB-07, BUG-06, BUG-08, BUG-09 et CC-10 sont corrigés en 0.16.0 (Lot 4).
 
 Le plan de remédiation priorisé est dans [docs/superpowers/specs/2026-10-01-red-team-remediation-design.md](../superpowers/specs/2026-10-01-red-team-remediation-design.md).
