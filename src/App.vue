@@ -52,6 +52,8 @@ async function handleLogout(): Promise<void> {
     document.querySelector<HTMLElement>('.app-main h1')?.focus();
   } finally {
     isLoggingOut = false;
+    // The watcher stood aside: if this navigation failed, nothing else would leave the protected page.
+    if (!auth.accessToken && route.meta.requiresAuth) await router.replace({ name: 'home' });
   }
   await loggingOut;
   notify.success('You have been logged out successfully.');

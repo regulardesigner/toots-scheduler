@@ -103,6 +103,25 @@ describe('App', () => {
     expect(document.activeElement).toBe(wrapper.find('main h1').element);
   });
 
+  it('never stays on a protected page when the logout navigation fails', async () => {
+    const wrapper = await mountApp(true, '/composer');
+    const router = wrapper.vm.$router;
+    let homeAttempts = 0;
+    router.beforeEach((to) => {
+      if (to.name === 'home' && ++homeAttempts === 1) throw new Error('Navigation failed');
+    });
+    const errors: unknown[] = [];
+    wrapper.vm.$.appContext.config.errorHandler = (error) => { errors.push(error); };
+
+    await wrapper.find('.desktop-nav .logout-button').trigger('click');
+    await flushPromises();
+
+    expect(homeAttempts).toBe(2);
+    expect(errors).toEqual([new Error('Navigation failed')]);
+    expect(router.currentRoute.value.name).toBe('home');
+    expect(wrapper.find('main h1').text()).toBe('A page');
+  });
+
   it('renders the two live regions, empty and visually hidden, before any message', async () => {
     await mountApp();
 
