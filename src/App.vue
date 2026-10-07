@@ -4,7 +4,8 @@ import { useAuthStore } from './stores/auth';
 import { useSessionTimeout } from './composables/useSessionTimeout';
 import { useFeaturesStore } from './stores/features';
 import { storeToRefs } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useMastodonApi } from './composables/useMastodonApi';
 import { useToast } from 'vue-toastification';
 
@@ -23,11 +24,35 @@ const toast = useToast();
 // Initialize session timeout
 useSessionTimeout();
 
+const route = useRoute();
+const router = useRouter();
+
 async function handleLogout(): Promise<void> {
-  await auth.logout();
   isMenuOpen.value = false;
+  await auth.logout();
   toast.success('You have been logged out successfully.');
 }
+
+// Whatever ended the session (logout, inactivity, rejected token, another tab), leave protected pages.
+watch(() => auth.accessToken, (token) => {
+  if (!token && route.meta.requiresAuth) {
+    router.push({ name: 'home' });
+  }
+});
+
+watch(() => auth.sessionEndReason, (reason) => {
+  if (!reason) return;
+  // The toast container mounts on the next tick after app.use(Toast): a toast emitted
+  // during startup (expired session) would otherwise be lost.
+  void nextTick(() => {
+    if (reason === 'inactivity') {
+      toast.info("You've been signed out after 30 minutes of inactivity.");
+    } else {
+      toast.warning('Your session is no longer valid. Please sign in again.');
+    }
+  });
+  auth.acknowledgeSessionEnd();
+}, { immediate: true });
 
 function handleWhatsNewClose() {
   showWhatsNew.value = false;
