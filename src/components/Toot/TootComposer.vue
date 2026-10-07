@@ -4,7 +4,7 @@ const MIN_SCHEDULE_AHEAD_MINUTES = 5;
 const DEFAULT_POLL_EXPIRATION_SECONDS = 86400; // 24 hours
 
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
-import { useToast } from 'vue-toastification';
+import { useNotify } from '../../composables/useNotify';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import { useAuthStore } from '../../stores/auth';
 import { useInstanceStore } from '../../stores/instance';
@@ -31,7 +31,7 @@ function createEmptyPoll(): PollFormState {
 
 const auth = useAuthStore();
 const instance = useInstanceStore();
-const toast = useToast();
+const notify = useNotify();
 const content = ref('');
 const scheduledDate = ref('');
 const scheduledTime = ref('');
@@ -148,7 +148,7 @@ store.$onAction(({ name, args, after }) => {
   const [id] = args;
   if (store.editingToot?.id !== id) return;
   after((deleted) => {
-    if (deleted && store.editingToot === null) toast.info('The toot you were editing was deleted.');
+    if (deleted && store.editingToot === null) notify.info('The toot you were editing was deleted.');
   });
 });
 
@@ -216,7 +216,7 @@ async function handleSubmit() {
       // updateToot refreshes the list and leaves edit mode itself.
       const result = await store.updateToot(store.editingToot, toot, key);
       if (!result.previousVersionRemoved) {
-        toast.warning('Your toot was updated, but the previous version could not be removed. Please delete it from the list.');
+        notify.warning('Your toot was updated, but the previous version could not be removed. Please delete it from the list.');
       }
     } else {
       // createToot refreshes the list; Edit and Delete stay disabled until it is done.

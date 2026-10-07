@@ -15,8 +15,8 @@ const api = vi.hoisted(() => ({
 
 vi.mock('../../composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
 vi.mock('../../stores/auth', () => ({ useAuthStore: () => ({ account: null, accessToken: null }) }));
-const toast = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() }));
-vi.mock('vue-toastification', () => ({ useToast: () => toast }));
+const notify = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() }));
+vi.mock('../../composables/useNotify', () => ({ useNotify: () => notify }));
 
 import TootComposer from './TootComposer.vue';
 import { useScheduledTootsStore } from '../../stores/scheduledToots';
@@ -166,7 +166,7 @@ describe('TootComposer', () => {
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
-    expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('previous version could not be removed'));
+    expect(notify.warning).toHaveBeenCalledWith(expect.stringContaining('previous version could not be removed'));
   });
 
   it('empties the form when the toot being edited is deleted from the list', async () => {
@@ -290,12 +290,12 @@ describe('TootComposer', () => {
     await flushPromises();
 
     await store.deleteToot('other');
-    expect(toast.info).not.toHaveBeenCalled();
+    expect(notify.info).not.toHaveBeenCalled();
 
     await store.deleteToot('42');
     await flushPromises();
 
-    expect(toast.info).toHaveBeenCalledWith('The toot you were editing was deleted.');
+    expect(notify.info).toHaveBeenCalledWith('The toot you were editing was deleted.');
   });
 
   it('empties the form on Cancel, without a deletion notice', async () => {
@@ -309,7 +309,7 @@ describe('TootComposer', () => {
 
     expect(useScheduledTootsStore().editingToot).toBeNull();
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('');
-    expect(toast.info).not.toHaveBeenCalled();
+    expect(notify.info).not.toHaveBeenCalled();
   });
 
   it('does not announce a deletion after an edit is saved', async () => {
@@ -324,7 +324,7 @@ describe('TootComposer', () => {
     await flushPromises();
 
     expect(useScheduledTootsStore().editingToot).toBeNull();
-    expect(toast.info).not.toHaveBeenCalled();
+    expect(notify.info).not.toHaveBeenCalled();
   });
 
   it('refuses a toot longer than the instance allows, without sending it', async () => {

@@ -8,7 +8,8 @@ import { storeToRefs } from 'pinia';
 import { ref, computed, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMastodonApi } from './composables/useMastodonApi';
-import { useToast } from 'vue-toastification';
+import { useNotify } from './composables/useNotify';
+import { useAnnouncer } from './composables/useAnnouncer';
 
 import WhatsNew from './components/Modals/WhatsNew.vue';
 import ThanksConfirmModal from './components/Modals/ThanksConfirmModal.vue';
@@ -22,7 +23,8 @@ const featuresStore = useFeaturesStore();
 const { newFeatures } = storeToRefs(featuresStore);
 const showWhatsNew = ref(false);
 const mastodonApi = useMastodonApi();
-const toast = useToast();
+const notify = useNotify();
+const { politeMessage, assertiveMessage } = useAnnouncer();
 
 // Initialize session timeout
 useSessionTimeout();
@@ -52,7 +54,7 @@ async function handleLogout(): Promise<void> {
     isLoggingOut = false;
   }
   await loggingOut;
-  toast.success('You have been logged out successfully.');
+  notify.success('You have been logged out successfully.');
 }
 
 // Whatever ended the session (logout, inactivity, rejected token, another tab), leave protected pages.
@@ -65,12 +67,12 @@ watch(() => auth.accessToken, (token) => {
 watch(() => auth.sessionEndReason, (reason) => {
   if (!reason) return;
   // The toast container mounts on the next tick after app.use(Toast): a toast emitted
-  // during startup (expired session) would otherwise be lost.
+  // during startup (expired session) would otherwise be lost. The announcement waits for the live regions too.
   void nextTick(() => {
     if (reason === 'inactivity') {
-      toast.info("You've been signed out after 30 minutes of inactivity.");
+      notify.info("You've been signed out after 30 minutes of inactivity.");
     } else {
-      toast.warning('Your session is no longer valid. Please sign in again.');
+      notify.warning('Your session is no longer valid. Please sign in again.');
     }
   });
   auth.acknowledgeSessionEnd();
@@ -118,10 +120,10 @@ async function confirmThanks(): Promise<void> {
 
   try {
     await mastodonApi.sendThanks(message);
-    toast.success('Thanks sent successfully! 🤗');
+    notify.success('Thanks sent successfully! 🤗');
   } catch (error) {
     const reason = error instanceof Error && error.message ? error.message.replace(/\.+$/, '') : 'unknown error';
-    toast.error(`Failed to send thanks: ${reason}.`);
+    notify.error(`Failed to send thanks: ${reason}.`);
   }
 }
 
@@ -202,6 +204,27 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
         @cancel="cancelThanks"
       />
     </ModalView>
+
+    <!--
+      Every notification is spoken from here (useNotify → useAnnouncer), not by the toasts:
+      Safari with VoiceOver ignores live regions inserted already filled, so these two stay in place.
+    -->
+    <div
+      class="visually-hidden"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {{ politeMessage }}
+    </div>
+    <div
+      class="visually-hidden"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
+      {{ assertiveMessage }}
+    </div>
   </div>
 </template>
 

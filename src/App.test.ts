@@ -5,11 +5,20 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import { defineComponent, h } from 'vue';
 import { useAuthStore } from './stores/auth';
 import { settleFocus } from './test-utils/settle';
+import { ANNOUNCE_DELAY_MS } from './composables/useAnnouncer';
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn(), dismiss: vi.fn() }));
 vi.mock('vue-toastification', () => ({ useToast: () => toast }));
 
+const api = vi.hoisted(() => ({ sendThanks: vi.fn(), getInstanceConfiguration: vi.fn(async () => ({})) }));
+vi.mock('./composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
+
 import App from './App.vue';
+
+/** Lets the announcer fill its region. */
+const waitAnnouncement = () => new Promise(resolve => setTimeout(resolve, ANNOUNCE_DELAY_MS + 20));
+const politeRegion = () => document.querySelector('[role="status"][aria-live="polite"]');
+const assertiveRegion = () => document.querySelector('[role="alert"][aria-live="assertive"]');
 
 /** Two pages, each with its own focusable main heading, as in the app. */
 const headingPage = (text: string) => defineComponent({ render: () => h('h1', { tabindex: -1 }, text) });
@@ -92,5 +101,58 @@ describe('App', () => {
 
     expect(wrapper.find('main h1').text()).toBe('A page');
     expect(document.activeElement).toBe(wrapper.find('main h1').element);
+  });
+
+  it('renders the two live regions, empty and visually hidden, before any message', async () => {
+    await mountApp();
+
+    for (const region of [politeRegion(), assertiveRegion()]) {
+      expect(region).not.toBeNull();
+      expect(region?.getAttribute('aria-atomic')).toBe('true');
+      expect(region?.classList.contains('visually-hidden')).toBe(true);
+      expect(region?.textContent).toBe('');
+    }
+    expect(document.querySelectorAll('[aria-live="polite"][role="status"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[aria-live="assertive"][role="alert"]')).toHaveLength(1);
+  });
+
+  it('announces the logout politely, after focus has reached the home heading', async () => {
+    const wrapper = await mountApp(true, '/composer');
+
+    await wrapper.find('.desktop-nav .logout-button').trigger('click');
+    await flushPromises();
+    expect(document.activeElement).toBe(wrapper.find('main h1').element);
+    await waitAnnouncement();
+
+    expect(toast.success).toHaveBeenCalledWith('You have been logged out successfully.', undefined);
+    expect(politeRegion()?.textContent).toBe('You have been logged out successfully.');
+    expect(document.activeElement).toBe(wrapper.find('main h1').element);
+  });
+
+  it('announces a session that ended before start-up, in the assertive region', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', name: 'home', component: Page }] });
+    await router.push('/');
+    useAuthStore().sessionEndReason = 'unauthorized';
+    wrapper = mount(App, { attachTo: document.body, global: { plugins: [pinia, router] } });
+    await flushPromises();
+    await waitAnnouncement();
+
+    expect(toast.warning).toHaveBeenCalledWith('Your session is no longer valid. Please sign in again.', undefined);
+    expect(assertiveRegion()?.textContent).toBe('Your session is no longer valid. Please sign in again.');
+  });
+
+  it('announces a failed "thanks" in the assertive region', async () => {
+    api.sendThanks.mockRejectedValueOnce(new Error('Validation failed: Text too long'));
+    const wrapper = await mountApp(true);
+
+    await wrapper.find('.desktop-nav .thanks-button').trigger('click');
+    await flushPromises();
+    (document.querySelector('.btn-send') as HTMLButtonElement).click();
+    await flushPromises();
+    await waitAnnouncement();
+
+    expect(assertiveRegion()?.textContent).toBe('Failed to send thanks: Validation failed: Text too long.');
   });
 });

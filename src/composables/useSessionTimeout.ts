@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted, watch } from 'vue';
-import { useToast } from 'vue-toastification';
+import { useNotify } from './useNotify';
 import { useAuthStore } from '../stores/auth';
 import { SESSION_DURATION_MS, SESSION_WARNING_MS } from '../config/constants';
 
@@ -13,18 +13,18 @@ const LISTENER_OPTIONS = { capture: true, passive: true } as const;
  * so activity in another tab counts too, and a closed tab is handled at the next start.
  */
 export function useSessionTimeout() {
-  const toast = useToast();
+  const notify = useNotify();
   const auth = useAuthStore();
 
   let warningTimer: number | undefined;
   let expiryTimer: number | undefined;
-  let warningToastId: ReturnType<typeof toast.warning> | null = null;
+  let warningToastId: ReturnType<typeof notify.warning> | null = null;
 
   function clearTimers(): void {
     window.clearTimeout(warningTimer);
     window.clearTimeout(expiryTimer);
     if (warningToastId !== null) {
-      toast.dismiss(warningToastId);
+      notify.dismiss(warningToastId);
       warningToastId = null;
     }
   }
@@ -37,11 +37,11 @@ export function useSessionTimeout() {
 
   function extendSession(): void {
     auth.recordActivity();
-    toast.success('Session extended for 30 minutes');
+    notify.success('Session extended for 30 minutes');
   }
 
   function showWarning(): void {
-    warningToastId = toast.warning('Your session is about to expire. Click here to stay signed in.', {
+    warningToastId = notify.warning('Your session is about to expire. Click here to stay signed in.', {
       timeout: SESSION_WARNING_MS,
       closeOnClick: false,
       onClick: extendSession,
