@@ -211,6 +211,7 @@ async function handleSubmit() {
       >
         <div class="user-details">
           <img
+            v-if="auth.account?.avatar"
             :src="auth.account?.avatar"
             :alt="auth.account?.display_name"
             class="user-avatar"

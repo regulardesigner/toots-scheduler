@@ -2,6 +2,7 @@ import axios from 'axios';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { MastodonAccount } from '../types/mastodon';
+import { AccountSchema, parseApiResponse } from '../schemas/mastodon';
 import { ACTIVITY_WRITE_INTERVAL_MS, SESSION_DURATION_MS } from '../config/constants';
 import {
   AUTH_STORAGE_KEY,
@@ -178,7 +179,8 @@ export const useAuthStore = defineStore('auth', () => {
         headers: { Authorization: `Bearer ${session.accessToken}` },
         timeout: VERIFY_TIMEOUT_MS,
       });
-      if (accessToken.value === session.accessToken) account.value = response.data;
+      const verified = parseApiResponse(AccountSchema, response.data, 'account');
+      if (accessToken.value === session.accessToken) account.value = verified;
     } catch (error) {
       if (accessToken.value !== session.accessToken) return;
       if (axios.isAxiosError(error) && error.response?.status === 401) {

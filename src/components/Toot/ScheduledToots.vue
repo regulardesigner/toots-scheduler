@@ -84,7 +84,7 @@ onMounted(() => {
   <div class="scheduled-toots">
     <details
       class="toots-details"
-      :open="store.count > 0"
+      :open="store.count > 0 || !!store.error"
     >
       <summary class="toots-summary">
         <h1>Scheduled Toots ({{ store.count }})</h1>

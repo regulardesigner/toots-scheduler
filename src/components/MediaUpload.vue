@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import type { MastodonMediaAttachment } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import ModalView from './Modals/ModalView.vue';
+import { ACCEPTED_IMAGE_FILES, getImageRejection, MAX_IMAGE_BYTES, MAX_IMAGES_PER_TOOT } from '../utils/media';
 
 const props = defineProps<{
   modelValue: MastodonMediaAttachment[];
@@ -19,13 +20,17 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const editingMediaIndex = ref<number | null>(null);
 const mediaDescription = ref('');
 const isDragging = ref(false);
-const uploadProgress = ref<{ [key: string]: number }>({});
+/** Upload progress per upload, keyed by a random id (two files can share a name). */
+const uploadProgress = ref<Record<string, { name: string; percent: number }>>({});
 
 async function handleFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;
   if (!input.files?.length) return;
   
-  await uploadFiles(Array.from(input.files));
+  const files = Array.from(input.files);
+  // Allows picking the same file again (e.g. after an error).
+  input.value = '';
+  await uploadFiles(files);
 }
 
 async function handleDrop(event: DragEvent) {
@@ -39,35 +44,43 @@ async function handleDrop(event: DragEvent) {
 }
 
 async function uploadFiles(files: File[]) {
-  if (props.modelValue.length + files.length > 4) {
-    uploadError.value = 'Maximum 4 images allowed';
+  // One upload at a time: a second drop would work from an outdated list of images.
+  if (isUploading.value) return;
+  uploadError.value = '';
+
+  // Checked before uploading: drag and drop bypasses the file picker's `accept`.
+  const rejection = files.map(getImageRejection).find(message => message !== null);
+  if (rejection) {
+    uploadError.value = rejection;
+    return;
+  }
+  if (props.modelValue.length + files.length > MAX_IMAGES_PER_TOOT) {
+    uploadError.value = `Maximum ${MAX_IMAGES_PER_TOOT} images allowed`;
     return;
   }
 
   isUploading.value = true;
-  uploadError.value = '';
+  // Accumulated locally: the prop only updates after the parent re-renders.
+  const attachments = [...props.modelValue];
 
+  let current = '';
   try {
     for (const file of files) {
-      if (file.size > 8 * 1024 * 1024) {
-        uploadError.value = 'Each image must be less than 8MB';
-        continue;
-      }
+      current = file.name;
+      const key = crypto.randomUUID();
+      uploadProgress.value[key] = { name: file.name, percent: 0 };
 
-      // Initialize progress for this file
-      uploadProgress.value[file.name] = 0;
-
-      const media = await api.uploadMedia(file, (progress) => {
-        uploadProgress.value[file.name] = progress;
+      const media = await api.uploadMedia(file, (percent) => {
+        uploadProgress.value[key] = { name: file.name, percent };
       });
 
-      emit('update:modelValue', [...props.modelValue, media]);
-      
-      // Clear progress after successful upload
-      delete uploadProgress.value[file.name];
+      attachments.push(media);
+      emit('update:modelValue', [...attachments]);
+      delete uploadProgress.value[key];
     }
   } catch (err) {
-    uploadError.value = err instanceof Error && err.message ? err.message : 'Failed to upload images';
+    const reason = err instanceof Error && err.message ? err.message : 'Failed to upload images';
+    uploadError.value = current ? `Could not upload "${current}": ${reason}` : reason;
     console.error('Upload error:', err);
   } finally {
     isUploading.value = false;
@@ -76,12 +89,14 @@ async function uploadFiles(files: File[]) {
 }
 
 function removeMedia(index: number) {
+  if (isUploading.value) return;
   const newMedia = [...props.modelValue];
   newMedia.splice(index, 1);
   emit('update:modelValue', newMedia);
 }
 
 function startEditingMedia(index: number) {
+  if (isUploading.value) return;
   editingMediaIndex.value = index;
   const media = props.modelValue[index];
   mediaDescription.value = media.description || '';
@@ -103,7 +118,8 @@ async function saveMediaMetadata() {
     editingMediaIndex.value = null;
   } catch (err) {
     console.error('Error updating media metadata:', err);
-    uploadError.value = 'Failed to update image details';
+    const reason = err instanceof Error && err.message ? err.message : 'unknown error';
+    uploadError.value = `Could not save the description: ${reason}`;
   }
 }
 </script>
@@ -117,12 +133,12 @@ async function saveMediaMetadata() {
       @dragleave.prevent="isDragging = false"
       @dragover.prevent
       @drop.prevent="handleDrop"
-      @click="fileInput?.click()"
+      @click="!isUploading && fileInput?.click()"
     >
       <input
         ref="fileInput"
         type="file"
-        accept="image/*"
+        :accept="ACCEPTED_IMAGE_FILES"
         multiple
         class="hidden"
         @change="handleFileSelect"
@@ -130,7 +146,7 @@ async function saveMediaMetadata() {
       <div class="upload-content">
         <p>Drag & drop images here or click to select</p>
         <p class="upload-hint">
-          Up to 4 images, max 8MB each
+          Up to {{ MAX_IMAGES_PER_TOOT }} images, max {{ MAX_IMAGE_BYTES / 1024 / 1024 }} MB each
         </p>
       </div>
     </div>
@@ -141,18 +157,18 @@ async function saveMediaMetadata() {
       class="upload-progress"
     >
       <div
-        v-for="(progress, fileName) in uploadProgress"
-        :key="fileName"
+        v-for="(progress, key) in uploadProgress"
+        :key="key"
         class="progress-item"
       >
         <div class="progress-info">
-          <span class="file-name">{{ fileName }}</span>
-          <span class="progress-percentage">{{ Math.round(progress) }}%</span>
+          <span class="file-name">{{ progress.name }}</span>
+          <span class="progress-percentage">{{ Math.round(progress.percent) }}%</span>
         </div>
         <div class="progress-bar">
           <div
             class="progress-fill"
-            :style="{ width: `${progress}%` }"
+            :style="{ width: `${progress.percent}%` }"
           />
         </div>
       </div>
@@ -170,13 +186,21 @@ async function saveMediaMetadata() {
       >
         <div class="preview-image-wrapper">
           <img 
+            v-if="media.preview_url"
             :src="media.preview_url" 
             :alt="media.description || ''"
           >
+          <div
+            v-else
+            class="preview-placeholder"
+          >
+            Processing…
+          </div>
           <div class="preview-controls">
             <button 
               type="button" 
               class="edit-alt-button"
+              :disabled="isUploading"
               @click="startEditingMedia(index)"
             >
               {{ editingMediaIndex === index ? 'Alt' : 'Alt' }}
@@ -185,6 +209,7 @@ async function saveMediaMetadata() {
             <button 
               type="button" 
               class="remove-button"
+              :disabled="isUploading"
               aria-label="Remove Image"
               @click="removeMedia(index)"
             >
@@ -203,6 +228,7 @@ async function saveMediaMetadata() {
           >Add a description</label>
           <div class="media-edit-form">
             <img 
+              v-if="media.preview_url"
               class="media-edit-image"
               :src="media.preview_url" 
               :alt="media.description || ''"
@@ -346,6 +372,18 @@ async function saveMediaMetadata() {
   border-radius: 0.5rem;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.preview-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+  background-color: #f8f8f8;
+  color: #666;
+  font-size: 0.9rem;
 }
 
 .preview-image-wrapper {

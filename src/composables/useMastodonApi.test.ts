@@ -15,6 +15,18 @@ vi.mock('../stores/auth', () => ({
 
 import { useMastodonApi } from './useMastodonApi';
 
+/** A scheduled status as Mastodon returns it. */
+function scheduled(id: string) {
+  return {
+    id,
+    scheduled_at: '2031-01-01T12:00:00.000Z',
+    params: { text: `Toot ${id}`, visibility: 'public', language: 'en', poll: null },
+    media_attachments: [],
+  };
+}
+
+const uploadedMedia = { id: 'm1', type: 'image', url: 'https://masto.example/m1.png', preview_url: 'https://masto.example/m1-small.png', description: null };
+
 const toot: ScheduledToot = {
   status: 'Hello',
   scheduled_at: '2030-01-01T12:00:00.000Z',
@@ -44,7 +56,7 @@ describe('useMastodonApi', () => {
 
   describe('uploadMedia', () => {
     it('posts the file as multipart through the API client and reports progress', async () => {
-      http.post.mockResolvedValue({ data: { id: 'm1' } });
+      http.post.mockResolvedValue({ data: uploadedMedia });
       const onProgress = vi.fn();
       const file = new File(['x'], 'cat.png', { type: 'image/png' });
 
@@ -56,7 +68,7 @@ describe('useMastodonApi', () => {
       expect(config).toMatchObject({ headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
       config.onUploadProgress({ loaded: 50, total: 200 });
       expect(onProgress).toHaveBeenCalledWith(25);
-      expect(media).toEqual({ id: 'm1' });
+      expect(media).toEqual({ ...uploadedMedia, description: undefined });
     });
 
     it('keeps the original error as the cause', async () => {
@@ -68,6 +80,57 @@ describe('useMastodonApi', () => {
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe('File type not supported');
       expect((error as Error).cause).toBe(original);
+    });
+  });
+
+  describe('response validation', () => {
+    it('drops an avatar that is not an https URL, keeping the account', async () => {
+      http.get.mockResolvedValue({ data: { id: '1', username: 'me', acct: 'me', display_name: 'Me', avatar: 'javascript:alert(1)' } });
+
+      const account = await useMastodonApi().verifyCredentials();
+
+      expect(account.avatar).toBeUndefined();
+      expect(account.acct).toBe('me');
+    });
+
+    it('refuses an account without the fields the app needs', async () => {
+      http.get.mockResolvedValue({ data: { id: '1', avatar: 'https://masto.example/a.png' } });
+
+      await expect(useMastodonApi().verifyCredentials())
+        .rejects.toThrow('Your instance sent an unexpected response. Please try again later.');
+    });
+
+    it('refuses a malformed page of scheduled toots instead of showing part of it', async () => {
+      http.get.mockResolvedValue({ data: [scheduled('1'), { id: 2 }], headers: {} });
+
+      await expect(useMastodonApi().getScheduledToots())
+        .rejects.toThrow('Your instance sent an unexpected response. Please try again later.');
+    });
+
+    it('refuses an app registration without a client secret', async () => {
+      http.post.mockResolvedValue({ data: { client_id: 'id' } });
+
+      await expect(useMastodonApi().registerApplication('https://masto.example'))
+        .rejects.toThrow('Your instance sent an unexpected response. Please try again later.');
+    });
+  });
+
+  describe('sendThanks', () => {
+    it('sends the previewed message as a direct message', async () => {
+      http.post.mockResolvedValue({ data: { id: 'dm' } });
+
+      await useMastodonApi().sendThanks('🤗 Thanks! CC: @dams@disabled.social');
+
+      expect(http.post).toHaveBeenCalledWith('https://masto.example/api/v1/statuses', {
+        status: '🤗 Thanks! CC: @dams@disabled.social',
+        visibility: 'direct',
+      });
+    });
+
+    it('reports a failure instead of hiding it', async () => {
+      http.post.mockRejectedValue({ isAxiosError: true, message: 'Request failed', response: { status: 422, data: { error: 'Text too long' } } });
+
+      await expect(useMastodonApi().sendThanks('Thanks')).rejects.toThrow('Text too long');
     });
   });
 
@@ -127,10 +190,10 @@ describe('useMastodonApi', () => {
     it('follows the Link header across pages and concatenates the results', async () => {
       http.get
         .mockResolvedValueOnce({
-          data: [{ id: '3' }, { id: '2' }],
+          data: [scheduled('3'), scheduled('2')],
           headers: { link: '<https://masto.example/api/v1/scheduled_statuses?limit=40&max_id=2>; rel="next"' },
         })
-        .mockResolvedValueOnce({ data: [{ id: '1' }], headers: {} });
+        .mockResolvedValueOnce({ data: [scheduled('1')], headers: {} });
 
       const toots = await useMastodonApi().getScheduledToots();
 
@@ -143,7 +206,7 @@ describe('useMastodonApi', () => {
 
     it('does not follow a next link pointing to another origin', async () => {
       http.get.mockResolvedValueOnce({
-        data: [{ id: '1' }],
+        data: [scheduled('1')],
         headers: { link: '<https://evil.example/collect>; rel="next"' },
       });
 
@@ -158,7 +221,7 @@ describe('useMastodonApi', () => {
       http.get.mockImplementation(async () => {
         page++;
         return {
-          data: [{ id: `id-${page}` }],
+          data: [scheduled(`id-${page}`)],
           headers: { link: `<https://masto.example/api/v1/scheduled_statuses?max_id=${page}>; rel="next"` },
         };
       });
@@ -170,7 +233,7 @@ describe('useMastodonApi', () => {
 
     it('stops when the server links back to a page it already returned', async () => {
       http.get.mockResolvedValue({
-        data: [{ id: '1' }],
+        data: [scheduled('1')],
         headers: { link: '<https://masto.example/api/v1/scheduled_statuses?limit=40>; rel="next"' },
       });
 
@@ -182,7 +245,7 @@ describe('useMastodonApi', () => {
 
     it('stops on an empty page', async () => {
       http.get
-        .mockResolvedValueOnce({ data: [{ id: '1' }], headers: { link: '<https://masto.example/api/v1/scheduled_statuses?max_id=1>; rel="next"' } })
+        .mockResolvedValueOnce({ data: [scheduled('1')], headers: { link: '<https://masto.example/api/v1/scheduled_statuses?max_id=1>; rel="next"' } })
         .mockResolvedValueOnce({ data: [], headers: { link: '<https://masto.example/api/v1/scheduled_statuses?max_id=0>; rel="next"' } });
 
       await useMastodonApi().getScheduledToots();
@@ -192,7 +255,7 @@ describe('useMastodonApi', () => {
 
     it('fails as a whole when a later page fails, so no toot is silently hidden', async () => {
       http.get
-        .mockResolvedValueOnce({ data: [{ id: '1' }], headers: { link: '<https://masto.example/api/v1/scheduled_statuses?max_id=1>; rel="next"' } })
+        .mockResolvedValueOnce({ data: [scheduled('1')], headers: { link: '<https://masto.example/api/v1/scheduled_statuses?max_id=1>; rel="next"' } })
         .mockRejectedValueOnce(new Error('Network Error'));
 
       await expect(useMastodonApi().getScheduledToots()).rejects.toThrow('Network Error');

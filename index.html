@@ -5,16 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Toot Scheduler</title>
-    <script>
-      // Handle redirect from 404.html
-      (function() {
-        const redirect = new URLSearchParams(window.location.search).get('redirect');
-        if (redirect) {
-          const cleanRedirect = redirect.replace(/^\/+/, '');
-          window.history.replaceState(null, null, '/toots-scheduler/' + cleanRedirect);
-        }
-      })();
-    </script>
+    <script src="/spa-redirect.js"></script>
   </head>
   <body>
     <div id="app"></div>

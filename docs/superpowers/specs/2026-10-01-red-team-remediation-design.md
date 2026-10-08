@@ -129,6 +129,8 @@
 
 ## Lot 3 — CSP & défense en profondeur (SEC-03 CSP, WEB-04, SEC-07, SEC-11, SEC-12, BUG-11)
 
+> ✅ **Livré en 0.15.0** : branche `fix/lot-3-defense-in-depth`, plan [2026-10-04-lot-3-defense-in-depth.md](../plans/2026-10-04-lot-3-defense-in-depth.md). Les 24 contrôles (16 du Lot 2 et 8 du Lot 3) ont été vérifiés le 2026-10-04 avec Playwright, sur la build de production face à une instance simulée, sans aucune violation CSP. Écarts : `style-src 'self'` sans `'unsafe-inline'`, URLs d'images non sûres écartées plutôt que réponse refusée. Les contrôles sur une vraie instance ont été validés le 2026-10-04 sur la build de production en local (connexion, aucune erreur CSP en console, upload d'image, édition d'un toot avec images, « Say Thanks »). Reste à vérifier après la fusion sur `main` : le lien direct vers `/composer` via `404.html` sur GitHub Pages.
+
 **Objectif :** limiter l'impact d'une XSS future et ne plus faire confiance aux réponses de l'instance.
 
 **Fichiers :** `index.html`, `public/spa-redirect.js` (nouveau), `src/schemas/mastodon.ts` (nouveau, zod) + test, `src/types/mastodon.ts` (types dérivés via `z.infer`), `src/composables/useMastodonApi.ts`, `src/components/MediaUpload.vue`, `src/App.vue`, `src/components/Modals/ThanksConfirmModal.vue` (nouveau).
