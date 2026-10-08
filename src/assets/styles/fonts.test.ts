@@ -16,6 +16,14 @@ describe('fonts', () => {
     expect([...fontsCss.matchAll(/format\('([^']+)'\)/g)].map(match => match[1])).toEqual(['woff2', 'woff2']);
   });
 
+  it('declares the variable weight ranges and swap', () => {
+    const faces = [...fontsCss.matchAll(/@font-face\s*{([^}]*)}/g)].map(m => m[1]);
+    expect(faces).toHaveLength(2);
+    expect(faces[0]).toMatch(/font-weight:\s*200 1000;/);
+    expect(faces[1]).toMatch(/font-weight:\s*300 900;/);
+    for (const face of faces) expect(face).toMatch(/font-display:\s*swap;/);
+  });
+
   it('points at files that exist', () => {
     const urls = [...fontsCss.matchAll(/url\('([^']+)'\)/g)].map(match => match[1]);
 

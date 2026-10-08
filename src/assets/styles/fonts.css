@@ -4,6 +4,8 @@
  * - Nunito Sans: `fonttools varLib.instancer ... wdth=100 YTLC=500` (the values the app always used),
  *   keeping the wght (200–1000) and opsz axes, then `pyftsubset --flavor=woff2`;
  * - Winky Sans: `pyftsubset --flavor=woff2` (wght 300–900).
+ * Both subsets use `--unicodes` (Latin, Latin Extended, combining marks U+0300-036F), `--layout-features='*'`
+ * and `--name-IDs='*'`, which keeps the copyright and OFL licence name records (OFL section 2).
  * No italic: the app never sets italic text. Other scripts (Cyrillic, Greek...) use the system font.
  */
 @font-face {
