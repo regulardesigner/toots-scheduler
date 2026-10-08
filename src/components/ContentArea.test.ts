@@ -219,4 +219,8 @@ describe('ContentArea', () => {
 
     expect(wrapper.find('.character-count [aria-hidden="true"]').text()).toBe('485');
   });
+
+  it('carries no id: the text area is not the schedule button', () => {
+    expect(mountArea().find('.content-area').attributes('id')).toBeUndefined();
+  });
 });

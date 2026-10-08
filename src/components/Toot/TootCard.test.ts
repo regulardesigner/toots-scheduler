@@ -84,4 +84,10 @@ describe('TootCard', () => {
 
     expect(mountCard().find('.meta-label').text()).toBe(`Scheduled for: ${localDate} (${getTimeZone()})`);
   });
+
+  it('names the language from the shared list, and shows a language it does not list by its code', () => {
+    expect(mountCard({ language: 'fr' }).find('.toot-footer').text()).toContain('toot in Français');
+    expect(mountCard({ language: 'eo' }).find('.toot-footer').text()).toContain('toot in eo');
+    expect(mountCard().find('.toot-footer').text()).toContain('toot in Unknown');
+  });
 });

@@ -152,7 +152,7 @@ describe('ScheduledToots', () => {
       const store = useScheduledTootsStore();
       store.pendingId = 'a';
       store.pendingAction = 'delete';
-      store.setLoading(true);
+      store.isLoading = true;
       await flushPromises();
 
       expect(wrapper.find('.loading').exists()).toBe(false);

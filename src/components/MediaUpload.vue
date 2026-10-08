@@ -219,7 +219,7 @@ async function saveMediaMetadata() {
               :disabled="isUploading"
               @click="startEditingMedia(index)"
             >
-              {{ editingMediaIndex === index ? 'Alt' : 'Alt' }}
+              Alt
             </button>
             
             <button 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import ControlsBar from './ControlsBar.vue';
 import { getTimeZone } from '../utils/timeZone';
+import { LANGUAGES } from '../config/constants';
 
 const baseProps = {
   scheduledDate: '',
@@ -35,5 +36,12 @@ describe('ControlsBar', () => {
     expect(wrapper.find('#time-zone-hint').text()).toBe(`Time zone: ${getTimeZone()}`);
     expect(wrapper.find('#scheduled-date').attributes('aria-describedby')).toBe('time-zone-hint');
     expect(wrapper.find('#scheduled-time').attributes('aria-describedby')).toBe('time-zone-hint');
+  });
+
+  it('offers the languages of the shared list, by their own names', () => {
+    const options = mount(ControlsBar, { props: baseProps }).findAll('#language option');
+
+    expect(options.map(option => option.attributes('value'))).toEqual(LANGUAGES.map(language => language.code));
+    expect(options.map(option => option.text())).toEqual(LANGUAGES.map(language => language.name));
   });
 });

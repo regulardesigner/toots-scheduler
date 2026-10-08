@@ -59,10 +59,6 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     toots.value = value;
   }
 
-  function setLoading(value: boolean): void {
-    isLoading.value = value;
-  }
-
   function setError(value: string): void {
     error.value = value;
   }
@@ -93,7 +89,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     const seq = ++fetchSeq;
     const isStale = () => seq !== fetchSeq || auth.accessToken !== token;
     try {
-      setLoading(true);
+      isLoading.value = true;
       setError('');
       const api = useMastodonApi();
       const loaded = await api.getScheduledToots();
@@ -105,7 +101,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       setError(err instanceof Error ? err.message : 'Failed to fetch scheduled toots');
     } finally {
       // The latest request owns the loading state.
-      if (seq === fetchSeq) setLoading(false);
+      if (seq === fetchSeq) isLoading.value = false;
     }
   }
 
@@ -238,7 +234,6 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     count,
     sortedToots,
     setToots,
-    setLoading,
     setError,
     setEditingToot,
     fetchScheduledToots,

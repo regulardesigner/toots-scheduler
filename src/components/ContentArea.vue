@@ -80,10 +80,7 @@ onUnmounted(() => clearTimeout(announceTimer));
 </script>
 
 <template>
-  <div
-    id="schedule-button"
-    class="content-area"
-  >
+  <div class="content-area">
     <textarea
       :value="modelValue"
       :placeholder="'What\'s on your mind?'"

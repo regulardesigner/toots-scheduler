@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 import type { PollParams } from '../../types/mastodon';
 import type { PendingAction } from '../../stores/scheduledToots';
 import { getTimeZone } from '../../utils/timeZone';
+import { LANGUAGES } from '../../config/constants';
 
 interface Props {
   id: string;
@@ -28,23 +29,6 @@ const emit = defineEmits<{
   (e: 'delete', id: string): void;
 }>();
 
-const languages = {
-  en: 'English',
-  fr: 'Français',
-  de: 'Deutsch',
-  es: 'Español',
-  it: 'Italiano',
-  pt: 'Português',
-  ru: 'Русский',
-  ja: '日本語',
-  zh: '中文',
-  ko: '한국어',
-  nl: 'Nederlands',
-  pl: 'Polski',
-  ar: 'العربية',
-  hi: 'हिन्दी',
-} as const;
-
 /** Dates are shown in the browser's time zone, named next to them. */
 const timeZone = getTimeZone();
 
@@ -59,7 +43,8 @@ function getCapitalizedVisibility(visibility: string | undefined): string {
 
 function getLanguageName(code: string | undefined): string {
   if (!code) return 'Unknown';
-  return languages[code as keyof typeof languages] || code;
+  // A language this app doesn't list (set by another client) is shown by its code.
+  return LANGUAGES.find(language => language.code === code)?.name ?? code;
 }
 
 const showSensitiveContent = ref(!props.sensitive);

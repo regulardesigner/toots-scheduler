@@ -70,11 +70,7 @@ function idempotencyKeyFor(toot: ScheduledToot): string {
   return idempotencyKey.value;
 }
 
-function handleShowMedia() {
-  showMedia.value = !showMedia.value;
-}
-
-function handleShowPoll() {
+function togglePoll() {
   showPoll.value = !showPoll.value;
   // A closed poll section means no poll: drop what was typed so it can't be sent later.
   if (!showPoll.value) {
@@ -282,8 +278,8 @@ async function handleSubmit() {
         :show-media="showMedia"
         :show-poll="showPoll"
         :extra-characters="spoilerLength"
-        @add-media="handleShowMedia"
-        @add-poll="handleShowPoll"
+        @add-media="showMedia = !showMedia"
+        @add-poll="togglePoll"
       />
 
       <MediaUpload
