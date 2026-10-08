@@ -34,6 +34,16 @@ describe('features store', () => {
     expect(versionsOf(store.newFeatures)).toEqual(versionsOf(store.features.slice(1, 4)));
   });
 
+  it('keeps the releases seen when only lastSeenVersion is missing or wrong', () => {
+    const latest = useFeaturesStore().features[0].version;
+    setActivePinia(createPinia());
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ lastSeenVersion: 42, seenFeatures: [latest] }));
+
+    const store = useFeaturesStore();
+
+    expect(versionsOf(store.newFeatures)).toEqual(versionsOf(store.features.slice(1, 4)));
+  });
+
   it.each([
     ['not JSON', '{not json'],
     ['not an object', '"0.16.0"'],
