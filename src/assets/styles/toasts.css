@@ -39,3 +39,10 @@
 .Vue-Toastification__container .Vue-Toastification__close-button:focus {
   opacity: 1;
 }
+
+/* The library removes the outline; keep a visible keyboard focus cue (WCAG 2.4.7). */
+.Vue-Toastification__container .Vue-Toastification__close-button:focus-visible {
+  opacity: 1;
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

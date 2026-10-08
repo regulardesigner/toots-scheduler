@@ -56,6 +56,12 @@ describe('toast colours', () => {
     }
   });
 
+  it('shows a visible outline when the close button has keyboard focus', () => {
+    const rule = toastsCss.match(/__close-button:focus-visible\s*\{([^}]*)\}/);
+
+    expect(rule?.[1]).toMatch(/outline:\s*2px solid currentColor/);
+  });
+
   it('uses only colours from the design system palette', () => {
     const palette = ['#333333', '#ffffff', '#2577b1', '#ff9200', '#c0392b'];
     const rules = toastsCss.replace(/\/\*[\s\S]*?\*\//g, ''); // comments name the library's old colours
