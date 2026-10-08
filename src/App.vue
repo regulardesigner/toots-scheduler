@@ -254,6 +254,11 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Page scroll is locked while a dialog is open (class set by ModalView). */
+body.modal-open {
+  overflow: hidden;
+}
+
 /* Hidden on screen, still read by screen readers (labels of icon-only controls, live regions). */
 .visually-hidden {
   position: absolute;

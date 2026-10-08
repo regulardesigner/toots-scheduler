@@ -2,6 +2,8 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import Toast, { type PluginOptions, POSITION } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
+// After the library's stylesheet: readable colours from the app's palette.
+import './assets/styles/toasts.css'
 import App from './App.vue'
 import router from './router'
 

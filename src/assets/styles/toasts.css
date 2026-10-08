@@ -1,0 +1,41 @@
+/*
+ * Toast colours from the app's palette (ui-design-system), replacing vue-toastification's defaults,
+ * whose white text fails WCAG AA (white on #4caf50 is 2.8:1, on #ffc107 1.6:1).
+ * Every pair below is at least 4.5:1; toasts.test.ts checks it.
+ * Kept in a stylesheet: the CSP allows no inline style.
+ */
+.Vue-Toastification__container .Vue-Toastification__toast {
+  font-family: inherit;
+}
+
+.Vue-Toastification__container .Vue-Toastification__toast--default,
+.Vue-Toastification__container .Vue-Toastification__toast--success {
+  background-color: #333;
+  color: #fff;
+}
+
+.Vue-Toastification__container .Vue-Toastification__toast--info {
+  background-color: #2577b1;
+  color: #fff;
+}
+
+.Vue-Toastification__container .Vue-Toastification__toast--warning {
+  background-color: #FF9200;
+  color: #333;
+}
+
+.Vue-Toastification__container .Vue-Toastification__toast--error {
+  background-color: #c0392b;
+  color: #fff;
+}
+
+/* The close button takes the toast's text colour; the library's 0.3 opacity made it unreadable. */
+.Vue-Toastification__container .Vue-Toastification__close-button {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.Vue-Toastification__container .Vue-Toastification__close-button:hover,
+.Vue-Toastification__container .Vue-Toastification__close-button:focus {
+  opacity: 1;
+}
