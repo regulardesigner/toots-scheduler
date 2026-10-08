@@ -17,6 +17,7 @@ import { getRedirectUri, OAUTH_SCOPES } from '../config/constants';
 import { handleApiError } from '../utils/error';
 import { getNextPageUrl } from '../utils/linkHeader';
 import { logError } from '../utils/logError';
+
 /** Mastodon's maximum page size for scheduled statuses. */
 const SCHEDULED_PAGE_SIZE = 40;
 /** Safety cap: 10 pages × 40 = 400 toots, above Mastodon's 300 scheduled-toot limit. */

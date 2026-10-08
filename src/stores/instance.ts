@@ -3,7 +3,8 @@ import { ref, watch } from 'vue';
 import { useAuthStore } from './auth';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { DEFAULT_MAX_CHARACTERS } from '../config/constants';
-import { logError } from '../utils/logError';import { MAX_IMAGE_BYTES, MAX_IMAGES_PER_TOOT, SUPPORTED_IMAGE_TYPES, usableImageTypes } from '../utils/media';
+import { logError } from '../utils/logError';
+import { MAX_IMAGE_BYTES, MAX_IMAGES_PER_TOOT, SUPPORTED_IMAGE_TYPES, usableImageTypes } from '../utils/media';
 
 /**
  * Creates a Pinia store for the signed-in instance's limits (toot length, images per toot,

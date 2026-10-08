@@ -5,6 +5,7 @@ import { normalizeUrl } from '../../utils/url';
 import { createPkcePair, createRandomToken } from '../../utils/pkce';
 import { buildAuthorizeUrl, savePendingLogin } from '../../utils/oauthFlow';
 import { logError } from '../../utils/logError';
+
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();

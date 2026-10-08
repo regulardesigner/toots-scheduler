@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/auth';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { readAuthorizationCode, takePendingLogin } from '../utils/oauthFlow';
 import { logError } from '../utils/logError';
+
 const router = useRouter();
 const auth = useAuthStore();
 const api = useMastodonApi();

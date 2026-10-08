@@ -5,6 +5,7 @@ import { useMastodonApi } from '../composables/useMastodonApi';
 import { useAuthStore } from './auth';
 import { isOnlyScheduleChange } from '../utils/isOnlyScheduleChange';
 import { logError } from '../utils/logError';
+
 /** A change refused because another one is still being saved: nothing was sent. */
 export class BusyError extends Error {
   constructor() {
