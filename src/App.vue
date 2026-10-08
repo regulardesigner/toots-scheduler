@@ -247,9 +247,6 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   line-height: 1.5;
   font-weight: 400;
   font-optical-sizing: auto;
-  font-variation-settings:
-    "wdth" 100,
-    "YTLC" 500;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
