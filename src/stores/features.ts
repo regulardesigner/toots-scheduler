@@ -11,6 +11,27 @@ const STORAGE_KEY = 'masto-publish-later-features';
 export const useFeaturesStore = defineStore('features', () => {
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.14.0',
+      date: '2026-10-02',
+      features: [
+        {
+          id: 'safer-sign-in',
+          title: '🔐 Safer Sign-In',
+          description: 'Signing in now uses extra protections against forged sign-in links, and only secure (https) instances are accepted. You can simply type your instance name, like mastodon.social.'
+        },
+        {
+          id: 'real-session-expiry',
+          title: '⏳ Sessions Really Expire',
+          description: 'After 30 minutes without activity you are signed out and your access is revoked on your instance. If you closed the tab, this happens the next time you open the app.'
+        },
+        {
+          id: 'logout-everywhere',
+          title: '🚪 Log Out of Every Tab at Once',
+          description: 'Logging out revokes the app\'s access on your instance and signs you out in every open tab of this browser.'
+        },
+      ],
+    },
+    {
       version: '0.13.2',
       date: '2026-10-02',
       features: [

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { createApiClient } from '../utils/api';
 import { useAuthStore } from '../stores/auth';
 import type { MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
-import { normalizeUrl } from '../utils/url';
+import { getRedirectUri, OAUTH_SCOPES } from '../config/constants';
 import { handleApiError } from '../utils/error';
 import { getNextPageUrl } from '../utils/linkHeader';
 
@@ -10,6 +10,9 @@ import { getNextPageUrl } from '../utils/linkHeader';
 const SCHEDULED_PAGE_SIZE = 40;
 /** Safety cap: 10 pages × 40 = 400 toots, above Mastodon's 300 scheduled-toot limit. */
 const MAX_SCHEDULED_PAGES = 10;
+
+/** Large images on slow connections need far more than the default 10 s. */
+const MEDIA_UPLOAD_TIMEOUT_MS = 120000;
 
 /**
  * Creates a composable for interacting with the Mastodon API.
@@ -21,54 +24,64 @@ export function useMastodonApi() {
 
   /**
    * Registers a new application with the Mastodon instance.
-   * @param {string} instanceUrl - The URL of the Mastodon instance.
-   * @returns {Promise<Object>} The application data containing client_id and client_secret.
+   * @param {string} instanceUrl - The origin of the Mastodon instance (already normalized).
+   * @returns {Promise<{ client_id: string; client_secret: string }>} The app credentials.
    * @throws {Error} If the registration fails or the response is invalid.
    */
-  async function registerApplication(instanceUrl: string) {
+  async function registerApplication(instanceUrl: string): Promise<{ client_id: string; client_secret: string }> {
     try {
-      const normalizedUrl = normalizeUrl(instanceUrl);
-      const response = await api.post(`${normalizedUrl}/api/v1/apps`, {
+      const response = await api.post(`${instanceUrl}/api/v1/apps`, {
         client_name: 'Toot Scheduler',
-        redirect_uris: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
-        scopes: 'read:accounts read:statuses write:media write:statuses',
-        website: window.location.origin + import.meta.env.BASE_URL
+        redirect_uris: getRedirectUri(),
+        scopes: OAUTH_SCOPES,
+        website: window.location.origin + import.meta.env.BASE_URL,
       });
-  
-      if (!response.data.client_id || !response.data.client_secret) {
+
+      if (!response.data?.client_id || !response.data?.client_secret) {
         throw new Error('Invalid response from server');
       }
-  
+
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
   /**
-   * Gets an access token from the Mastodon instance using the authorization code.
+   * Exchanges the authorization code for an access token, proving PKCE possession with the verifier.
+   * @param {string} instanceUrl - The instance origin the login started with.
    * @param {string} code - The authorization code.
    * @param {string} clientId - The client ID.
    * @param {string} clientSecret - The client secret.
-   * @returns {Promise<Object>} The access token data.
-   * @throws {Error} If the instance URL is not set or the request fails.
+   * @param {string} codeVerifier - The PKCE verifier matching the challenge sent to /oauth/authorize.
+   * @returns {Promise<{ access_token: string }>} The access token data.
+   * @throws {Error} If the request fails or no token is returned.
    */
-  async function getAccessToken(code: string, clientId: string, clientSecret: string) {
-    if (!auth.instance) throw new Error('No instance URL set');
-  
+  async function getAccessToken(
+    instanceUrl: string,
+    code: string,
+    clientId: string,
+    clientSecret: string,
+    codeVerifier: string,
+  ): Promise<{ access_token: string }> {
     try {
-      const response = await api.post(`${auth.instance}/oauth/token`, {
+      const response = await api.post(`${instanceUrl}/oauth/token`, {
         grant_type: 'authorization_code',
         code,
         client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri: window.location.origin + import.meta.env.BASE_URL + 'oauth/callback',
-        scope: 'read:accounts read:statuses write:media write:statuses'
+        redirect_uri: getRedirectUri(),
+        code_verifier: codeVerifier,
+        scope: OAUTH_SCOPES,
       });
-  
+
+      if (!response.data?.access_token) {
+        throw new Error('Invalid response from server');
+      }
+
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -125,7 +138,7 @@ export function useMastodonApi() {
       });
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -145,7 +158,7 @@ export function useMastodonApi() {
       });
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -163,7 +176,7 @@ export function useMastodonApi() {
       return true;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) return false;
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -184,7 +197,7 @@ export function useMastodonApi() {
   
       return response.data;
     } catch (error) {
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -208,40 +221,25 @@ export function useMastodonApi() {
    * @returns {Promise<MastodonMediaAttachment>} The uploaded media attachment data.
    */
   async function uploadMedia(file: File, onProgress?: (progress: number) => void): Promise<MastodonMediaAttachment> {
+    if (!auth.instance) throw new Error('No instance URL set');
+
     const formData = new FormData();
     formData.append('file', file);
-  
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-  
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable && onProgress) {
-          const progress = (event.loaded / event.total) * 100;
-          onProgress(progress);
-        }
+
+    try {
+      const response = await api.post<MastodonMediaAttachment>(`${auth.instance}/api/v2/media`, formData, {
+        // Overrides the client's JSON default (axios would serialize the FormData to JSON otherwise);
+        // in the browser axios then drops it so the browser sets the multipart boundary itself.
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: MEDIA_UPLOAD_TIMEOUT_MS,
+        onUploadProgress: (event) => {
+          if (onProgress && event.total) onProgress((event.loaded / event.total) * 100);
+        },
       });
-  
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve(response);
-          } catch {
-            reject(new Error('Failed to parse response'));
-          }
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      });
-  
-      xhr.addEventListener('error', () => {
-        reject(new Error('Upload failed'));
-      });
-  
-      xhr.open('POST', `${auth.instance}/api/v2/media`);
-      xhr.setRequestHeader('Authorization', `Bearer ${auth.accessToken}`);
-      xhr.send(formData);
-    });
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error), { cause: error });
+    }
   }
 
   /**
@@ -290,7 +288,7 @@ export function useMastodonApi() {
       return toots;
     } catch (error) {
       console.error('Error fetching scheduled toots:', error);
-      throw new Error(handleApiError(error));
+      throw new Error(handleApiError(error), { cause: error });
     }
   }
 
@@ -307,24 +305,26 @@ export function useMastodonApi() {
       await api.delete(`${auth.instance}/api/v1/scheduled_statuses/${encodeURIComponent(id)}`);
     } catch (err) {
       console.error('Error deleting scheduled toot:', err);
-      throw new Error(handleApiError(err));
+      throw new Error(handleApiError(err), { cause: err });
     }
   }
 
   return {
     /**
      * Registers a new application with the Mastodon instance.
-     * @param {string} instanceUrl - The URL of the Mastodon instance.
-     * @returns {Promise<Object>} The application data containing client_id and client_secret.
+     * @param {string} instanceUrl - The origin of the Mastodon instance.
+     * @returns {Promise<{ client_id: string; client_secret: string }>} The app credentials.
      */
     registerApplication,
   
     /**
-     * Gets an access token from the Mastodon instance using the authorization code.
+     * Exchanges the authorization code (and PKCE verifier) for an access token.
+     * @param {string} instanceUrl - The instance origin.
      * @param {string} code - The authorization code.
      * @param {string} clientId - The client ID.
      * @param {string} clientSecret - The client secret.
-     * @returns {Promise<Object>} The access token data.
+     * @param {string} codeVerifier - The PKCE verifier.
+     * @returns {Promise<{ access_token: string }>} The access token data.
      */
     getAccessToken,
   

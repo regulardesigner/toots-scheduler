@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { MastodonStatus, ScheduledToot } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
+import { useAuthStore } from './auth';
 import { isOnlyScheduleChange } from '../utils/isOnlyScheduleChange';
 
 /** Mastodon refuses scheduling less than 5 minutes ahead; past that point the original may publish mid-edit. */
@@ -28,6 +29,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
   const isLoading = ref(false);
   const error = ref('');
   const editingToot = ref<MastodonStatus | null>(null);
+  const auth = useAuthStore();
 
   const count = computed(() => toots.value.length);
   const sortedToots = computed(() => [...toots.value].sort((a, b) => getTimestamp(a) - getTimestamp(b)));
@@ -52,13 +54,18 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
    * Loads all scheduled toots from the instance.
    */
   async function fetchScheduledToots(): Promise<void> {
+    // A list loaded for a previous session must not overwrite the current one.
+    const token = auth.accessToken;
     try {
       setLoading(true);
       setError('');
       const api = useMastodonApi();
-      setToots(await api.getScheduledToots());
+      const loaded = await api.getScheduledToots();
+      if (auth.accessToken !== token) return;
+      setToots(loaded);
     } catch (err) {
       console.error('Error fetching scheduled toots:', err);
+      if (auth.accessToken !== token) return;
       setError(err instanceof Error ? err.message : 'Failed to fetch scheduled toots');
     } finally {
       setLoading(false);
@@ -118,6 +125,15 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       setLoading(false);
     }
   }
+
+  // A different session (logout, sign-in, account switch in another tab) must never see,
+  // or re-submit, the previous account's toots.
+  watch(() => auth.accessToken, (token, previous) => {
+    if (token === previous) return;
+    setToots([]);
+    setEditingToot(null);
+    if (token && previous) void fetchScheduledToots();
+  });
 
   return {
     toots,

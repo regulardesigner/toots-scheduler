@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+import { nextTick } from 'vue';
 import type { MastodonStatus, ScheduledToot } from '../types/mastodon';
 
 const api = vi.hoisted(() => ({
@@ -11,8 +12,10 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('../composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
+vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn().mockResolvedValue({}), isAxiosError: () => false } }));
 
 import { useScheduledTootsStore } from './scheduledToots';
+import { useAuthStore } from './auth';
 
 const original: MastodonStatus = {
   id: '42',
@@ -40,6 +43,7 @@ function makeUpdated(overrides: Partial<ScheduledToot> = {}): ScheduledToot {
 describe('scheduledToots store', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    localStorage.clear();
     setActivePinia(createPinia());
     api.getScheduledToots.mockResolvedValue([]);
     api.scheduledTootExists.mockResolvedValue(true);
@@ -155,6 +159,55 @@ describe('scheduledToots store', () => {
       expect(api.deleteScheduledToot).not.toHaveBeenCalled();
       expect(store.editingToot).toEqual(original);
       expect(store.isLoading).toBe(false);
+    });
+  });
+
+  describe('session changes', () => {
+    const credentials = { instance: 'https://masto.example', clientId: 'id', clientSecret: 'secret', accessToken: 'token-a' };
+
+    it('drops the previous account toots and edit on sign-out', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      const store = useScheduledTootsStore();
+      await nextTick();
+      store.setToots([original]);
+      store.setEditingToot(original);
+
+      auth.accessToken = null;
+      await nextTick();
+
+      expect(store.toots).toEqual([]);
+      expect(store.editingToot).toBeNull();
+    });
+
+    it('reloads the list when another account takes over', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      const store = useScheduledTootsStore();
+      await nextTick();
+      store.setToots([original]);
+
+      auth.completeLogin({ ...credentials, accessToken: 'token-b' });
+      await nextTick();
+
+      expect(store.toots).toEqual([]);
+      expect(api.getScheduledToots).toHaveBeenCalled();
+    });
+
+    it('discards a list that finishes loading after the session changed', async () => {
+      const auth = useAuthStore();
+      auth.completeLogin(credentials);
+      const store = useScheduledTootsStore();
+      let answer!: (toots: MastodonStatus[]) => void;
+      api.getScheduledToots.mockReturnValueOnce(new Promise(resolve => { answer = resolve; }));
+
+      const loading = store.fetchScheduledToots();
+      auth.accessToken = null;
+      await nextTick();
+      answer([original]);
+      await loading;
+
+      expect(store.toots).toEqual([]);
     });
   });
 });

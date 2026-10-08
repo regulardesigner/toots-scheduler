@@ -67,7 +67,7 @@ async function uploadFiles(files: File[]) {
       delete uploadProgress.value[file.name];
     }
   } catch (err) {
-    uploadError.value = 'Failed to upload images';
+    uploadError.value = err instanceof Error && err.message ? err.message : 'Failed to upload images';
     console.error('Upload error:', err);
   } finally {
     isUploading.value = false;
