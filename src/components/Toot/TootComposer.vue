@@ -98,10 +98,10 @@ watch(() => store.editingToot, (newToot, oldToot) => {
   language.value = newToot.params?.language || 'en';
   isSensitive.value = newToot.params?.sensitive || false;
   spoilerText.value = newToot.params?.spoiler_text || '';
-  mediaAttachments.value = newToot.media_attachments || [];
+  mediaAttachments.value = newToot.media_attachments;
 
   // Show media section if there are media attachments
-  showMedia.value = newToot.media_attachments?.length > 0;
+  showMedia.value = newToot.media_attachments.length > 0;
 
   const poll = newToot.params?.poll;
   if (poll) {
@@ -158,7 +158,7 @@ onMounted(async () => {
       logError('Error fetching user info', err);
     }
   }
-  await store.fetchScheduledToots();
+  // The scheduled list loads itself (ScheduledToots): one request per visit.
 });
 
 async function handleSubmit() {

@@ -24,10 +24,6 @@ const toot = { id: '1', scheduled_at: '2030-01-01T10:00:00Z', params: { text: 'H
 function scheduledToot(id: string, day: number): MastodonStatus {
   return {
     id,
-    content: '',
-    created_at: '',
-    visibility: 'public',
-    url: '',
     media_attachments: [],
     scheduled_at: `2031-01-0${day}T12:00:00.000Z`,
     params: { text: `Toot ${id}`, visibility: 'public', language: 'en', poll: null },

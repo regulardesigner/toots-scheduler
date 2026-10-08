@@ -19,10 +19,6 @@ import { useAuthStore } from './auth';
 
 const original: MastodonStatus = {
   id: '42',
-  content: '',
-  created_at: '',
-  visibility: 'public',
-  url: '',
   media_attachments: [],
   scheduled_at: '2030-01-01T12:00:00.000Z',
   params: { text: 'Hello', visibility: 'public', language: 'en', sensitive: false, spoiler_text: '', media_ids: [], poll: null },
