@@ -20,9 +20,13 @@ import { usableImageTypes } from '../utils/media';
 export const useInstanceStore = defineStore('instance', () => {
   const auth = useAuthStore();
 
+  /** Longest toot the instance accepts, in characters. */
   const maxCharacters = ref(DEFAULT_MAX_CHARACTERS);
+  /** Most images per toot. */
   const maxMediaAttachments = ref(DEFAULT_MAX_MEDIA_ATTACHMENTS);
+  /** Largest image, in bytes. */
   const imageSizeLimit = ref(DEFAULT_MAX_IMAGE_BYTES);
+  /** Image MIME types the app can attach on this instance (images only, never empty). */
   const supportedMimeTypes = ref<string[]>([...SUPPORTED_IMAGE_TYPES]);
   /** True once the instance gave its text limit; until then maxCharacters is a guess, not to be enforced. */
   const hasCharacterLimit = ref(false);
@@ -68,17 +72,11 @@ export const useInstanceStore = defineStore('instance', () => {
   }, { immediate: true });
 
   return {
-    /** Longest toot the instance accepts, in characters. */
     maxCharacters,
-    /** Most images per toot. */
     maxMediaAttachments,
-    /** Largest image, in bytes. */
     imageSizeLimit,
-    /** Image MIME types the app can attach on this instance (images only, never empty). */
     supportedMimeTypes,
-    /** Whether maxCharacters comes from the instance (false: the default, not to be enforced). */
     hasCharacterLimit,
-    /** Whether maxMediaAttachments comes from the instance (false: the default, not to be enforced). */
     hasMediaLimit,
   };
 });

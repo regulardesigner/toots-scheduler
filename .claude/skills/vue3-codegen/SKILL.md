@@ -76,7 +76,7 @@ export function useMyFeature() {
 - Define store with `defineStore('store-name', () => { ... })`
 - Expose state as `ref()`, actions as functions, computed as `computed()`
 - Persist to `localStorage` where appropriate (see `auth.ts` for the pattern)
-- Add JSDoc comments to all state properties and actions in the returned object
+- Add a JSDoc comment to each state property and action where it is defined; the returned object only lists them (no second copy of the docs)
 
 ### TypeScript types
 - All domain types live in `src/types/mastodon.ts` — add new types there

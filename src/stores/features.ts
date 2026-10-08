@@ -1,14 +1,43 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { z } from 'zod';
 import type { FeatureGroup, UserFeatureState } from '../types/features';
+import { logError } from '../utils/logError';
 
 const STORAGE_KEY = 'masto-publish-later-features';
 
+/** What's New shows at most this many unseen releases, newest first. */
+const MAX_RECENT_RELEASES = 3;
+
+/** The saved state; a wrong field falls back to its empty value. */
+const UserFeatureStateSchema = z.object({
+  lastSeenVersion: z.string().catch(''),
+  seenFeatures: z.array(z.string()).catch([]),
+});
+
 /**
- * Creates a Pinia store for managing app features.
- * @returns {Object} The features store with state and actions.
+ * Reads what the user has already seen. A missing, corrupt or foreign value gives a fresh
+ * state: a bad value in localStorage must never break the app at startup.
+ * @returns {UserFeatureState} The saved state, or an empty one.
+ */
+function readSavedState(): UserFeatureState {
+  const empty: UserFeatureState = { lastSeenVersion: '', seenFeatures: [] };
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === null) return empty;
+    const parsed = UserFeatureStateSchema.safeParse(JSON.parse(saved));
+    return parsed.success ? parsed.data : empty;
+  } catch {
+    return empty;
+  }
+}
+
+/**
+ * Creates a Pinia store for the "What's New" release notes and what the user has seen of them.
+ * @returns {Object} `features`, `newFeatures` and `markFeaturesAsSeen`.
  */
 export const useFeaturesStore = defineStore('features', () => {
+  /** Every release, newest first: the changelog (append-only, see the changelog skill). */
   const features = ref<FeatureGroup[]>([
     {
       version: '0.16.0',
@@ -349,88 +378,39 @@ export const useFeaturesStore = defineStore('features', () => {
     },
   ]);
 
-  // Get the latest version from features
-  /**
-   * Computes the latest version from the features list.
-   * @returns {string} The latest version number.
-   */
-  const latestVersion = computed(() => {
-    return features.value[0]?.version || '1.0.0';
-  });
+  /** The newest release; written as the last version seen. */
+  const latestVersion = computed(() => features.value[0]?.version ?? '');
 
-  const userState = ref<UserFeatureState>({
-    lastSeenVersion: '',
-    seenFeatures: [],
-  });
+  /** What the user has already seen, read once at startup. */
+  const userState = ref<UserFeatureState>(readSavedState());
 
-  // Load state from localStorage
-  /**
-   * Loads the user's feature state from localStorage.
-   */
-  function loadState() {
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      userState.value = JSON.parse(savedState);
+  /** Remembers what was seen. The browser may refuse (storage full or disabled): What's New still closes. */
+  function saveState(): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userState.value));
+    } catch (error) {
+      logError('Could not save the seen releases', error);
     }
   }
 
-  // Save state to localStorage
-  /**
-   * Saves the user's feature state to localStorage.
-   */
-  function saveState() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userState.value));
-  }
+  /** Releases the user has not seen yet, newest first. */
+  const unseenFeatures = computed(() =>
+    features.value.filter(group => !userState.value.seenFeatures.includes(group.version)),
+  );
 
-  // Get new features that haven't been seen
-  /**
-   * Computes the list of new features that haven't been seen by the user.
-   * @returns {Array} The list of new feature groups.
-   */
-  const newFeatures = computed(() => {
-    return features.value.filter(
-      (group: FeatureGroup) => !userState.value.seenFeatures.includes(group.version)
-    );
-  });
+  /** The few most recent unseen releases: what the What's New dialog shows. */
+  const recentNewFeatures = computed(() => unseenFeatures.value.slice(0, MAX_RECENT_RELEASES));
 
-  // Get last 3 new features
-  /**
-   * Computes the last three new features.
-   * @returns {Array} The last three new feature groups.
-   */
-  const lastThreeNewFeatures = computed(() => {
-    return newFeatures.value.slice(0, 3);
-  });
-
-  // Mark features as seen
-  /**
-   * Marks all features as seen and updates the user's state.
-   */
-  function markFeaturesAsSeen() {
-    userState.value.seenFeatures = features.value.map((group: FeatureGroup) => group.version);
+  /** Marks every release as seen, and saves it. */
+  function markFeaturesAsSeen(): void {
+    userState.value.seenFeatures = features.value.map(group => group.version);
     userState.value.lastSeenVersion = latestVersion.value;
     saveState();
   }
 
-  // Initialize store
-  loadState();
-
   return {
-    /**
-     * The list of feature groups.
-     * @type {Ref<FeatureGroup[]>}
-     */
     features,
-  
-    /**
-     * The last three new features that haven't been seen by the user.
-     * @type {ComputedRef<Array>}
-     */
-    newFeatures: lastThreeNewFeatures,
-  
-    /**
-     * Marks all features as seen.
-     */
+    newFeatures: recentNewFeatures,
     markFeaturesAsSeen,
   };
-}); 
+});
