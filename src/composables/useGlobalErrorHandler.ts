@@ -17,8 +17,8 @@ const TOAST_INTERVAL_MS = 5000;
  * The browser's own "Uncaught (in promise)" log is suppressed: the reason may be an AxiosError,
  * whose request headers hold the bearer token.
  * @param {App} app - The Vue application, before it is mounted.
- * @param {Window} [target] - Where unhandled rejections are listened for.
- * @returns {Object} `uninstall`, which stops listening for rejections.
+ * @param {Window} [target] - Where unhandled rejections and error events are listened for.
+ * @returns {Object} `uninstall`, which stops both listeners.
  */
 export function useGlobalErrorHandler(app: App, target: Window = window) {
   const notify = useNotify();
@@ -43,7 +43,7 @@ export function useGlobalErrorHandler(app: App, target: Window = window) {
   target.addEventListener('unhandledrejection', onUnhandledRejection);
 
   // Errors thrown in raw timer callbacks reach `window.onerror`, not `unhandledrejection`.
-  // Not prevented: the browser still logs them in DEV.
+  // Not prevented: the browser logs the uncaught error itself (text and stack only).
   function onError(event: ErrorEvent): void {
     // No error object: a cross-origin "Script error." (an extension's script) or a browser notice
     // such as "ResizeObserver loop completed with undelivered notifications". Neither is the app failing.

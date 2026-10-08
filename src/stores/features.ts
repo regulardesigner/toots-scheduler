@@ -46,7 +46,7 @@ export const useFeaturesStore = defineStore('features', () => {
         {
           id: 'faster-first-load',
           title: '⚡ Faster First Load',
-          description: 'Toot Scheduler now downloads about 1 MB less on your first visit: its fonts are a tenth of their former size, and look the same. Your scheduled toots are also loaded once instead of twice when the composer opens.'
+          description: 'Toot Scheduler now downloads about half a megabyte less on your first visit: its fonts are a tenth of their former size, and look the same. Your scheduled toots are also loaded once instead of twice when the composer opens.'
         },
         {
           id: 'readable-notifications',
