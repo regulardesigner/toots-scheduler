@@ -98,7 +98,7 @@ async function handleEdit(id: string) {
 }
 
 onMounted(() => {
-  store.fetchScheduledToots();
+  void store.fetchScheduledToots();
 });
 </script>
 

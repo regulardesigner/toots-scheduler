@@ -234,7 +234,6 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     count,
     sortedToots,
     setToots,
-    setError,
     setEditingToot,
     fetchScheduledToots,
     deleteToot,
