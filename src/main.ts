@@ -6,6 +6,7 @@ import 'vue-toastification/dist/index.css'
 import './assets/styles/toasts.css'
 import App from './App.vue'
 import router from './router'
+import { useGlobalErrorHandler } from './composables/useGlobalErrorHandler'
 
 const app = createApp(App)
 
@@ -35,6 +36,8 @@ const toastOptions: PluginOptions = {
 
 app.use(createPinia())
 app.use(Toast, toastOptions)
+// A failure nothing else handled shows a toast instead of a blank page (logged in DEV only).
+useGlobalErrorHandler(app)
 app.use(router)
 
 app.mount('#app')
