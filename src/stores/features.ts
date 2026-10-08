@@ -40,6 +40,37 @@ export const useFeaturesStore = defineStore('features', () => {
   /** Every release, newest first: the changelog (append-only, see the changelog skill). */
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.16.1',
+      date: '2026-10-08',
+      features: [
+        {
+          id: 'faster-first-load',
+          title: '⚡ Faster First Load',
+          description: 'Toot Scheduler now downloads about 1 MB less on your first visit: its fonts are a tenth of their former size, and look the same. Your scheduled toots are also loaded once instead of twice when the composer opens.'
+        },
+        {
+          id: 'readable-notifications',
+          title: '💄 Easier-to-Read Notifications',
+          description: 'Notifications now use the app\'s own high-contrast colours, so every message is easy to read.'
+        },
+        {
+          id: 'unexpected-error-message',
+          title: '🐛 Fix: No More Silent Failures',
+          description: 'When something unexpected goes wrong, a message now tells you, and invites you to try again or reload the page, instead of nothing happening.'
+        },
+        {
+          id: 'dialog-scroll-lock',
+          title: '🐛 Fix: The Page Stays Put Behind Dialogs',
+          description: 'Scrolling inside a dialog, such as this one, no longer scrolls the page behind it.'
+        },
+        {
+          id: 'content-warning-from-other-apps',
+          title: '🐛 Fix: Content Warnings From Other Apps',
+          description: 'A toot scheduled from another app no longer shows a content warning it does not have.'
+        },
+      ],
+    },
+    {
       version: '0.16.0',
       date: '2026-10-06',
       features: [
