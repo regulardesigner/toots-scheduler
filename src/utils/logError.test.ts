@@ -23,9 +23,24 @@ describe('logError', () => {
     logError('Error fetching scheduled toots', error);
 
     expect(log).toHaveBeenCalledTimes(1);
-    expect(log.mock.calls[0]).toEqual([
-      'Error fetching scheduled toots: Error: The access token is invalid (cause: AxiosError: Request failed with status code 401, status 401, code ERR_BAD_REQUEST)',
-    ]);
+    const [summary, stack] = log.mock.calls[0];
+    expect(summary).toBe('Error fetching scheduled toots: Error: The access token is invalid (cause: AxiosError: Request failed with status code 401, status 401, code ERR_BAD_REQUEST)');
+    expect(stack).toContain('The access token is invalid');
+    expect(stack).not.toContain('secret-token');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('secret-token');
+  });
+
+  it('adds the stack of a plain Error, and keeps an AxiosError to a single line', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    logError('Upload error', new Error('Boom'));
+    expect(log.mock.calls[0]).toHaveLength(2);
+    expect(log.mock.calls[0][0]).toBe('Upload error: Error: Boom');
+    expect(log.mock.calls[0][1]).toMatch(/^\nError: Boom\n\s+at /);
+
+    log.mockClear();
+    logError('Upload error', unauthorized());
+    expect(log.mock.calls[0]).toEqual(['Upload error: AxiosError: Request failed with status code 401, status 401, code ERR_BAD_REQUEST']);
     expect(JSON.stringify(log.mock.calls)).not.toContain('secret-token');
   });
 

@@ -26,7 +26,7 @@ export default tseslint.config(
   },
   // Config files run in Node, not in the browser.
   {
-    files: ['*.config.{js,ts}'],
+    files: ['*.config.{js,ts,mjs,mts,cjs,cts}', 'vitest.workspace.{js,ts}'],
     languageOptions: { globals: globals.node },
   },
 )

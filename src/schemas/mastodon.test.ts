@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   AccountSchema,
   AppRegistrationSchema,
@@ -128,5 +128,22 @@ describe('mastodon schemas', () => {
     expect(InstanceSchema.parse({ configuration: 'none' }).maxCharacters).toBeUndefined();
     expect(InstanceSchema.parse({}).maxCharacters).toBeUndefined();
     expect(InstanceSchema.safeParse('<html>').success).toBe(false);
+  });
+});
+
+describe('parseApiResponse logging', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('logs the path and code of each issue on one line, never a received value', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => parseApiResponse(AccountSchema, { ...account, id: 'Bearer abc', acct: 42 }, 'account')).toThrow();
+
+    expect(log).toHaveBeenCalledTimes(1);
+    const line = String(log.mock.calls[0][0]);
+    expect(line).toContain('Unexpected account from the instance');
+    expect(line).toContain('acct: invalid_type');
+    expect(line).not.toContain('\n');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('Bearer abc');
   });
 });

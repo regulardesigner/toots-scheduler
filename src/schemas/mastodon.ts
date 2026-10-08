@@ -146,7 +146,9 @@ export const TokenResponseSchema = z.object({
 export function parseApiResponse<T extends z.ZodTypeAny>(schema: T, data: unknown, what: string): z.output<T> {
   const result = schema.safeParse(data);
   if (!result.success) {
-    logError(`Unexpected ${what} from the instance`, result.error);
+    // Path and issue code only: a ZodError's message can quote the value received (e.g. an enum).
+    const issues = result.error.issues.map(issue => `${issue.path.join('.') || '(root)'}: ${issue.code}`).join('; ');
+    logError(`Unexpected ${what} from the instance`, new Error(issues));
     throw new Error('Your instance sent an unexpected response. Please try again later.');
   }
   return result.data;

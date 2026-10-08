@@ -28,13 +28,16 @@ export function describeError(error: unknown, depth = 0): string {
 }
 
 /**
- * Logs an error for developers, in DEV only (production builds drop the console anyway).
+ * Logs an error for developers, in DEV only (production builds drop the console anyway):
+ * one summary line, plus the stack of a plain Error.
  * The only console output of the app: never pass a request, a response or a token to the console directly.
  * @param {string} context - What failed, e.g. "Upload error".
  * @param {unknown} error - What was thrown.
  */
 export function logError(context: string, error: unknown): void {
   if (!import.meta.env.DEV) return;
+  // A stack is `name: message` plus frame locations: no config, headers or body. An AxiosError stays one line.
+  const stack = error instanceof Error && !axios.isAxiosError(error) ? error.stack : undefined;
   // eslint-disable-next-line no-console -- the one sanctioned console call, see above
-  console.error(`${context}: ${describeError(error)}`);
+  console.error(`${context}: ${describeError(error)}`, ...(stack ? [`\n${stack}`] : []));
 }
