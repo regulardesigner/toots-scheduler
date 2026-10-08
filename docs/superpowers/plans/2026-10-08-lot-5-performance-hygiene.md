@@ -142,7 +142,7 @@ Audit: [docs/audits/2026-10-01-red-team-report.md](../../audits/2026-10-01-red-t
 | `src/utils/logError.ts` (+ test) | Create | 3 | Safe, DEV-only error log |
 | `src/composables/useMastodonApi.ts` (+ test), `src/stores/scheduledToots.ts`, `src/stores/instance.ts`, `src/schemas/mastodon.ts`, `src/components/OAuthCallback.vue`, `src/components/MediaUpload.vue`, `src/components/Auth/LoginForm.vue`, `src/components/Toot/TootComposer.vue` | Modify | 3 | Every `console.*` replaced or removed |
 | `eslint.config.js` | Modify | 3 | `no-console: 'error'`; Node globals for config files |
-| `src/composables/useGlobalErrorHandler.ts` (+ test) | Create | 4 | `errorHandler` + `unhandledrejection` → generic toast |
+| `src/composables/useGlobalErrorHandler.ts` (+ test, + `useGlobalErrorHandler.mount.test.ts`) | Create | 4 | `errorHandler` + `unhandledrejection` + `error` → generic toast, deferred until the toast container mounts |
 | `src/config/constants.ts` | Modify | 5 | `LANGUAGES`, `SUPPORTED_IMAGE_TYPES`, `DEFAULT_MAX_IMAGE_BYTES`, `DEFAULT_MAX_MEDIA_ATTACHMENTS` |
 | `src/utils/media.ts` (+ test), `src/stores/instance.ts` (+ test), `src/stores/scheduledToots.ts`, `src/components/Toot/ScheduledToots.test.ts` | Modify | 5 | Constants moved; `DEFAULT_IMAGE_LIMITS`, `setLoading`, `instance.load` no longer exported |
 | `src/components/ContentArea.vue`, `ControlsBar.vue`, `Toot/TootCard.vue`, `Toot/TootComposer.vue`, `MediaUpload.vue` (+ tests) | Modify | 5 | Shared languages; no `schedule-button` id; toggles; dead ternary |
@@ -150,9 +150,10 @@ Audit: [docs/audits/2026-10-01-red-team-report.md](../../audits/2026-10-01-red-t
 | `package.json`, `package-lock.json` | Modify | 6, 8 | `@vueuse/*` removed; version 0.16.1 |
 | `.claude/skills/changelog/SKILL.md`, `.claude/skills/vue3-codegen/SKILL.md` | Modify | 6 | Docs follow the renamed and removed symbols |
 | `src/types/mastodon.ts`, `src/components/Toot/TootCard.vue`, `ScheduledToots.vue`, `TootComposer.vue` (+ tests), `src/utils/isOnlyScheduleChange.test.ts`, `src/stores/scheduledToots.test.ts` | Modify | 7 | Aligned `MastodonStatus`; one list request |
+| `src/schemas/mastodon.ts` (+ test) | Modify | 7 (review) | `sensitive` read as Mastodon casts it at publish time |
 | `README.md` | Modify | 8 | Features and Security lines |
 
-Test count after each task: 384 → **388** (T1) → **398** (T2) → **404** (T3) → **410** (T4) → **413** (T5) → **422** (T6) → **424** (T7) → 424 (T8). Each task leaves typecheck, lint (0 errors) and tests green.
+Test count after each task: 384 → **389** (T1) → **400** (T2) → **408** (T3) → **417** (T4) → **420** (T5) → **430** (T6) → **438** (T7, with the review's `sensitive` fixes) → 438 (T8). Each task leaves typecheck, lint (0 errors) and tests green. (Planned: 388, 398, 404, 410, 413, 422, 424; the review fixes added the rest.)
 
 ---
 
@@ -177,11 +178,11 @@ Test count after each task: 384 → **388** (T1) → **398** (T2) → **404** (T
   Only `.winky-sans-500`, `.winky-sans-700` and `.winky-sans-900` remain as utility classes
 - [ ] No `.ttf`, `.otf` or `.woff` file remains under `src/assets/fonts/`, and each family keeps its `OFL.txt`
 - [ ] The Nunito Sans file keeps the `wght` (200–1000) and `opsz` (6–12) axes; `wdth` and `YTLC` are pinned at 100 and 500. Winky Sans keeps `wght` (300–900). Both are subset to Latin and Latin Extended with all OpenType layout features
-- [ ] `npm run build` puts exactly two `.woff2` files and no `.ttf` in `dist/assets`, under 300 KB together (127,568 bytes in the dry run)
+- [ ] `npm run build` puts exactly two `.woff2` files and no `.ttf` in `dist/assets`, under 300 KB together (127,568 bytes in the dry run; shipped: 129,704 bytes)
 - [ ] `:root` in `App.vue` no longer sets `font-variation-settings` (the axes are gone; `font-optical-sizing: auto` stays)
-- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 388 tests
+- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 389 tests
 
-**Verify:** `npx vitest run src/assets/styles/fonts.test.ts` → `Tests  4 passed (4)`, then `npm run build && ls -l dist/assets/*.woff2 | awk '{s+=$5} END {print s}'` → about `127568`
+**Verify:** `npx vitest run src/assets/styles/fonts.test.ts` → `Tests  5 passed (5)`, then `npm run build && ls -l dist/assets/*.woff2 | awk '{s+=$5} END {print s}'` → about `129704` (127568 in the dry run)
 
 **Steps:**
 
@@ -376,12 +377,12 @@ ls -l dist/assets/*.woff2 | awk '{s+=$5} END {print s}'
 ```
 
 Expected:
-- `Tests  4 passed (4)`;
+- `Tests  5 passed (5)`;
 - typecheck exits 0;
 - lint: `0 errors` (4 warnings, as before);
-- `Tests  388 passed (388)`;
+- `Tests  389 passed (389)`;
 - the build lists `WinkySans-Variable-Latin-*.woff2 46.88 kB` and `NunitoSans-Variable-Latin-*.woff2 80.69 kB`, and no `.ttf`;
-- the sum is about `127568`.
+- the sum is about `129704` (127568 in the dry run).
 
 - [ ] **Step 7: Commit**
 
@@ -434,9 +435,9 @@ The page also describes itself to search engines and link previews, and the Vite
 
   The favicon stays the inline SVG emoji, which `img-src data:` allows
 - [ ] `public/vite.svg`, `src/assets/vue.svg` and `src/types/svg.d.ts` are deleted: nothing references them, and `vite/client` already types `*.svg` imports
-- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 398 tests
+- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 400 tests
 
-**Verify:** `npx vitest run src/assets/styles/toasts.test.ts src/pageShell.test.ts` → `Tests  10 passed (10)`
+**Verify:** `npx vitest run src/assets/styles/toasts.test.ts src/pageShell.test.ts` → `Tests  11 passed (11)`
 
 **Steps:**
 
@@ -692,10 +693,10 @@ grep -o "Vue-Toastification__container .Vue-Toastification__toast--success{[^}]*
 ```
 
 Expected:
-- `Tests  10 passed (10)`;
+- `Tests  11 passed (11)`;
 - typecheck exits 0;
 - `0 errors` (4 warnings);
-- `Tests  398 passed (398)`;
+- `Tests  400 passed (400)`;
 - `…index-*.css:body.modal-open{overflow:hidden}`;
 - `…:Vue-Toastification__container .Vue-Toastification__toast--success{background-color:#333;color:#fff}`.
 
@@ -738,9 +739,9 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - `'no-console': 'error'`, with one `eslint-disable-next-line` in `logError.ts`;
   - a block `{ files: ['*.config.{js,ts}'], languageOptions: { globals: globals.node } }`
 - [ ] A failed `deleteScheduledToot` logs `Error deleting scheduled toot: AxiosError: Request failed with status code 404, status 404, code ERR_BAD_REQUEST`, and the token string appears in no logged argument
-- [ ] typecheck, lint (0 errors, 2 warnings left) and build pass; `npm test` passes with 404 tests
+- [ ] typecheck, lint (0 errors, 2 warnings left) and build pass; `npm test` passes with 408 tests
 
-**Verify:** `npx vitest run src/utils/logError.test.ts src/composables/useMastodonApi.test.ts` → `Tests  36 passed (36)`
+**Verify:** `npx vitest run src/utils/logError.test.ts src/composables/useMastodonApi.test.ts` → `Tests  37 passed (37)`
 
 **Steps:**
 
@@ -972,11 +973,11 @@ npm run build && grep -c "console\." dist/assets/index-*.js
 ```
 
 Expected:
-- `Tests  36 passed (36)`;
+- `Tests  37 passed (37)`;
 - the grep lists only `src/utils/logError.ts` (its JSDoc line and its `console.error`);
 - typecheck exits 0;
 - `0 errors, 2 warnings`: TootCard's `spoiler_text` prop casing and the `any` in `types/mastodon.ts`, both fixed in Task 7;
-- `Tests  404 passed (404)`;
+- `Tests  408 passed (408)`;
 - `0`: no console call in the production bundle.
 
 To check that the rule bites, run `echo "console.error('x');" >> src/utils/url.ts && npx eslint src/utils/url.ts; git checkout src/utils/url.ts`. Expected: `error  Unexpected console statement  no-console`.
@@ -1017,9 +1018,9 @@ Either way the user sees one generic error toast, and the error is logged throug
 - [ ] Both paths log through `logError`: `Unhandled error (<info>): …` and `Unhandled promise rejection: …`. Nothing is logged in production, and a non-Error reason is never printed
 - [ ] The rejection listener calls `event.preventDefault()`, so the browser does not print "Uncaught (in promise)" with the raw reason, which may be an AxiosError carrying the token
 - [ ] `main.ts` installs it right after `app.use(Toast, …)` and before `app.mount`
-- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 410 tests
+- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 417 tests
 
-**Verify:** `npx vitest run src/composables/useGlobalErrorHandler.test.ts` → `Tests  6 passed (6)`
+**Verify:** `npx vitest run src/composables/useGlobalErrorHandler.test.ts` → `Tests  8 passed (8)` (and `useGlobalErrorHandler.mount.test.ts` → `Tests  1 passed (1)`)
 
 **Steps:**
 
@@ -1226,10 +1227,10 @@ npm run build
 ```
 
 Expected:
-- `Tests  6 passed (6)`;
+- `Tests  8 passed (8)`;
 - typecheck exits 0;
 - `0 errors, 2 warnings`;
-- `Tests  410 passed (410)`;
+- `Tests  417 passed (417)`;
 - `✓ built`.
 
 - [ ] **Step 5: Commit**
@@ -1287,9 +1288,9 @@ Also cleaned up:
 - [ ] TootComposer toggles the media section inline (`showMedia = !showMedia`). The poll toggle, renamed `togglePoll`, still empties the poll on close
 - [ ] MediaUpload's button simply reads `Alt`
 - [ ] `grep -rn "DEFAULT_IMAGE_LIMITS\|setLoading\|schedule-button\|MAX_IMAGES_PER_TOOT\|\bMAX_IMAGE_BYTES\|handleShowMedia" src` lists only `media.test.ts`'s own local `DEFAULT_IMAGE_LIMITS`
-- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 413 tests
+- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 420 tests
 
-**Verify:** `npx vitest run src/components/Toot/TootCard.test.ts src/components/ControlsBar.test.ts src/components/ContentArea.test.ts src/utils/media.test.ts src/stores/instance.test.ts src/components/Toot/ScheduledToots.test.ts` → `Tests  76 passed (76)`
+**Verify:** `npx vitest run src/components/Toot/TootCard.test.ts src/components/ControlsBar.test.ts src/components/ContentArea.test.ts src/utils/media.test.ts src/stores/instance.test.ts src/components/Toot/ScheduledToots.test.ts` → `Tests  78 passed (78)`
 
 **Steps:**
 
@@ -1597,11 +1598,11 @@ npm run build
 ```
 
 Expected:
-- `Tests  76 passed (76)`;
+- `Tests  78 passed (78)`;
 - the grep prints nothing;
 - typecheck exits 0;
 - `0 errors, 2 warnings`;
-- `Tests  413 passed (413)`;
+- `Tests  420 passed (420)`;
 - `✓ built`.
 
 - [ ] **Step 8: Commit**
@@ -1647,9 +1648,9 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - [ ] The objects returned by `useMastodonApi`, the features store and the instance store list their members without repeating the JSDoc; that JSDoc now sits on the definitions. `useNotify` keeps its inline docs, which are the definitions
 - [ ] `@vueuse/components` and `@vueuse/core` are gone from `package.json` and the lock file; `npx depcheck` prints `No depcheck issue`
 - [ ] `.claude/skills/changelog/SKILL.md` no longer mentions `APP_VERSION` or `lastThreeNewFeatures`. `.claude/skills/vue3-codegen/SKILL.md` asks for JSDoc at the definition, not in the returned object
-- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 422 tests
+- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 430 tests
 
-**Verify:** `npx vitest run src/stores/features.test.ts` → `Tests  9 passed (9)`
+**Verify:** `npx vitest run src/stores/features.test.ts` → `Tests  10 passed (10)`
 
 **Steps:**
 
@@ -1977,10 +1978,10 @@ npm run build
 ```
 
 Expected:
-- `Tests  9 passed (9)`;
+- `Tests  10 passed (10)`;
 - typecheck exits 0;
 - `0 errors, 2 warnings`;
-- `Tests  422 passed (422)`;
+- `Tests  430 passed (430)`;
 - `✓ built`.
 
 - [ ] **Step 7: Commit**
@@ -2037,9 +2038,9 @@ So it is done here rather than left as a residual. The `as unknown as MastodonSt
   - takes `medias` as `MastodonMediaAttachment[]`;
   - its `spoiler_text` prop is renamed `spoilerText` (`vue/prop-name-casing`)
 - [ ] `npm run lint` reports **0 problems** (the last two warnings are gone)
-- [ ] typecheck and build pass; `npm test` passes with 424 tests
+- [ ] typecheck and build pass; `npm test` passes with 438 tests
 
-**Verify:** `npx vitest run src/components/Toot src/utils/isOnlyScheduleChange.test.ts src/stores/scheduledToots.test.ts` → `Tests  116 passed (116)`
+**Verify:** `npx vitest run src/components/Toot src/utils/isOnlyScheduleChange.test.ts src/stores/scheduledToots.test.ts` → `Tests  119 passed (119)`
 
 **Steps:**
 
@@ -2239,10 +2240,10 @@ npm run build
 ```
 
 Expected:
-- `Tests  116 passed (116)`;
+- `Tests  119 passed (119)`;
 - typecheck exits 0, with no error left from the 11 the type change raised;
 - lint prints no problem at all;
-- `Tests  424 passed (424)`;
+- `Tests  438 passed (438)`;
 - `✓ built`.
 
 - [ ] **Step 7: Commit**
@@ -2255,7 +2256,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ```json:metadata
-{"files": ["src/types/mastodon.ts", "src/composables/useMastodonApi.ts", "src/components/Toot/TootCard.vue", "src/components/Toot/TootCard.test.ts", "src/components/Toot/ScheduledToots.vue", "src/components/Toot/ScheduledToots.test.ts", "src/components/Toot/TootComposer.vue", "src/components/Toot/TootComposer.test.ts", "src/stores/scheduledToots.test.ts", "src/utils/isOnlyScheduleChange.test.ts"], "verifyCommand": "npx vitest run src/components/Toot src/utils/isOnlyScheduleChange.test.ts src/stores/scheduledToots.test.ts", "acceptanceCriteria": ["one scheduled-list request when the composer opens", "MastodonStatus = validated shape with nullable params, typed media, no any", "TootCard accepts nulls, spoilerText prop", "lint 0 problems", "424 tests"], "requiresUserVerification": false}
+{"files": ["src/types/mastodon.ts", "src/composables/useMastodonApi.ts", "src/components/Toot/TootCard.vue", "src/components/Toot/TootCard.test.ts", "src/components/Toot/ScheduledToots.vue", "src/components/Toot/ScheduledToots.test.ts", "src/components/Toot/TootComposer.vue", "src/components/Toot/TootComposer.test.ts", "src/stores/scheduledToots.test.ts", "src/utils/isOnlyScheduleChange.test.ts"], "verifyCommand": "npx vitest run src/components/Toot src/utils/isOnlyScheduleChange.test.ts src/stores/scheduledToots.test.ts", "acceptanceCriteria": ["one scheduled-list request when the composer opens", "MastodonStatus = validated shape with nullable params, typed media, no any", "TootCard accepts nulls, spoilerText prop", "lint 0 problems", "438 tests"], "requiresUserVerification": false}
 ```
 
 ---
@@ -2266,7 +2267,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - the lighter first load;
 - readable notifications;
 - the message shown on an unexpected error;
-- the scroll lock behind dialogs.
+- the scroll lock behind dialogs;
+- content warnings from other apps (the `sensitive` fix, ce71f77).
 
 The README gets a features line and a security sentence.
 
@@ -2277,11 +2279,11 @@ The README gets a features line and a security sentence.
 
 **Acceptance Criteria:**
 - [ ] The version is `0.16.1` in `package.json`, `package-lock.json` and the first FeatureGroup, dated `2026-10-08`
-- [ ] The 4 new ids are unique. Each title starts with an emoji and is at most 60 characters; each description is plain text, at most 3 sentences
+- [ ] The 5 new ids are unique. Each title starts with an emoji and is at most 60 characters; each description is plain text, at most 3 sentences
 - [ ] No existing FeatureGroup is changed
 - [ ] Nothing invisible gets an entry: not the meta tags, the logging, the constants, the types or the dependencies
 - [ ] README: a "⚡ Lightweight" line under Features; the Security section's last item says how errors are logged in development
-- [ ] lint (0 problems), typecheck, test (424, including the changelog-consistency test from Task 6) and build pass
+- [ ] lint (0 problems), typecheck, test (438, including the changelog-consistency test from Task 6) and build pass
 
 **Verify:** `node -e "console.log(require('./package.json').version)"` → `0.16.1`
 
@@ -2289,7 +2291,7 @@ The README gets a features line and a security sentence.
 
 - [ ] **Step 1:** Read `.claude/skills/changelog/SKILL.md`.
 - [ ] **Step 2:** Run `npm version patch --no-git-tag-version`. Expected output: `v0.16.1`. `npm test` now fails one test, "keeps the changelog consistent…", until Step 4: the package version is ahead of the store.
-- [ ] **Step 3:** Run `grep -nE "faster-first-load|readable-notifications|unexpected-error-message|dialog-scroll-lock" src/stores/features.ts`. Expected: no output.
+- [ ] **Step 3:** Run `grep -nE "faster-first-load|readable-notifications|unexpected-error-message|dialog-scroll-lock|content-warning-from-other-apps" src/stores/features.ts`. Expected: no output.
 - [ ] **Step 4:** Prepend this group at the top of the `features` array (before `version: '0.16.0'`):
 
 ```ts
@@ -2300,7 +2302,7 @@ The README gets a features line and a security sentence.
         {
           id: 'faster-first-load',
           title: '⚡ Faster First Load',
-          description: 'Toot Scheduler now downloads about 1 MB less on your first visit: its fonts are a tenth of their former size, and look the same. Your scheduled toots are also loaded once instead of twice when the composer opens.'
+          description: 'Toot Scheduler now downloads about half a megabyte less on your first visit: its fonts are a tenth of their former size, and look the same. Your scheduled toots are also loaded once instead of twice when the composer opens.'
         },
         {
           id: 'readable-notifications',
@@ -2317,6 +2319,11 @@ The README gets a features line and a security sentence.
           title: '🐛 Fix: The Page Stays Put Behind Dialogs',
           description: 'Scrolling inside a dialog, such as this one, no longer scrolls the page behind it.'
         },
+        {
+          id: 'content-warning-from-other-apps',
+          title: '🐛 Fix: Content Warnings From Other Apps',
+          description: 'A toot scheduled from another app no longer shows a content warning it does not have.'
+        },
       ],
     },
 ```
@@ -2332,7 +2339,7 @@ The README gets a features line and a security sentence.
   - in `## Security`, in the "Known trade-off" item, replace `and the production build contains no console output.` with:
 
 ```markdown
-and the production build contains no console output. In development, errors are logged as one-line summaries, never with the request's headers or token.
+and the production build contains no console output. In development, errors are logged as short summaries (plus the stack of a plain error), never with the request's headers or token.
 ```
 
 - [ ] **Step 6:** Run `npm run lint && npm run typecheck && npm test && npm run build`.
@@ -2340,7 +2347,7 @@ and the production build contains no console output. In development, errors are 
 Expected:
 - lint prints no problem;
 - typecheck exits 0;
-- `Tests  424 passed (424)`;
+- `Tests  438 passed (438)`;
 - `✓ built`.
 
 The `spa-redirect.js` "can't be bundled" warning from Lot 3 is expected.
@@ -2354,7 +2361,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ```json:metadata
-{"files": ["package.json", "package-lock.json", "src/stores/features.ts", "README.md"], "verifyCommand": "node -e \"console.log(require('./package.json').version)\"", "acceptanceCriteria": ["version 0.16.1 everywhere (PATCH per the changelog rules)", "4 unique ids following the changelog rules, user-visible changes only", "append-only changelog", "README features and security updated", "lint, typecheck, test (424), build pass"], "requiresUserVerification": false}
+{"files": ["package.json", "package-lock.json", "src/stores/features.ts", "README.md"], "verifyCommand": "node -e \"console.log(require('./package.json').version)\"", "acceptanceCriteria": ["version 0.16.1 everywhere (PATCH per the changelog rules)", "5 unique ids following the changelog rules, user-visible changes only", "append-only changelog", "README features and security updated", "lint, typecheck, test (438), build pass"], "requiresUserVerification": false}
 ```
 
 ---
@@ -2372,8 +2379,8 @@ It then reports, and asks the user for the one check only they can do: Lighthous
 - None in the repo. The suite is in the session scratchpad, `e2e/e2e.mjs`, with Playwright and `axe-core` installed next to it (`e2e/node_modules`), not in the project
 
 **Acceptance Criteria:**
-- [ ] `npm test` (424), `npm run typecheck`, `npm run lint` (0 problems) and `npm run build` pass
-- [ ] `dist/assets` holds exactly two `.woff2` files and no `.ttf`, under 300 KB together (127,568 bytes in the dry run)
+- [ ] `npm test` (438), `npm run typecheck`, `npm run lint` (0 problems) and `npm run build` pass
+- [ ] `dist/assets` holds exactly two `.woff2` files and no `.ttf`, under 300 KB together (127,568 bytes in the dry run; shipped: 129,704 bytes)
 - [ ] `npx -y depcheck` prints `No depcheck issue`
 - [ ] The Playwright suite passes:
   - Chromium **48/48**: the 41 existing checks and L5-1 to L5-7;
@@ -2391,7 +2398,7 @@ It then reports, and asks the user for the one check only they can do: Lighthous
 ```bash
 npm run lint && npm run typecheck && npm test && npm run build
 ls dist/assets | grep -cE '\.ttf$'                                # expected: 0
-ls -l dist/assets/*.woff2 | awk '{n++; s+=$5} END {print n, s}'   # expected: 2 and about 127568 (< 307200)
+ls -l dist/assets/*.woff2 | awk '{n++; s+=$5} END {print n, s}'   # expected: 2 and about 129704 (< 307200)
 npx -y depcheck                                                   # expected: No depcheck issue
 ```
 
@@ -2436,7 +2443,7 @@ Look at the screenshots in `e2e/shots/`, including the landing hero, the compose
 
 Report:
 - the gates;
-- the font sizes: 1,338,219 → about 127,568 bytes in `dist/assets`;
+- the font sizes: 1,338,219 → 129,704 bytes in `dist/assets`;
 - the depcheck result;
 - both suite totals;
 - the dry run's local Lighthouse numbers: mobile 69 → 96, desktop 98 → 100, on `vite preview`.
@@ -2448,7 +2455,7 @@ Only the user can check this:
 Before marking this task complete, you MUST call AskUserQuestion:
 ```yaml
 AskUserQuestion:
-  question: "The automated checks pass (424 unit tests, fonts at about 128 KB in WOFF2, depcheck clean, the Playwright suite in Chromium and WebKit with the Lot 5 checks: fonts, scroll lock, toast contrast, one list request, the error toast, no token in the console, meta tags). Does Lighthouse performance reach at least 90 on the landing page, desktop and mobile?"
+  question: "The automated checks pass (438 unit tests, fonts at about 130 KB in WOFF2, depcheck clean, the Playwright suite in Chromium and WebKit with the Lot 5 checks: fonts, scroll lock, toast contrast, one list request, the error toast, no token in the console, meta tags). Does Lighthouse performance reach at least 90 on the landing page, desktop and mobile?"
   header: "Verification"
   options:
     - label: "Both at 90 or more"
@@ -2460,7 +2467,7 @@ AskUserQuestion:
 ```
 
 ```json:metadata
-{"files": [], "verifyCommand": "node e2e.mjs", "acceptanceCriteria": ["test (424), typecheck, lint (0 problems), build pass", "dist: two woff2, no ttf, under 300 KB", "depcheck: no issue", "Playwright: 41/42 existing checks + L5-1..L5-7 (fonts, scroll lock, toast contrast, one list request, error toast, no token in console, meta): 48/48 Chromium, 49/49 WebKit", "zero CSP violations", "user informed and Lighthouse performance >= 90 checked on the landing page, desktop and mobile"], "requiresUserVerification": true, "userVerificationPrompt": "The automated checks pass (424 unit tests, fonts at about 128 KB in WOFF2, depcheck clean, the Playwright suite in Chromium and WebKit with the Lot 5 checks: fonts, scroll lock, toast contrast, one list request, the error toast, no token in the console, meta tags). Does Lighthouse performance reach at least 90 on the landing page, desktop and mobile?"}
+{"files": [], "verifyCommand": "node e2e.mjs", "acceptanceCriteria": ["test (438), typecheck, lint (0 problems), build pass", "dist: two woff2, no ttf, under 300 KB", "depcheck: no issue", "Playwright: 41/42 existing checks + L5-1..L5-7 (fonts, scroll lock, toast contrast, one list request, error toast, no token in console, meta): 48/48 Chromium, 49/49 WebKit", "zero CSP violations", "user informed and Lighthouse performance >= 90 checked on the landing page, desktop and mobile"], "requiresUserVerification": true, "userVerificationPrompt": "The automated checks pass (438 unit tests, fonts at about 130 KB in WOFF2, depcheck clean, the Playwright suite in Chromium and WebKit with the Lot 5 checks: fonts, scroll lock, toast contrast, one list request, the error toast, no token in the console, meta tags). Does Lighthouse performance reach at least 90 on the landing page, desktop and mobile?"}
 ```
 
 ---
@@ -2476,7 +2483,7 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-5-pe
     - WOFF2, subset to Latin and Latin Extended;
     - variable fonts kept: Nunito `wght` and `opsz`, Winky `wght`;
     - every TTF removed: 4 variable and 14 static;
-    - 127,568 bytes in `dist/assets` against a 300 KB target. It was 1,338,219 bytes;
+    - 129,704 bytes in `dist/assets` (81,844 Nunito Sans + 47,860 Winky Sans; 127,568 in the dry run, before the licence name records and combining marks were kept) against a 300 KB target. It was 1,338,219 bytes;
     - the font usage was checked first: weights 400 to 900, no italic, three utility classes;
     - the tool: fontTools and brotli in a pinned throw-away venv. The exact commands and the expected sizes are in Step 2, and the conversion was run in the dry run;
     - the binaries are committed.
@@ -2524,41 +2531,52 @@ Use `superpowers-extended-cc:finishing-a-development-branch`. Push `fix/lot-5-pe
     - `opsz` is kept, because two texts are set below 12 px;
     - italics are dropped, because none is used, and `font-synthesis: none` already ruled out faux italics;
     - one file per family covers both ranges, with no `unicode-range` split: Latin Extended costs a few KB, and a second request would cost more.
+  - **The subsets keep more than planned (task review):** `--name-IDs='*'` keeps the copyright and OFL licence name records (OFL §2), and `--unicodes` adds the combining marks U+0300–036F. Shipped size: 81,844 + 47,860 = **129,704 bytes** (127,568 in the dry run). `fonts.test.ts` also pins the weight ranges (200 1000, 300 900) and `font-display: swap` (5 tests, not 4).
   - **`fonts.css` keeps only the three utility classes in use.** The 20 other `.nunito-sans-*` and `.winky-sans-*` classes were never referenced.
   - **Vitest `test.css.include`.** Without it, `?raw` CSS imports are empty strings in tests. It is limited to `src/assets/styles/`.
   - **`useGlobalErrorHandler` is a composable called from `main.ts`**, rather than inline code:
     - it listens with `addEventListener('unhandledrejection')`, which leaves `window.onunhandledrejection` free;
     - it is testable and can be uninstalled;
-    - it adds a 5 s toast throttle and `preventDefault()`, so the browser never logs the raw reason, which can be an AxiosError with the token.
+    - it adds a 5 s toast throttle and `preventDefault()` on rejections, so the browser never logs the raw reason, which can be an AxiosError with the token.
+  - **The global handler goes further than planned (task review):**
+    - the toast is deferred with `nextTick`: the toast container mounts on the tick after `app.use(Toast)`, so an error thrown during the first mount would otherwise toast into nothing. `useGlobalErrorHandler.mount.test.ts` checks it with the real plugin;
+    - a window `error` listener also catches exceptions thrown in raw timer callbacks. It ignores events with no error object (cross-origin "Script error.", the ResizeObserver notice) and does not call `preventDefault()`. `uninstall` removes both listeners. 8 unit tests + 1 mount test, not 6.
   - **`no-console` is now `error`, not `warn`.** It enforces the logging rule; `logError.ts` holds the one sanctioned call.
+  - **`logError` differs from the plan's single string (task review):**
+    - in DEV a plain Error also passes its stack as a second argument. A stack holds only `name: message` and frame locations; an AxiosError stays one line;
+    - `parseApiResponse` logs zod issues as `path: code` joined by `; `, never the received value, which a ZodError message can quote;
+    - the ESLint Node-globals block matches `*.config.{js,ts,mjs,mts,cjs,cts}`.
   - **Toast styling:**
     - palette mapping: success and default `#333`, info `#2577b1`, warning `#FF9200` with `#333` text, error `#c0392b`;
-    - the close button at 0.8 opacity in the text colour;
+    - the close button at 0.8 opacity in the text colour, with a visible `:focus-visible` outline (`2px solid currentColor`), because the library removes the outline (WCAG 2.4.7; task review);
     - toasts in the app font.
 
     A unit test computes every ratio and checks that only palette colours are used.
   - **Scroll lock rule in `App.vue`'s unscoped `<style>`**, the stylesheet that already holds the app's global rules (`*`, `:root`, `.visually-hidden`), rather than in a new global file.
   - **More files deleted than listed:** `src/types/svg.d.ts`, since nothing imports an SVG in TypeScript and `vite/client` declares `*.svg` anyway, and the two Google Fonts `README.txt` files, which described the TTFs. Both `OFL.txt` licences stay.
-  - **Renamed constants:** `MAX_IMAGE_BYTES` → `DEFAULT_MAX_IMAGE_BYTES` and `MAX_IMAGES_PER_TOOT` → `DEFAULT_MAX_MEDIA_ATTACHMENTS`, in line with `DEFAULT_MAX_CHARACTERS`. They are defaults, overridden by the instance.
-  - **The features store validates the saved shape with zod** (already a dependency), not just `JSON.parse`. Writing is wrapped too. A test pins the changelog invariants (package version, unique ids and versions), which the changelog skill now mentions.
+  - **Renamed constants:** `MAX_IMAGE_BYTES` → `DEFAULT_MAX_IMAGE_BYTES` and `MAX_IMAGES_PER_TOOT` → `DEFAULT_MAX_MEDIA_ATTACHMENTS`, in line with `DEFAULT_MAX_CHARACTERS`. They are defaults, overridden by the instance. `SUPPORTED_IMAGE_TYPES` is typed `readonly string[]`. The ControlsBar test pins `en` first and the 14 shared languages.
+  - **`setError` is no longer exported** from the scheduled toots store (final review): nothing outside the store used it, like `setLoading`.
+  - **The features store validates the saved shape with zod** (already a dependency), not just `JSON.parse`. Each field falls back on its own (`.catch`): a wrong `lastSeenVersion` keeps the releases seen, which a test pins. Writing is wrapped too. A test pins the changelog invariants (package version, unique ids and versions), which the changelog skill now mentions.
   - **Skills updated:**
     - `changelog`, which named `APP_VERSION` and `lastThreeNewFeatures`;
-    - `vue3-codegen`, which asked for JSDoc in the returned object, the duplication the spec removes.
+    - `vue3-codegen`, which asked for JSDoc in the returned object, the duplication the spec removes;
+    - `web-security` (final review): errors are logged with `src/utils/logError.ts` only, and `no-console` is an error.
   - **`MastodonStatus` keeps its name.** Renaming it to `ScheduledStatus` would touch about ten more files for no behaviour change. A plain `as MastodonStatus[]` cast remains in `getScheduledToots`: the schema passes some params through unchecked (see residuals).
+  - **`sensitive` is now checked by the schema (beyond the plan, ce71f77 and 0e3e0f8).** Mastodon echoes it as the client sent it. The schema reads it as Mastodon casts it at publish time (Rails boolean): blank → unset; `0`, `f`, `false`, `off` (and their upper-case forms) → false; anything else → true. A number is false only when 0. Any other type is refused. So a toot scheduled from a form-posting client no longer shows a content warning for `"false"`, and one odd value (`"1"`, `"on"`) never hides the whole list.
   - **TootCard's `spoiler_text` prop became `spoilerText`.** That was the last lint warning; lint now reports 0 problems.
+  - **Release 0.16.1 has five What's New entries, not four:** `content-warning-from-other-apps` covers the `sensitive` fix, which users can see. The first entry says "about half a megabyte less", not "about 1 MB": only the two upright variable TTFs were ever downloaded (the dry run measured 779 → 245 KiB transferred).
   - **Not done, because not needed:** lazy-loading the composer route. The dry run's Lighthouse already scores 96 on mobile and 100 on desktop.
 - **Known residuals:**
-  - **Non-Latin scripts use the system font:** Cyrillic, Greek, Vietnamese combining marks, CJK and so on. In the UI this only affects "Русский" in the language list. A toot written in those scripts shows in the system sans-serif, in the composer and on the cards. The spec asked for Latin and Latin Extended; a Cyrillic subset with `unicode-range` would load only when needed, if wanted later.
+  - **Non-Latin scripts use the system font:** Cyrillic, Greek, CJK and so on. Vietnamese and combining marks are covered by Nunito Sans (the body font); Winky Sans, used for headings, has no Vietnamese glyphs in its source. In the UI this only affects "Русский" in the language list. A toot written in those scripts shows in the system sans-serif, in the composer and on the cards. A Cyrillic subset with `unicode-range` would load only when needed, if wanted later.
   - **Font files are not byte-reproducible:** the instancer's Nunito output varies by a few bytes between runs. Winky's is identical. The tool versions are pinned in Task 1 and the recipe is in `fonts.css`.
   - **Toasts sit outside the page landmarks.** axe reports a `moderate` `region` finding on `.Vue-Toastification__toast-body` while a toast is shown; the library appends its container to `<body>`. Toasts are not live regions (Lot 4), and every message is also spoken from App's live regions.
-  - **The global handler catches Vue errors and unhandled rejections only, not plain `window.onerror` exceptions** thrown outside Vue (none is expected: `spa-redirect.js` is the only other script). A render error in a component still leaves that component empty; the toast says something went wrong.
+  - **What the global handler leaves out:** Vue errors, unhandled rejections and window `error` events that carry an error object all reach it. Error events without one (cross-origin "Script error.", browser notices) are ignored on purpose. Window `error` events are not prevented, so the browser still prints "Uncaught …" (the error's text and stack) in production. A render error in a component still leaves that component empty; the toast says something went wrong.
   - **`theme-color` is white only.** The app has no dark mode, which is still not addressed, as in Lot 4. There is no `og:image`; link previews show the title and description.
-  - **Unchecked params:** `MastodonStatus.params.sensitive`, `spoiler_text`, `language` and the poll's `expires_in`/`multiple`/`hide_totals` are typed as Mastodon documents them, but the schema does not check them. Another client could echo `sensitive: "true"` as a string. `isOnlyScheduleChange` already treats such values as a change; the card and the composer would read them as truthy.
+  - **Unchecked params:** `MastodonStatus.params.spoiler_text`, `language` and the poll's `expires_in`/`multiple`/`hide_totals` are typed as Mastodon documents them, but the schema does not check them. The card and the composer read them as they come. (`sensitive` is now checked; see Deviations.)
   - **Lighthouse was measured locally only** (`vite preview`, Lighthouse 12). The deployed site, behind GitHub Pages' CDN and compression, is the user's check in Task 9.
   - Lot 4 residuals not in this lot's scope remain:
     - closing the media section keeps the images;
     - dialogs do not make the page `inert`;
-    - the mobile menu has no focus trap;
-    - VoiceOver has not been re-tested after the Safari fixes.
+    - the mobile menu has no focus trap.
 
     The scroll lock now ships, so Lot 4's residual "`overflow: hidden` on `<body>`, which iOS Safari may not honour" applies for real.
