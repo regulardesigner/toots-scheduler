@@ -56,6 +56,9 @@ export const MediaAttachmentSchema = z.object({
   description: media.description ?? undefined,
 }));
 
+/** The strings Rails (ActiveModel::Type::Boolean) casts to false. */
+const RAILS_FALSE = new Set(['0', 'f', 'F', 'false', 'FALSE', 'off', 'OFF']);
+
 /**
  * A scheduled status. What the app renders or compares is checked (date, text, visibility,
  * media ids, sensitive flag, poll options); the other params are kept as sent, since their
@@ -69,9 +72,13 @@ export const ScheduledStatusSchema = z.object({
     text: z.string().nullish().transform(text => text ?? ''),
     visibility: z.string().nullish(),
     media_ids: z.array(z.string()).nullish(),
-    // Echoed as "true"/"false" when the client sent a form: read as a boolean, or the card would
-    // show a warning for "false". Any other value is refused rather than guessed (isOnlyScheduleChange).
-    sensitive: z.union([z.boolean(), z.enum(['true', 'false']).transform(value => value === 'true')]).nullish(),
+    // Echoed as the client sent it ("1", "on", "false"...): refusing an odd value would hide the whole list.
+    // Mastodon casts it as Rails does at publish time: blank is unset, these are false, anything else is true.
+    sensitive: z.union([
+      z.boolean(),
+      z.number().transform(n => n !== 0),
+      z.string().transform(s => (s === '' ? null : !RAILS_FALSE.has(s))),
+    ]).nullish(),
     // Rendered by the composer when editing: options must be strings.
     poll: z.object({ options: z.array(z.string()) }).passthrough().nullish(),
   }).passthrough(),

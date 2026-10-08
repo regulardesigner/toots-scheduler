@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { z } from 'zod';
 import {
   AccountSchema,
   AppRegistrationSchema,
@@ -70,21 +71,26 @@ describe('mastodon schemas', () => {
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, poll: { options: [{ evil: 1 }] } } }).success).toBe(false);
   });
 
-  it('reads a sensitive flag echoed as "true" or "false" as a boolean', () => {
+  it('reads a sensitive flag as Mastodon does at publish time (Rails boolean cast)', () => {
     const sensitive = (value: unknown) => ScheduledStatusSchema.parse({ ...scheduled, params: { ...scheduled.params, sensitive: value } }).params.sensitive;
 
-    expect(sensitive('false')).toBe(false);
-    expect(sensitive('true')).toBe(true);
-    expect(sensitive(false)).toBe(false);
-    expect(sensitive(true)).toBe(true);
+    for (const value of ['true', '1', 'yes', 'on', 1, true]) expect(sensitive(value)).toBe(true);
+    for (const value of ['false', '0', 'off', 'f', 0, false]) expect(sensitive(value)).toBe(false);
+    expect(sensitive('')).toBeNull();
     expect(sensitive(null)).toBeNull();
     expect(ScheduledStatusSchema.parse({ ...scheduled, params: { text: 'Hello' } }).params.sensitive).toBeUndefined();
   });
 
-  it('refuses a sensitive flag it cannot read, so it is never taken for "not sensitive"', () => {
-    for (const value of ['1', 'yes', 1, {}]) {
+  it('refuses a sensitive flag that is not a boolean, number or string', () => {
+    for (const value of [{}, ['1']]) {
       expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, sensitive: value } }).success).toBe(false);
     }
+  });
+
+  it('still reads a whole list when one toot has a form-posted sensitive flag', () => {
+    const list = [scheduled, { ...scheduled, id: 's2', params: { ...scheduled.params, sensitive: '1' } }];
+    const parsed = z.array(ScheduledStatusSchema).parse(list);
+    expect(parsed.map(status => status.params.sensitive)).toEqual([null, true]);
   });
 
   it('does not let __proto__ in a response pollute objects', () => {

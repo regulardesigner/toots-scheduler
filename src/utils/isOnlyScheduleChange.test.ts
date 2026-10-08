@@ -103,6 +103,13 @@ describe('isOnlyScheduleChange', () => {
     expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(false);
   });
 
+  it('treats a toot loaded with sensitive "1" and saved as sensitive unchanged as a date-only change', () => {
+    const base = makeOriginal({ spoiler_text: 'CW' });
+    const original = ScheduledStatusSchema.parse({ ...base, params: { ...base.params, sensitive: '1' } }) as MastodonStatus;
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(true);
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false, spoiler_text: 'CW' }))).toBe(false);
+  });
+
   it('is false when a flag has a value it cannot interpret', () => {
     const original = makeOriginal({ sensitive: '1' as unknown as boolean, spoiler_text: 'CW' });
     expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false, spoiler_text: 'CW' }))).toBe(false);

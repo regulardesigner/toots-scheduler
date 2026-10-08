@@ -16,7 +16,8 @@ export interface PollFormState {
 
 /**
  * The params of a scheduled status, echoed by Mastodon as the client sent them: any of them may be
- * null or missing. ScheduledStatusSchema checks text, visibility, media ids and poll options.
+ * null or missing. ScheduledStatusSchema checks text, visibility, media ids and poll options, and
+ * reads the sensitive flag as a boolean the way Mastodon does when it publishes.
  */
 export interface ScheduledStatusParams {
   text: string;
