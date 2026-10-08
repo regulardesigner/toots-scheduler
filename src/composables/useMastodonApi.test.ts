@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
+import axios, { AxiosError, AxiosHeaders, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import type { ScheduledToot } from '../types/mastodon';
 
 const http = vi.hoisted(() => ({
@@ -153,6 +153,19 @@ describe('useMastodonApi', () => {
       await useMastodonApi().rescheduleToot('../apps', '2030-02-01T09:00:00.000Z');
 
       expect(http.put.mock.calls[0][0]).toBe('https://masto.example/api/v1/scheduled_statuses/..%2Fapps');
+    });
+
+    it('logs a failure without the bearer token the request carried', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const config = { headers: new AxiosHeaders({ Authorization: 'Bearer secret-token' }) } as InternalAxiosRequestConfig;
+      const response = { status: 404, statusText: 'Not Found', data: { error: 'Record not found' }, headers: {}, config } as AxiosResponse;
+      http.delete.mockRejectedValue(new AxiosError('Request failed with status code 404', 'ERR_BAD_REQUEST', config, null, response));
+
+      await expect(useMastodonApi().deleteScheduledToot('1')).rejects.toThrow('Record not found');
+
+      expect(log).toHaveBeenCalledWith('Error deleting scheduled toot: AxiosError: Request failed with status code 404, status 404, code ERR_BAD_REQUEST');
+      expect(JSON.stringify(log.mock.calls)).not.toContain('secret-token');
+      log.mockRestore();
     });
   });
 

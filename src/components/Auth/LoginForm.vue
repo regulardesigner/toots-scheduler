@@ -4,7 +4,7 @@ import { useMastodonApi } from '../../composables/useMastodonApi';
 import { normalizeUrl } from '../../utils/url';
 import { createPkcePair, createRandomToken } from '../../utils/pkce';
 import { buildAuthorizeUrl, savePendingLogin } from '../../utils/oauthFlow';
-
+import { logError } from '../../utils/logError';
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();
@@ -37,7 +37,7 @@ async function handleLogin() {
     emit('close');
     window.location.assign(buildAuthorizeUrl(instanceUrl, appData.client_id, state, challenge));
   } catch (err) {
-    console.error('Login error:', err);
+    logError('Login error', err);
     error.value = err instanceof Error ? err.message : 'Failed to connect to Mastodon instance. Please check the URL and try again.';
   } finally {
     isLoading.value = false;

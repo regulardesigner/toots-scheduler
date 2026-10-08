@@ -16,7 +16,7 @@ import {
 import { getRedirectUri, OAUTH_SCOPES } from '../config/constants';
 import { handleApiError } from '../utils/error';
 import { getNextPageUrl } from '../utils/linkHeader';
-
+import { logError } from '../utils/logError';
 /** Mastodon's maximum page size for scheduled statuses. */
 const SCHEDULED_PAGE_SIZE = 40;
 /** Safety cap: 10 pages × 40 = 400 toots, above Mastodon's 300 scheduled-toot limit. */
@@ -322,7 +322,7 @@ export function useMastodonApi() {
 
       return toots;
     } catch (error) {
-      console.error('Error fetching scheduled toots:', error);
+      logError('Error fetching scheduled toots', error);
       throw new Error(handleApiError(error), { cause: error });
     }
   }
@@ -339,7 +339,7 @@ export function useMastodonApi() {
     try {
       await api.delete(`${auth.instance}/api/v1/scheduled_statuses/${encodeURIComponent(id)}`);
     } catch (err) {
-      console.error('Error deleting scheduled toot:', err);
+      logError('Error deleting scheduled toot', err);
       throw new Error(handleApiError(err), { cause: err });
     }
   }

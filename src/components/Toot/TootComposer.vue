@@ -12,7 +12,7 @@ import { countGraphemes, countTootCharacters } from '../../utils/tootLength';
 import { format, addMinutes, isBefore, parseISO } from 'date-fns';
 import type { ScheduledToot, MastodonMediaAttachment, PollFormState } from '../../types/mastodon';
 import { buildScheduledToot } from '../../utils/buildScheduledToot';
-import ScheduledToots from './ScheduledToots.vue';
+import { logError } from '../../utils/logError';import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore, BusyError } from '../../stores/scheduledToots';
 import MediaUpload from '../MediaUpload.vue';
 import ContentWarning from '../ContentWarning.vue';
@@ -153,14 +153,12 @@ store.$onAction(({ name, args, after }) => {
 });
 
 onMounted(async () => {
-  console.log('Initial auth account:', auth.account);
   if (!auth.account && auth.accessToken) {
     try {
       const accountData = await api.verifyCredentials();
       auth.setAccount(accountData);
-      console.log('Fetched account:', accountData);
     } catch (err) {
-      console.error('Error fetching user info:', err);
+      logError('Error fetching user info', err);
     }
   }
   await store.fetchScheduledToots();
@@ -226,7 +224,7 @@ async function handleSubmit() {
     resetForm();
     
   } catch (err) {
-    console.error('Error scheduling toot:', err);
+    logError('Error scheduling toot', err);
     error.value = err instanceof Error ? err.message : 'Failed to schedule toot. Please try again.';
     // The request may have reached the instance despite the error: refresh so any created toot shows up.
     // Unless it was refused before anything was sent: the change still running refreshes the list itself.

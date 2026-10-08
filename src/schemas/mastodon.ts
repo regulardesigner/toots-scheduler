@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isValid, parseISO } from 'date-fns';
-
+import { logError } from '../utils/logError';
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 /**
@@ -145,7 +145,7 @@ export const TokenResponseSchema = z.object({
 export function parseApiResponse<T extends z.ZodTypeAny>(schema: T, data: unknown, what: string): z.output<T> {
   const result = schema.safeParse(data);
   if (!result.success) {
-    console.error(`Unexpected ${what} from the instance:`, result.error.issues);
+    logError(`Unexpected ${what} from the instance`, result.error);
     throw new Error('Your instance sent an unexpected response. Please try again later.');
   }
   return result.data;
