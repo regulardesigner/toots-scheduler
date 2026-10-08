@@ -41,6 +41,8 @@ describe('ControlsBar', () => {
   it('offers the languages of the shared list, by their own names', () => {
     const options = mount(ControlsBar, { props: baseProps }).findAll('#language option');
 
+    expect(options).toHaveLength(14);
+    expect(options[0].attributes('value')).toBe('en');
     expect(options.map(option => option.attributes('value'))).toEqual(LANGUAGES.map(language => language.code));
     expect(options.map(option => option.text())).toEqual(LANGUAGES.map(language => language.name));
   });

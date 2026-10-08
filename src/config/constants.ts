@@ -25,7 +25,7 @@ export const THANKS_RECIPIENT = '@dams@disabled.social';
 export const DEFAULT_MAX_CHARACTERS = 500;
 
 /** Image types Mastodon accepts that this app lets users attach (used when the instance gives no list). */
-export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif'];
+export const SUPPORTED_IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif'];
 
 /** Mastodon's default image size limit, in bytes, used when the instance gives none. */
 export const DEFAULT_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
