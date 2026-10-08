@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils';
 import { format } from 'date-fns';
 import { defineComponent, h } from 'vue';
 import TootCard from './TootCard.vue';
+import { ScheduledStatusSchema } from '../../schemas/mastodon';
 import { getTimeZone } from '../../utils/timeZone';
 
 const base = { scheduledAt: '2031-01-01T12:00:00.000Z', text: 'Hello' };
@@ -90,6 +91,14 @@ describe('TootCard', () => {
 
     expect(card.find('.sensitive-warning').exists()).toBe(false);
     expect(card.find('.toot-footer').text()).toBe('Public toot in Unknown');
+  });
+
+  it('shows no warning for a toot whose sensitive flag came back as "false"', () => {
+    const toot = ScheduledStatusSchema.parse({ id: '1', scheduled_at: base.scheduledAt, params: { text: 'Hello', sensitive: 'false' }, media_attachments: [] });
+    const card = mountCard({ sensitive: toot.params.sensitive });
+
+    expect(card.find('.sensitive-warning').exists()).toBe(false);
+    expect(card.find('.toot-content p').classes()).not.toContain('blurred');
   });
 
   it('names the language from the shared list, and shows a language it does not list by its code', () => {

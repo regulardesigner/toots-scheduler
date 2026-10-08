@@ -58,8 +58,8 @@ export const MediaAttachmentSchema = z.object({
 
 /**
  * A scheduled status. What the app renders or compares is checked (date, text, visibility,
- * media ids, poll options); the other params are kept as sent, since their nullable and string
- * forms are already handled by isOnlyScheduleChange and the composer.
+ * media ids, sensitive flag, poll options); the other params are kept as sent, since their
+ * nullable and string forms are already handled by isOnlyScheduleChange and the composer.
  */
 export const ScheduledStatusSchema = z.object({
   id: z.string(),
@@ -69,6 +69,9 @@ export const ScheduledStatusSchema = z.object({
     text: z.string().nullish().transform(text => text ?? ''),
     visibility: z.string().nullish(),
     media_ids: z.array(z.string()).nullish(),
+    // Echoed as "true"/"false" when the client sent a form: read as a boolean, or the card would
+    // show a warning for "false". Any other value is refused rather than guessed (isOnlyScheduleChange).
+    sensitive: z.union([z.boolean(), z.enum(['true', 'false']).transform(value => value === 'true')]).nullish(),
     // Rendered by the composer when editing: options must be strings.
     poll: z.object({ options: z.array(z.string()) }).passthrough().nullish(),
   }).passthrough(),

@@ -70,6 +70,23 @@ describe('mastodon schemas', () => {
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, poll: { options: [{ evil: 1 }] } } }).success).toBe(false);
   });
 
+  it('reads a sensitive flag echoed as "true" or "false" as a boolean', () => {
+    const sensitive = (value: unknown) => ScheduledStatusSchema.parse({ ...scheduled, params: { ...scheduled.params, sensitive: value } }).params.sensitive;
+
+    expect(sensitive('false')).toBe(false);
+    expect(sensitive('true')).toBe(true);
+    expect(sensitive(false)).toBe(false);
+    expect(sensitive(true)).toBe(true);
+    expect(sensitive(null)).toBeNull();
+    expect(ScheduledStatusSchema.parse({ ...scheduled, params: { text: 'Hello' } }).params.sensitive).toBeUndefined();
+  });
+
+  it('refuses a sensitive flag it cannot read, so it is never taken for "not sensitive"', () => {
+    for (const value of ['1', 'yes', 1, {}]) {
+      expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, sensitive: value } }).success).toBe(false);
+    }
+  });
+
   it('does not let __proto__ in a response pollute objects', () => {
     const parsed = ScheduledStatusSchema.parse(JSON.parse('{"__proto__":{"polluted":true},"id":"s1","scheduled_at":"2031-01-01T12:00:00.000Z","params":{"text":"x","__proto__":{"polluted":true}},"media_attachments":[]}'));
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();

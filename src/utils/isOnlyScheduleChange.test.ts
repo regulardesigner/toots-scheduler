@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isOnlyScheduleChange } from './isOnlyScheduleChange';
+import { ScheduledStatusSchema } from '../schemas/mastodon';
 import type { MastodonStatus, ScheduledStatusParams, ScheduledToot } from '../types/mastodon';
 
 function makeOriginal(params: Partial<ScheduledStatusParams> = {}): MastodonStatus {
@@ -94,6 +95,12 @@ describe('isOnlyScheduleChange', () => {
     const original = makeOriginal({ sensitive: 'true' as unknown as boolean, spoiler_text: 'CW' });
     expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false }))).toBe(false);
     expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(true);
+  });
+
+  it('treats a toot loaded with sensitive "false" and saved unchanged as a date-only change', () => {
+    const original = ScheduledStatusSchema.parse({ ...makeOriginal(), params: { ...makeOriginal().params, sensitive: 'false' } }) as MastodonStatus;
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false }))).toBe(true);
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(false);
   });
 
   it('is false when a flag has a value it cannot interpret', () => {

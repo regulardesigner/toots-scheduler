@@ -316,7 +316,7 @@ export function useMastodonApi() {
         const page = parseApiResponse(z.array(ScheduledStatusSchema), response.data, 'scheduled toots');
         if (page.length === 0) break;
         // The schema checks what the app renders or compares; the params it passes through
-        // (sensitive, spoiler_text, language, the poll's duration and flags) are typed as Mastodon documents them.
+        // (spoiler_text, language, the poll's duration and flags) are typed as Mastodon documents them.
         toots.push(...(page as MastodonStatus[]));
         const link = response.headers['link'];
         url = getNextPageUrl(typeof link === 'string' ? link : null, instance);
