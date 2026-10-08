@@ -118,6 +118,17 @@ describe('useGlobalErrorHandler', () => {
     expect(log).toHaveBeenCalledWith('Unhandled error event: Error: Timer', expect.stringContaining('Timer'));
   });
 
+  it('ignores error events without an error object (cross-origin "Script error.", ResizeObserver loop)', async () => {
+    install();
+
+    window.dispatchEvent(new ErrorEvent('error', { message: 'Script error.', error: null }));
+    window.dispatchEvent(new ErrorEvent('error', { message: 'ResizeObserver loop completed with undelivered notifications' }));
+    await nextTick();
+
+    expect(notify.error).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
+  });
+
   it('stops listening once uninstalled', async () => {
     install();
     uninstall?.();

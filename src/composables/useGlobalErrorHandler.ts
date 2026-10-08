@@ -11,8 +11,9 @@ const TOAST_INTERVAL_MS = 5000;
 /**
  * Catches what nothing else handled, so a failure never leaves a blank page in silence:
  * errors thrown by components, hooks, watchers and event handlers (`app.config.errorHandler`),
- * and promises rejected without a catch (`unhandledrejection`), plus errors thrown in timer callbacks (`error` event). Each shows a generic toast
- * (at most one every 5 seconds) and is logged in DEV only, through logError.
+ * and promises rejected without a catch (`unhandledrejection`), plus errors thrown in timer
+ * callbacks (`error` event). Each shows a generic toast (at most one every 5 seconds) and is
+ * logged in DEV only, through logError.
  * The browser's own "Uncaught (in promise)" log is suppressed: the reason may be an AxiosError,
  * whose request headers hold the bearer token.
  * @param {App} app - The Vue application, before it is mounted.
@@ -44,6 +45,9 @@ export function useGlobalErrorHandler(app: App, target: Window = window) {
   // Errors thrown in raw timer callbacks reach `window.onerror`, not `unhandledrejection`.
   // Not prevented: the browser still logs them in DEV.
   function onError(event: ErrorEvent): void {
+    // No error object: a cross-origin "Script error." (an extension's script) or a browser notice
+    // such as "ResizeObserver loop completed with undelivered notifications". Neither is the app failing.
+    if (event.error == null) return;
     report('Unhandled error event', event.error);
   }
   target.addEventListener('error', onError);
