@@ -4,13 +4,13 @@
     {
       "id": 0,
       "subject": "Task 1: Subset variable WOFF2 fonts; drop the TTFs (WEB-02)",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** The two font families ship as one subset variable WOFF2 each (Latin and Latin Extended), 128 KB in all instead of 1.34 MB, with no visible change. Every TTF, static or variable, leaves the repository.\n\n**Files:**\n- Create (binary): `src/assets/fonts/Nunito_Sans/NunitoSans-Variable-Latin.woff2`, `src/assets/fonts/Winky_Sans/WinkySans-Variable-Latin.woff2`\n- Delete: the 4 variable TTFs, the 14 TTFs in `src/assets/fonts/Winky_Sans/static/`, and `src/assets/fonts/Nunito_Sans/README.txt` and `src/assets/fonts/Winky_Sans/README.txt` (they describe the TTFs). Keep both `OFL.txt` files\n- Modify: `src/assets/styles/fonts.css` (whole file)\n- Create: `src/assets/styles/fonts.test.ts`\n- Modify: `vite.config.ts` (`test.css`)\n- Modify: `src/App.vue` (`:root`, 3 lines)\n\n**Acceptance Criteria:**\n- [ ] `fonts.css` declares exactly two `@font-face`, both `format('woff2')`:\n  - Nunito Sans: `font-weight: 200 1000`, normal style;\n  - Winky Sans: `font-weight: 300 900`, normal style;\n  - both `font-display: swap`.\n\n  Only `.winky-sans-500`, `.winky-sans-700` and `.winky-sans-900` remain as utility classes\n- [ ] No `.ttf`, `.otf` or `.woff` file remains under `src/assets/fonts/`, and each family keeps its `OFL.txt`\n- [ ] The Nunito Sans file keeps the `wght` (200–1000) and `opsz` (6–12) axes; `wdth` and `YTLC` are pinned at 100 and 500. Winky Sans keeps `wght` (300–900). Both are subset to Latin and Latin Extended with all OpenType layout features\n- [ ] `npm run build` puts exactly two `.woff2` files and no `.ttf` in `dist/assets`, under 300 KB together (127,568 bytes in the dry run)\n- [ ] `:root` in `App.vue` no longer sets `font-variation-settings` (the axes are gone; `font-optical-sizing: auto` stays)\n- [ ] typecheck, lint (0 errors) and build pass; `npm test` passes with 388 tests\n\n**Verify:** `npx vitest run src/assets/styles/fonts.test.ts` → `Tests  4 passed (4)`, then `npm run build && ls -l dist/assets/*.woff2 | awk '{s+=$5} END {print s}'` → about `127568`\n\n**Steps:** see docs/superpowers/plans/2026-10-08-lot-5-performance-hygiene.md § Task 1: Subset variable WOFF2 fonts; drop the TTFs (WEB-02)\n\n```json:metadata\n{\"files\": [\"src/assets/fonts/Nunito_Sans/NunitoSans-Variable-Latin.woff2\", \"src/assets/fonts/Winky_Sans/WinkySans-Variable-Latin.woff2\", \"src/assets/styles/fonts.css\", \"src/assets/styles/fonts.test.ts\", \"vite.config.ts\", \"src/App.vue\"], \"verifyCommand\": \"npx vitest run src/assets/styles/fonts.test.ts\", \"acceptanceCriteria\": [\"two woff2 @font-face, three utility classes\", \"no ttf/otf/woff left, OFL kept\", \"Nunito keeps wght+opsz with wdth/YTLC pinned; Winky keeps wght; latin + latin-ext\", \"dist: two woff2, no ttf, under 300 KB\", \"no font-variation-settings in :root\", \"388 tests\"], \"requiresUserVerification\": false}\n```"
     },
     {
       "id": 1,
       "subject": "Task 2: Page shell and global styles: scroll lock, readable toasts, meta, no template leftovers (WEB-06, carry-overs)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         0
       ],
@@ -19,7 +19,7 @@
     {
       "id": 2,
       "subject": "Task 3: `logError`: DEV-only one-line logs, never the bearer token (carry-over, web-security §2 and §6)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         1
       ],
@@ -28,7 +28,7 @@
     {
       "id": 3,
       "subject": "Task 4: Global error handling: a generic toast, logged in DEV only (WEB-05)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         2
       ],
@@ -37,7 +37,7 @@
     {
       "id": 4,
       "subject": "Task 5: Shared constants; no test-only exports, misleading id or dead code (CC-04, CC-07, carry-overs)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         3
       ],
@@ -46,7 +46,7 @@
     {
       "id": 5,
       "subject": "Task 6: Features store hardening, JSDoc where things are defined, no unused dependency (CC-09, CC-07, CC-06, CC-08)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         4
       ],
@@ -55,7 +55,7 @@
     {
       "id": 6,
       "subject": "Task 7: Scheduled toots: one list request per visit; `MastodonStatus` matches what zod validates (carry-overs)",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         5
       ],
@@ -64,7 +64,7 @@
     {
       "id": 7,
       "subject": "Task 8: Release 0.16.1",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         6
       ],
@@ -73,12 +73,12 @@
     {
       "id": 8,
       "subject": "Task 9: Verification by the controller; report to the user",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         7
       ],
       "description": "**Goal:** The controller, not a subagent:\n- runs the quality gates;\n- checks the font size in `dist` and the dependencies;\n- extends its Playwright suite with the Lot 5 checks and runs it on the production build, in Chromium and WebKit, against the mocked instance.\n\nIt then reports, and asks the user for the one check only they can do: Lighthouse performance on the deployed site.\n\n**Files:**\n- None in the repo. The suite is in the session scratchpad, `e2e/e2e.mjs`, with Playwright and `axe-core` installed next to it (`e2e/node_modules`), not in the project\n\n**Acceptance Criteria:**\n- [ ] `npm test` (424), `npm run typecheck`, `npm run lint` (0 problems) and `npm run build` pass\n- [ ] `dist/assets` holds exactly two `.woff2` files and no `.ttf`, under 300 KB together (127,568 bytes in the dry run)\n- [ ] `npx -y depcheck` prints `No depcheck issue`\n- [ ] The Playwright suite passes:\n  - Chromium **48/48**: the 41 existing checks and L5-1 to L5-7;\n  - WebKit **49/49**: the 42 existing checks and L5-1 to L5-7.\n\n  L3-8 (no CSP violation) and #10 (no console output) also cover the new flows\n- [ ] The user has been told what the run proves, has run Lighthouse on the landing page (desktop and mobile), and has answered\n\n**Verify:** `node e2e.mjs` and `BROWSER=webkit node e2e.mjs` → `48/48 passed` and `49/49 passed`\n\n**Steps:** see docs/superpowers/plans/2026-10-08-lot-5-performance-hygiene.md § Task 9: Verification by the controller; report to the user\n\n**User Verification Required:**\nBefore marking this task complete, you MUST call AskUserQuestion:\n```yaml\nAskUserQuestion:\n  question: \"The automated checks pass (424 unit tests, fonts at about 128 KB in WOFF2, depcheck clean, the Playwright suite in Chromium and WebKit with the Lot 5 checks: fonts, scroll lock, toast contrast, one list request, the error toast, no token in the console, meta tags). Does Lighthouse performance reach at least 90 on the landing page, desktop and mobile?\"\n  header: \"Verification\"\n  options:\n    - label: \"Both at 90 or more\"\n      description: \"Lot 5 is validated: close and publish the PR\"\n    - label: \"Below 90\"\n      description: \"Tell me the scores and the top opportunities Lighthouse lists; back to fixing, then re-verification\"\n    - label: \"Publish, check later\"\n      description: \"Publish the PR now, with the Lighthouse check left unchecked in its test plan\"\n```\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"node e2e.mjs\", \"acceptanceCriteria\": [\"test (424), typecheck, lint (0 problems), build pass\", \"dist: two woff2, no ttf, under 300 KB\", \"depcheck: no issue\", \"Playwright: 41/42 existing checks + L5-1..L5-7 (fonts, scroll lock, toast contrast, one list request, error toast, no token in console, meta): 48/48 Chromium, 49/49 WebKit\", \"zero CSP violations\", \"user informed and Lighthouse performance >= 90 checked on the landing page, desktop and mobile\"], \"requiresUserVerification\": true, \"userVerificationPrompt\": \"The automated checks pass (424 unit tests, fonts at about 128 KB in WOFF2, depcheck clean, the Playwright suite in Chromium and WebKit with the Lot 5 checks: fonts, scroll lock, toast contrast, one list request, the error toast, no token in the console, meta tags). Does Lighthouse performance reach at least 90 on the landing page, desktop and mobile?\"}\n```"
     }
   ],
-  "lastUpdated": "2026-10-08T08:45:48.328478+00:00"
+  "lastUpdated": "2026-10-09T07:04:21.563972+00:00"
 }

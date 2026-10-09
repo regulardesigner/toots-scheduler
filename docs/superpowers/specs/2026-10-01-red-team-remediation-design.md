@@ -183,6 +183,22 @@
 
 ## Lot 5 — Performance & hygiène (WEB-02, WEB-05, WEB-06, CC-04, CC-06, CC-07, CC-08, CC-09)
 
+> ✅ **Livré en 0.16.1** : branche `fix/lot-5-performance-hygiene`, plan [2026-10-08-lot-5-performance-hygiene.md](../plans/2026-10-08-lot-5-performance-hygiene.md). Version patch selon le skill `changelog` : aucune nouvelle fonctionnalité.
+>
+> Vérifications automatiques (2026-10-09) :
+> - 438 tests ; lint sans aucun avertissement ; `npx depcheck` propre.
+> - Polices : 1 338 219 → 129 704 octets en WOFF2. Les métadonnées OFL et les diacritiques combinants sont conservés.
+> - Playwright sur la build de production : Chromium 49/49 et WebKit 50/50, dont 8 contrôles du lot 5.
+>
+> Vérifié par l'utilisateur (2026-10-09) : Lighthouse Performance 94 en mobile et 100 en desktop sur la page d'accueil.
+>
+> Hors spec, les reprises des lots précédents sont faites :
+> - le verrou de défilement des fenêtres, qui ne s'appliquait pas en production depuis le lot 4 ;
+> - aucune erreur loguée avec le jeton ;
+> - une seule requête pour la liste ;
+> - le type `MastodonStatus` aligné sur le schéma ;
+> - `sensitive` lu comme le fait Mastodon.
+
 **Objectif :** alléger le bundle et supprimer le code mort et la duplication.
 
 **Fichiers :** `src/assets/fonts/**`, `src/assets/styles/fonts.css`, `src/composables/useSessionTimeout.ts`, `src/main.ts`, `index.html`, `src/config/constants.ts`, `src/stores/features.ts`, `src/types/features.ts`, `package.json`, composants touchés par les constantes.
