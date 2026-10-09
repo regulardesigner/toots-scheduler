@@ -12,7 +12,9 @@ A modern Vue.js application that allows you to schedule Mastodon posts (toots) f
 - 🌍 Multi-language support
 - 🔒 Privacy settings (public, unlisted, private, direct)
 - 📱 Responsive design
-- 🎯 Real-time validation
+- 🎯 Real-time validation, following your instance's own limits (toot length, images per toot, image size and types)
+- ♿ Usable with the keyboard alone and with a screen reader
+- 🕒 Shows the time zone your toots are scheduled in
 - 📊 View and manage scheduled toots
 
 ## Tech Stack
@@ -88,7 +90,7 @@ Toot Scheduler is a static site with no backend. Here is what it does to protect
   - If your instance rejects the token, the session ends too.
   - Revocation is best effort: if you are offline or the instance is down, revoke the app yourself under *Preferences → Account → Authorized apps*.
 - **Upgrading to 0.14.0:** sessions saved by older versions are signed out once, and their token is revoked.
-- **Content Security Policy:** the production page only loads scripts and styles from its own origin (no inline or injected script, no plugins), talks to instances over https only, and loads images and media over https. GitHub Pages can't send headers, so the policy is a `<meta>` tag: clickjacking protection (`frame-ancestors`) isn't available, and "its own origin" is `regulardesigner.github.io`, which is shared with the account's other GitHub Pages sites (a custom domain would isolate the app).
+- **Content Security Policy:** the production page only loads scripts and styles from its own origin (no inline or injected script, no plugins), talks to instances over https only, and loads images and media over https. GitHub Pages can't send headers, so the policy is a `<meta>` tag: clickjacking protection (`frame-ancestors`) isn't available, and "its own origin" is `www.regulardesigner.com`, the account's GitHub Pages custom domain, which is shared with the other projects published under it (a domain dedicated to the app would isolate it). The site is only served over HTTPS ("Enforce HTTPS" is on).
 - **Known trade-off:** while you are signed in, a script running on this page could read the token. That is the price of having no backend; the CSP above makes injecting one much harder. The app never renders HTML coming from the API (`v-html` is forbidden by the linter), checks every response from the instance before using it, and the production build contains no console output.
 
 ## Project Structure

@@ -4,11 +4,11 @@ import { createPinia, setActivePinia } from 'pinia';
 
 const api = vi.hoisted(() => ({ getAccessToken: vi.fn(), verifyCredentials: vi.fn() }));
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
-const toast = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), warning: vi.fn(), info: vi.fn() }));
+const notify = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), warning: vi.fn(), info: vi.fn() }));
 
 vi.mock('../composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
 vi.mock('vue-router', () => ({ useRouter: () => router }));
-vi.mock('vue-toastification', () => ({ useToast: () => toast }));
+vi.mock('../composables/useNotify', () => ({ useNotify: () => notify }));
 vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn(), isAxiosError: () => false } }));
 
 import OAuthCallback from './OAuthCallback.vue';
@@ -65,7 +65,7 @@ describe('OAuthCallback', () => {
     await flushPromises();
 
     expect(api.getAccessToken).not.toHaveBeenCalled();
-    expect(toast.error).toHaveBeenCalledWith('This sign-in link is invalid or has expired. Please sign in again.');
+    expect(notify.error).toHaveBeenCalledWith('This sign-in link is invalid or has expired. Please sign in again.');
     expect(router.replace).toHaveBeenCalledWith({ name: 'home' });
     expect(useAuthStore().accessToken).toBeNull();
   });
@@ -77,7 +77,7 @@ describe('OAuthCallback', () => {
     await flushPromises();
 
     expect(api.getAccessToken).not.toHaveBeenCalled();
-    expect(toast.error).toHaveBeenCalledWith('Sign-in was started in another tab or has expired. Please sign in again.');
+    expect(notify.error).toHaveBeenCalledWith('Sign-in was started in another tab or has expired. Please sign in again.');
   });
 
   it('signs out again, revoking the new token, when loading the account fails', async () => {
@@ -90,7 +90,7 @@ describe('OAuthCallback', () => {
 
     expect(useAuthStore().accessToken).toBeNull();
     expect(localStorage.getItem('mastodon_auth')).toBeNull();
-    expect(toast.error).toHaveBeenCalledWith('Network Error');
+    expect(notify.error).toHaveBeenCalledWith('Network Error');
     expect(router.replace).toHaveBeenCalledWith({ name: 'home' });
   });
 
@@ -101,7 +101,7 @@ describe('OAuthCallback', () => {
     mount(OAuthCallback);
     await flushPromises();
 
-    expect(toast.error).toHaveBeenCalledWith('You cancelled the authorization on your instance.');
+    expect(notify.error).toHaveBeenCalledWith('You cancelled the authorization on your instance.');
     expect(router.replace).toHaveBeenCalledWith({ name: 'home' });
   });
 
@@ -115,7 +115,7 @@ describe('OAuthCallback', () => {
 
     expect(auth.accessToken).toBe('existing-token');
     expect(localStorage.getItem('mastodon_auth')).not.toBeNull();
-    expect(toast.error).not.toHaveBeenCalled();
+    expect(notify.error).not.toHaveBeenCalled();
     expect(router.replace).toHaveBeenCalledWith({ name: 'composer' });
   });
 

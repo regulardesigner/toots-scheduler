@@ -11,7 +11,10 @@ const emit = defineEmits<{
 
 <template>
   <div class="thanks-confirm">
-    <h2 class="thanks-title">
+    <h2
+      id="thanks-title"
+      class="thanks-title"
+    >
       Send a thank-you?
     </h2>
     <p class="thanks-description">
@@ -91,11 +94,11 @@ const emit = defineEmits<{
 
 .btn-cancel {
   background-color: #95a5a6;
-  color: white;
+  color: #333;
 }
 
 .btn-cancel:hover {
-  background-color: #7f8c8d;
+  filter: brightness(1.1);
 }
 
 .btn-send {

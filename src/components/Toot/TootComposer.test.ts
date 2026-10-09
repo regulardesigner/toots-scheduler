@@ -15,11 +15,12 @@ const api = vi.hoisted(() => ({
 
 vi.mock('../../composables/useMastodonApi', () => ({ useMastodonApi: () => api }));
 vi.mock('../../stores/auth', () => ({ useAuthStore: () => ({ account: null, accessToken: null }) }));
-const toast = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() }));
-vi.mock('vue-toastification', () => ({ useToast: () => toast }));
+const notify = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() }));
+vi.mock('../../composables/useNotify', () => ({ useNotify: () => notify }));
 
 import TootComposer from './TootComposer.vue';
 import { useScheduledTootsStore } from '../../stores/scheduledToots';
+import { useInstanceStore } from '../../stores/instance';
 
 let pinia: Pinia;
 
@@ -54,6 +55,14 @@ describe('TootComposer', () => {
     setActivePinia(pinia);
     api.getScheduledToots.mockResolvedValue([]);
     api.scheduledTootExists.mockResolvedValue(true);
+  });
+
+  it('has one <h1>; the scheduled list is a section under it', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+
+    expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Schedule a toot']);
+    expect(wrapper.find('h2#scheduled-toots-title button').text()).toBe('Scheduled Toots (0)');
   });
 
   it('sends a single request when the form is submitted twice quickly', async () => {
@@ -157,7 +166,353 @@ describe('TootComposer', () => {
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
-    expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('previous version could not be removed'));
+    expect(notify.warning).toHaveBeenCalledWith(expect.stringContaining('previous version could not be removed'));
+  });
+
+  it('empties the form when the toot being edited is deleted from the list', async () => {
+    api.deleteScheduledToot.mockResolvedValue(undefined);
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.setEditingToot(makeScheduledToot());
+    await flushPromises();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Bonjour');
+
+    await store.deleteToot('42');
+    await flushPromises();
+
+    expect(store.editingToot).toBeNull();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('');
+    expect((wrapper.find('#scheduled-date').element as HTMLInputElement).value).toBe('');
+  });
+
+  it('says so when an edit is saved while another change is still in progress', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.setEditingToot(makeScheduledToot());
+    await flushPromises();
+    await fillForm(wrapper, 'Bonjour !');
+    store.pendingId = 'other';
+    store.pendingAction = 'delete';
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(api.rescheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('[role="alert"]').text()).toContain('Another change is still being saved');
+    expect(store.editingToot?.id).toBe('42');
+  });
+
+  it('refuses a new toot while a deletion is running, without sending or reloading', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.pendingId = 'other';
+    store.pendingAction = 'delete';
+    api.getScheduledToots.mockClear();
+
+    await fillForm(wrapper, 'New toot');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('[role="alert"]').text()).toContain('Another change is still being saved');
+    expect(api.getScheduledToots).not.toHaveBeenCalled();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('New toot');
+  });
+
+  it('still reloads the list when a new toot fails', async () => {
+    api.scheduleToot.mockRejectedValue(new Error('Network Error'));
+    const wrapper = mountComposer();
+    await flushPromises();
+    api.getScheduledToots.mockClear();
+
+    await fillForm(wrapper, 'New toot');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').text()).toBe('Network Error');
+    expect(api.getScheduledToots).toHaveBeenCalledTimes(1);
+  });
+
+  it('makes Edit impossible while a new toot is being sent', async () => {
+    let finish!: () => void;
+    api.scheduleToot.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+    api.getScheduledToots.mockResolvedValue([makeScheduledToot({ id: 'b' })]);
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+
+    await fillForm(wrapper, 'New toot');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    const editButton = wrapper.find('.toot-card .edit-button');
+    expect(editButton.attributes('disabled')).toBeDefined();
+    // A click that slipped through before the re-render.
+    wrapper.findComponent({ name: 'TootCard' }).vm.$emit('edit', 'b');
+    await flushPromises();
+    expect(store.editingToot).toBeNull();
+
+    finish();
+    await flushPromises();
+
+    expect(store.editingToot).toBeNull();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('');
+    expect(wrapper.find('button[type="submit"]').text()).not.toContain('Update');
+  });
+
+  it('does not reload the list when an edit is refused because another change is running', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.setEditingToot(makeScheduledToot());
+    await flushPromises();
+    await fillForm(wrapper, 'Bonjour !');
+    store.pendingId = 'other';
+    store.pendingAction = 'delete';
+    api.getScheduledToots.mockClear();
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.getScheduledToots).not.toHaveBeenCalled();
+  });
+
+  it('says so when the toot being edited is deleted', async () => {
+    api.deleteScheduledToot.mockResolvedValue(undefined);
+    mountComposer();
+    await flushPromises();
+    const store = useScheduledTootsStore();
+    store.setEditingToot(makeScheduledToot());
+    await flushPromises();
+
+    await store.deleteToot('other');
+    expect(notify.info).not.toHaveBeenCalled();
+
+    await store.deleteToot('42');
+    await flushPromises();
+
+    expect(notify.info).toHaveBeenCalledWith('The toot you were editing was deleted.');
+  });
+
+  it('empties the form on Cancel, without a deletion notice', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    useScheduledTootsStore().setEditingToot(makeScheduledToot());
+    await flushPromises();
+
+    await wrapper.find('.cancel-button').trigger('click');
+    await flushPromises();
+
+    expect(useScheduledTootsStore().editingToot).toBeNull();
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('');
+    expect(notify.info).not.toHaveBeenCalled();
+  });
+
+  it('does not announce a deletion after an edit is saved', async () => {
+    api.rescheduleToot.mockResolvedValue(undefined);
+    const wrapper = mountComposer();
+    await flushPromises();
+    useScheduledTootsStore().setEditingToot(makeScheduledToot());
+    await flushPromises();
+    await fillForm(wrapper, 'Bonjour');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(useScheduledTootsStore().editingToot).toBeNull();
+    expect(notify.info).not.toHaveBeenCalled();
+  });
+
+  it('refuses a toot longer than the instance allows, without sending it', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.hasCharacterLimit = true;
+    await fillForm(wrapper, 'Hello world!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('.error').text()).toBe('Your toot is 12 characters long, but your instance allows 10.');
+    expect(wrapper.find('.error').element.parentElement?.getAttribute('role')).toBe('alert');
+  });
+
+  it('keeps its alert container in place, empty until an error fills it', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const alert = wrapper.find('form > [role="alert"]');
+    expect(alert.exists()).toBe(true);
+    expect(alert.text()).toBe('');
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.hasCharacterLimit = true;
+    await fillForm(wrapper, 'Hello world!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('form > [role="alert"]').element).toBe(alert.element);
+    expect(alert.text()).toBe('Your toot is 12 characters long, but your instance allows 10.');
+  });
+
+  it('inserts a repeated error again so it is announced again', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.hasCharacterLimit = true;
+    await fillForm(wrapper, 'Hello world!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    const first = wrapper.find('.error').element;
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').element).not.toBe(first);
+  });
+
+  it('does not block a toot while the instance limits are unknown', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    api.deleteScheduledToot.mockResolvedValue(undefined);
+    const wrapper = mountComposer();
+    await flushPromises();
+    useScheduledTootsStore().setEditingToot(makeScheduledToot({ params: { text: 'a'.repeat(600), visibility: 'public', language: 'fr', poll: null } }));
+    await flushPromises();
+    await wrapper.find('textarea').setValue('b'.repeat(600));
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not enforce the default text limit when the instance gave only media limits', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.hasMediaLimit = true;
+    await fillForm(wrapper, 'b'.repeat(600));
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').exists()).toBe(false);
+    expect(api.scheduleToot).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not enforce the default image count when the instance gave only the text limit', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    api.deleteScheduledToot.mockResolvedValue(undefined);
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxMediaAttachments = 1;
+    instance.hasCharacterLimit = true;
+    const image = { id: 'a', type: 'image', url: 'https://x/a.png', preview_url: 'https://x/a.png' };
+    useScheduledTootsStore().setEditingToot(makeScheduledToot({ media_attachments: [image, { ...image, id: 'b' }] as MastodonStatus['media_attachments'] }));
+    await flushPromises();
+    await wrapper.find('textarea').setValue('Bonjour !');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').exists()).toBe(false);
+    expect(api.scheduleToot).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts the content warning with the text', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.hasCharacterLimit = true;
+    await fillForm(wrapper, 'Hello');
+    await wrapper.find('#sensitive-toggle').setValue(true);
+    await wrapper.find('#spoiler-text').setValue('Warning!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('.error').text()).toBe('Your toot is 13 characters long, but your instance allows 10.');
+  });
+
+  it('counts every character of the content warning, URLs included', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 30;
+    instance.hasCharacterLimit = true;
+    await fillForm(wrapper, 'Hello');
+    await wrapper.find('#sensitive-toggle').setValue(true);
+    await wrapper.find('#spoiler-text').setValue('https://example.com/abcdefghij');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('.error').text()).toBe('Your toot is 35 characters long, but your instance allows 30.');
+  });
+
+  it('does not count the content warning text while the warning is off', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.hasCharacterLimit = true;
+    await fillForm(wrapper, 'Hello');
+    await wrapper.find('#spoiler-text').setValue('Warning!');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').exists()).toBe(false);
+    expect(api.scheduleToot).toHaveBeenCalled();
+  });
+
+  it('does not count the spaces around the content warning', async () => {
+    api.scheduleToot.mockResolvedValue({});
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxCharacters = 10;
+    instance.hasCharacterLimit = true;
+    await fillForm(wrapper, 'Hello');
+    await wrapper.find('#sensitive-toggle').setValue(true);
+    await wrapper.find('#spoiler-text').setValue('Warn      ');
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('.error').exists()).toBe(false);
+    expect(api.scheduleToot).toHaveBeenCalled();
+  });
+
+  it('refuses more images than the instance allows, without sending', async () => {
+    const wrapper = mountComposer();
+    await flushPromises();
+    const instance = useInstanceStore();
+    instance.maxMediaAttachments = 1;
+    instance.hasMediaLimit = true;
+    const image = { id: 'a', type: 'image', url: 'https://x/a.png', preview_url: 'https://x/a.png' };
+    useScheduledTootsStore().setEditingToot(makeScheduledToot({ media_attachments: [image, { ...image, id: 'b' }] as MastodonStatus['media_attachments'] }));
+    await flushPromises();
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(api.scheduleToot).not.toHaveBeenCalled();
+    expect(wrapper.find('.error').text()).toBe('This toot has 2 images, but your instance allows 1.');
   });
 
   it('does not send a poll that was opened, filled in and closed again', async () => {

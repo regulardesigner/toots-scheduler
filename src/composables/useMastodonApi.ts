@@ -2,10 +2,12 @@ import axios from 'axios';
 import { z } from 'zod';
 import { createApiClient } from '../utils/api';
 import { useAuthStore } from '../stores/auth';
-import type { MastodonAccount, MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
+import type { InstanceConfiguration, MastodonAccount, MastodonStatus, ScheduledToot, MastodonMediaAttachment } from '../types/mastodon';
 import {
   AccountSchema,
   AppRegistrationSchema,
+  InstanceSchema,
+  InstanceV1Schema,
   MediaAttachmentSchema,
   ScheduledStatusSchema,
   TokenResponseSchema,
@@ -96,6 +98,44 @@ export function useMastodonApi() {
     try {
       const response = await api.get(`${auth.instance}/api/v1/accounts/verify_credentials`);
       return parseApiResponse(AccountSchema, response.data, 'account');
+    } catch (error) {
+      throw new Error(handleApiError(error), { cause: error });
+    }
+  }
+
+  /**
+   * Reads the limits of the signed-in instance (GET /api/v2/instance, Mastodon 4.0+; falls back to /api/v1/instance for older Mastodon, Pleroma and Akkoma, and also asks it when v2 gives no text limit).
+   * The endpoint is public; the shared client still sends the token only to this instance.
+   * @returns {Promise<InstanceConfiguration>} The limits it reported; missing or invalid ones are left out.
+   * @throws {Error} If the instance URL is not set, the request fails or the body is not an object.
+   */
+  async function getInstanceConfiguration(): Promise<InstanceConfiguration> {
+    if (!auth.instance) throw new Error('No instance URL set');
+    try {
+      const readV1 = async (): Promise<InstanceConfiguration> => {
+        const response = await api.get(`${auth.instance}/api/v1/instance`);
+        return parseApiResponse(InstanceV1Schema, response.data, 'instance information');
+      };
+      let v2: InstanceConfiguration;
+      try {
+        const response = await api.get(`${auth.instance}/api/v2/instance`);
+        v2 = parseApiResponse(InstanceSchema, response.data, 'instance information');
+      } catch (error) {
+        // Not signed in or not allowed: the older endpoint would say the same. Anything else
+        // (404 on older Mastodon, Pleroma, Akkoma...) is worth a second try.
+        if (axios.isAxiosError(error) && error.response?.status === 401) throw error;
+        return await readV1();
+      }
+      if (v2.maxCharacters !== undefined) return v2;
+      // No text limit in v2 (some servers only send it as v1's max_toot_chars): ask v1 too,
+      // keeping v2's values wherever it gave one. If v1 fails, v2's answer still stands.
+      const v1 = await readV1().catch((): InstanceConfiguration => ({}));
+      return {
+        maxCharacters: v1.maxCharacters,
+        maxMediaAttachments: v2.maxMediaAttachments ?? v1.maxMediaAttachments,
+        imageSizeLimit: v2.imageSizeLimit ?? v1.imageSizeLimit,
+        supportedMimeTypes: v2.supportedMimeTypes ?? v1.supportedMimeTypes,
+      };
     } catch (error) {
       throw new Error(handleApiError(error), { cause: error });
     }
@@ -328,6 +368,12 @@ export function useMastodonApi() {
      * @returns {Promise<Object>} The verified account data.
      */
     verifyCredentials,
+
+    /**
+     * Reads the limits of the signed-in instance.
+     * @returns {Promise<InstanceConfiguration>} The limits it reported.
+     */
+    getInstanceConfiguration,
   
     /**
      * Schedules a toot to be posted at a later time.

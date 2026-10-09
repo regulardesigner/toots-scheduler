@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import { normalizeUrl } from '../../utils/url';
 import { createPkcePair, createRandomToken } from '../../utils/pkce';
 import { buildAuthorizeUrl, savePendingLogin } from '../../utils/oauthFlow';
 
 const emit = defineEmits<{
-  (e: 'close-child-modal'): void;
+  (e: 'close'): void;
 }>();
 
 const instance = ref('');
+const instanceInput = ref<HTMLInputElement | null>(null);
 const api = useMastodonApi();
 const error = ref('');
 const isLoading = ref(false);
@@ -33,7 +34,7 @@ async function handleLogin() {
       codeVerifier: verifier,
     });
 
-    emit('close-child-modal');
+    emit('close');
     window.location.assign(buildAuthorizeUrl(instanceUrl, appData.client_id, state, challenge));
   } catch (err) {
     console.error('Login error:', err);
@@ -41,12 +42,20 @@ async function handleLogin() {
   } finally {
     isLoading.value = false;
   }
+  // The field was disabled while loading, which dropped focus; put it back after a failed attempt.
+  if (error.value) {
+    await nextTick();
+    instanceInput.value?.focus();
+  }
 }
 </script>
 
 <template>
   <div class="login-form">
-    <h2 class="winky-sans-700">
+    <h2
+      id="login-title"
+      class="winky-sans-700"
+    >
       Instance Sign In
     </h2>
     <form @submit.prevent="handleLogin">
@@ -54,6 +63,7 @@ async function handleLogin() {
         <label for="instance">Enter your instance address</label>
         <input
           id="instance"
+          ref="instanceInput"
           v-model="instance"
           type="text"
           inputmode="url"
@@ -63,14 +73,22 @@ async function handleLogin() {
           placeholder="mastodon.social"
           required
           :disabled="isLoading"
+          :aria-invalid="error ? 'true' : undefined"
+          :aria-describedby="error ? 'login-error' : undefined"
         >
       </div>
-      <p
-        v-if="error"
-        class="error"
+      <!-- Always in the DOM, only its content changes: Safari ignores an alert inserted already filled. -->
+      <div
+        id="login-error"
+        role="alert"
       >
-        {{ error }}
-      </p>
+        <p
+          v-if="error"
+          class="error"
+        >
+          {{ error }}
+        </p>
+      </div>
       <button
         type="submit"
         :disabled="isLoading"
@@ -126,7 +144,7 @@ input:disabled {
 }
 
 .error {
-  color: #e74c3c;
+  color: #c0392b;
   margin-bottom: 1rem;
   padding: 0.75rem;
   background-color: #fde8e7;

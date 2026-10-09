@@ -11,7 +11,10 @@ const emit = defineEmits<{
 
 <template>
   <div class="delete-confirm">
-    <h2 class="delete-title">
+    <h2
+      id="delete-title"
+      class="delete-title"
+    >
       Delete scheduled toot?
     </h2>
     <p class="delete-description">
@@ -106,12 +109,12 @@ const emit = defineEmits<{
 }
 
 .btn-delete {
-  background-color: #e74c3c;
+  background-color: #c0392b;
   color: white;
 }
 
 .btn-delete:hover {
-  background-color: #c0392b;
+  filter: brightness(0.85);
 }
 
 @media (max-width: 768px) {

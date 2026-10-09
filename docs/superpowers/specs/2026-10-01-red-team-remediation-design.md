@@ -150,6 +150,18 @@
 
 ## Lot 4 — Accessibilité & UX de fiabilité (WEB-01, WEB-07, BUG-06, BUG-08, BUG-09, CC-10)
 
+> ✅ **Livré en 0.16.0** : branche `fix/lot-4-a11y-instance-limits`, plan [2026-10-06-lot-4-a11y-instance-limits.md](../plans/2026-10-06-lot-4-a11y-instance-limits.md). Vérifications automatiques le 2026-10-07 :
+> - 362 tests unitaires ;
+> - Playwright sur la build de production face à une instance simulée : Chromium 40/40 et WebKit 41/41, dont le parcours au clavier seul, 13 scans axe sans aucune violation, les limites de l'instance avec repli v1 et valeurs par défaut, et aucune violation CSP.
+>
+> Vérifié par l'utilisateur le 2026-10-07 : Lighthouse accessibilité 100 % (accueil et composer, desktop et mobile), passage VoiceOver + Safari après les correctifs propres à Safari, limites sur une vraie instance. Écarts notables :
+> - limites appliquées seulement quand l'instance les donne ;
+> - comptage des caractères à la façon de Mastodon ;
+> - une seule opération à la fois ;
+> - liste en accordéon ;
+> - contrastes corrigés ;
+> - correctifs de timing Safari/VoiceOver.
+
 **Objectif :** une app utilisable au clavier et au lecteur d'écran, et des limites dictées par l'instance.
 
 **Fichiers :** `src/components/Modals/ModalView.vue`, `src/App.vue`, `src/components/Toot/TootCard.vue`, `src/components/Toot/ScheduledToots.vue`, `src/components/ContentArea.vue`, `src/components/ControlsBar.vue`, `src/components/LandingPage.vue`, `src/components/Auth/LoginForm.vue`, `src/stores/instance.ts` (nouveau, setup store) + test.

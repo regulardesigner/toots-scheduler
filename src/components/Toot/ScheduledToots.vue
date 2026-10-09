@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useMastodonApi } from '../../composables/useMastodonApi';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import TootCard from './TootCard.vue';
 import ModalView from '../Modals/ModalView.vue';
 import DeleteConfirmModal from '../Modals/DeleteConfirmModal.vue';
@@ -9,14 +8,28 @@ import type { MastodonStatus } from '../../types/mastodon';
 
 const PREVIEW_MAX_LENGTH = 120;
 
-const api = useMastodonApi();
 const store = useScheduledTootsStore();
+
+/** The user's own choice (open/closed); null until they click, so the list follows the data. */
+const userToggled = ref<boolean | null>(null);
+// The error is shown above the panel, open or not: it neither opens the panel nor overrides the user's choice.
+const isOpen = computed(() => userToggled.value ?? store.count > 0);
+
+/** First load, nothing to show yet. */
+const isFirstLoad = computed(() => store.isLoading && store.count === 0);
+
+/** The list's toggle: focus lands here once a deleted toot's card is gone. */
+const listToggle = ref<HTMLButtonElement | null>(null);
 
 /** The toot pending deletion, or null when no confirmation is open. */
 const tootToDelete = ref<MastodonStatus | null>(null);
 
 /** Truncated preview text shown inside the confirmation modal. */
 const tootDeletePreview = ref('');
+
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 /**
  * Opens the delete confirmation modal for the given toot ID.
@@ -41,38 +54,47 @@ function handleDeleteCancel() {
 }
 
 /**
- * Confirms the deletion of the pending toot and refreshes the list.
+ * Confirms the deletion of the pending toot. Only its card shows progress meanwhile.
  */
 async function handleDeleteConfirm() {
   if (!tootToDelete.value) return;
   const id = tootToDelete.value.id;
   handleDeleteCancel();
+  // Another change started while the dialog was open: deleteToot would refuse, and nothing moved, so neither does focus.
+  if (store.pendingId !== null) return;
 
-  try {
-    store.setLoading(true);
-    await api.deleteScheduledToot(id);
-    await store.fetchScheduledToots();
-  } catch (err) {
-    store.setError(err instanceof Error ? err.message : 'Failed to delete toot');
-  } finally {
-    store.setLoading(false);
-  }
+  const deleted = await store.deleteToot(id);
+  await nextTick();
+  // The card's own Delete button: the dialog's opener. Not read from document.activeElement, which the
+  // button loses while it is disabled during the request.
+  const deleteButton = Array.from(document.querySelectorAll<HTMLElement>('[data-toot-id]'))
+    .find(card => card.dataset.tootId === id)
+    ?.querySelector<HTMLElement>('.delete-button');
+  // Unless the user moved focus elsewhere meanwhile.
+  const active = document.activeElement;
+  if (active && active !== document.body && active !== deleteButton && active.isConnected) return;
+  // Decided on the outcome, not on the DOM: a deleted card stays in the page while it animates out.
+  // A failure keeps the card, so focus goes back to its Delete button; a success, to the list's toggle.
+  if (!deleted && deleteButton) deleteButton.focus();
+  else listToggle.value?.focus();
 }
 
-function handleEdit(id: string) {
+/**
+ * Loads a toot into the composer, then scrolls to and focuses its text.
+ * @param {string} id - The ID of the toot to edit.
+ */
+async function handleEdit(id: string) {
+  // One operation at a time: a toot being saved or deleted must not be swapped out of the composer.
+  if (store.pendingId !== null) return;
   const toot = store.toots.find(t => t.id === id);
-  if (toot) {
-    store.setEditingToot(toot);
+  if (!toot) return;
+  store.setEditingToot(toot);
 
-    
-    // Scroll to textarea after a short delay to ensure the content is rendered
-    setTimeout(() => {
-      document.querySelector('.content-area textarea')?.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'center'
-      });
-    }, 100);
-  }
+  // Once the composer has rendered the toot.
+  await nextTick();
+  const textarea = document.querySelector<HTMLTextAreaElement>('textarea[data-toot-text]');
+  textarea?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+  textarea?.focus({ preventScroll: true });
 }
 
 onMounted(() => {
@@ -82,37 +104,53 @@ onMounted(() => {
 
 <template>
   <div class="scheduled-toots">
-    <details
-      class="toots-details"
-      :open="store.count > 0 || !!store.error"
+    <h2
+      id="scheduled-toots-title"
     >
-      <summary class="toots-summary">
-        <h1>Scheduled Toots ({{ store.count }})</h1>
-      </summary>
-      
+      <button
+        ref="listToggle"
+        type="button"
+        class="toots-toggle"
+        :aria-expanded="isOpen ? 'true' : 'false'"
+        aria-controls="scheduled-toots-panel"
+        @click="userToggled = !isOpen"
+      >
+        Scheduled Toots ({{ store.count }})
+      </button>
+    </h2>
+    <!--
+      Always in the DOM and outside the collapsible panel, only its content changes: Safari ignores
+      an alert inserted already filled, and one inside a hidden panel is not in the accessibility tree.
+    -->
+    <div role="alert">
+      <p
+        v-if="store.error && !isFirstLoad"
+        class="error"
+      >
+        {{ store.error }}
+      </p>
+    </div>
+    <div
+      v-show="isOpen"
+      id="scheduled-toots-panel"
+    >
       <div
-        v-if="store.isLoading"
+        v-if="isFirstLoad"
         class="loading"
       >
         Loading scheduled toots...
       </div>
-      
+
+      <!-- After a failed load, "no toots" may be false: the error above says enough. -->
       <div
-        v-else-if="store.error"
-        class="error"
-      >
-        {{ store.error }}
-      </div>
-      
-      <div
-        v-else-if="store.count === 0"
+        v-else-if="store.count === 0 && !store.error"
         class="empty-state"
       >
         No scheduled toots yet.
       </div>
-      
+
       <div
-        v-else
+        v-else-if="store.count > 0"
         class="toots-list"
       >
         <TransitionGroup 
@@ -124,6 +162,7 @@ onMounted(() => {
             v-for="toot in store.sortedToots"
             :id="toot.id"
             :key="toot.id"
+            :data-toot-id="toot.id"
             :scheduled-at="toot.scheduled_at || ''"
             :text="toot.params?.text"
             :visibility="toot.params?.visibility"
@@ -132,18 +171,20 @@ onMounted(() => {
             :sensitive="toot.params?.sensitive"
             :poll="toot.params?.poll"
             :medias="toot.media_attachments"
-            :is-loading="store.isLoading"
-            :on-delete="handleDeleteRequest"
-            :on-edit="handleEdit"
+            :pending-action="store.pendingId === toot.id ? store.pendingAction : null"
+            :busy="store.pendingId !== null"
+            @edit="handleEdit"
+            @delete="handleDeleteRequest"
           />
         </TransitionGroup>
       </div>
-    </details>
+    </div>
   </div>
 
   <ModalView
     :is-open="!!tootToDelete"
-    @close-modal="handleDeleteCancel"
+    labelled-by="delete-title"
+    @close="handleDeleteCancel"
   >
     <DeleteConfirmModal
       :toot-preview="tootDeletePreview"
@@ -158,25 +199,30 @@ onMounted(() => {
   margin-top: 2rem;
 }
 
-.toots-details {
-  width: 100%;
+h2 {
+  margin: 0;
 }
 
-.toots-summary {
-  cursor: pointer;
-  list-style: none;
-}
-
-.toots-summary::-webkit-details-marker {
-  display: none;
-}
-
-.toots-summary {
+.toots-toggle {
+  all: unset;
+  display: block; /* all: unset makes it inline; width and ::after need a block box */
+  box-sizing: border-box;
   position: relative;
+  width: 100%;
   padding-right: 2rem;
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #333;
 }
 
-.toots-summary::after {
+.toots-toggle:focus-visible {
+  outline: 2px solid #333;
+  outline-offset: 2px;
+}
+
+.toots-toggle::after {
   content: '▼';
   position: absolute;
   right: 0;
@@ -187,16 +233,18 @@ onMounted(() => {
   transition: transform 0.2s ease;
 }
 
-.toots-details[open] .toots-summary::after {
+.toots-toggle[aria-expanded="true"]::after {
   transform: translateY(-50%) rotate(180deg);
 }
 
-h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0;
-  color: #333;
-  display: inline-block;
+#scheduled-toots-panel {
+  margin-top: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toots-toggle::after {
+    transition: none;
+  }
 }
 
 .loading, .error, .empty-state {
@@ -208,7 +256,8 @@ h1 {
 }
 
 .error {
-  color: #e74c3c;
+  margin: 0.5rem 0 0;
+  color: #c0392b;
   background-color: #fde8e7;
   border-radius: 0.5rem;
 }
@@ -234,5 +283,13 @@ h1 {
 
 .toot-list-leave-active {
   position: absolute;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toot-list-move,
+  .toot-list-enter-active,
+  .toot-list-leave-active {
+    transition: none;
+  }
 }
 </style> 

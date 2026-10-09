@@ -1,111 +1,188 @@
-<script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+<script lang="ts">
+/** Dialogs currently open, oldest first: only the last one reacts to the keyboard. */
+const openStack: symbol[] = [];
 
-const props = defineProps<{
+function syncScrollLock(): void {
+  document.body.classList.toggle('modal-open', openStack.length > 0);
+}
+
+/** What a click can activate: the opener focus goes back to, when the click did not focus it. */
+const ACTIVATABLE_SELECTOR = 'button, a[href], input, select, textarea, summary, [tabindex]';
+
+/** A click older than this did not open the dialog: it is not taken as the opener. */
+const RECENT_CLICK_MS = 1000;
+
+/**
+ * The control last clicked. Safari does not focus a button on click (nor, likely, on VoiceOver
+ * activation), so document.activeElement is the body when a dialog opens and focus would be lost on close.
+ */
+let lastActivated: HTMLElement | null = null;
+/** When lastActivated was clicked, from performance.now(). */
+let lastActivatedAt = 0;
+let isTrackingActivation = false;
+
+/** Listens once, in the capture phase so the opener is known before its own click handler opens a dialog. */
+function trackActivation(): void {
+  if (isTrackingActivation) return;
+  isTrackingActivation = true;
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target.closest(ACTIVATABLE_SELECTOR) : null;
+    if (!(target instanceof HTMLElement)) return;
+    lastActivated = target;
+    lastActivatedAt = performance.now();
+  }, true);
+}
+
+/** The control clicked just now, if it is still in the page; forgotten once read, so it is used only once. */
+function takeRecentlyActivated(): HTMLElement | null {
+  const target = lastActivated;
+  lastActivated = null;
+  if (!target?.isConnected || performance.now() - lastActivatedAt > RECENT_CLICK_MS) return null;
+  return target;
+}
+</script>
+
+<script setup lang="ts">
+import { ref, watch, nextTick, onUnmounted } from 'vue';
+
+// What can take focus inside the dialog; disabled controls are skipped, as the browser does.
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+const props = withDefaults(defineProps<{
   isOpen: boolean;
-}>();
+  /** Id of the heading (or label) inside the slot that names the dialog. */
+  labelledBy: string;
+  /**
+   * Where focus lands on opening: the first focusable element, or the dialog itself
+   * (for long content whose first control is at the end, so it opens at the top).
+   */
+  initialFocus?: 'first' | 'dialog';
+  /** Where focus goes on closing when the opener has left the page (e.g. a button shown only until the dialog is seen). */
+  returnFocus?: () => HTMLElement | null | undefined;
+}>(), {
+  initialFocus: 'first',
+  returnFocus: undefined,
+});
 
 const emit = defineEmits<{
-  (e: 'close-modal'): void;
+  (e: 'close'): void;
 }>();
 
 const modalRef = ref<HTMLElement | null>(null);
 
-const previousActiveElement = ref<HTMLElement | null>(null);
+/** What had focus before the dialog opened. Null unless it really opened, so focus is never moved for nothing. */
+let returnFocusTo: HTMLElement | null = null;
 
-function handleClose() {
-  emit('close-modal');
+trackActivation();
+
+function close(): void {
+  emit('close');
 }
 
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && props.isOpen) {
-    handleClose();
-  }
+const id = Symbol('modal');
+
+function isTopMost(): boolean {
+  return openStack[openStack.length - 1] === id;
 }
 
 function getFocusableElements(): HTMLElement[] {
   if (!modalRef.value) return [];
-  
-  return Array.from(
-    modalRef.value.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-  ) as HTMLElement[];
+  return Array.from(modalRef.value.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
 }
 
-function handleModalKeydown(event: KeyboardEvent) {
-  if (!modalRef.value) return;
-  
-  const focusableElements = getFocusableElements();
-  if (focusableElements.length === 0) return;
-
-  const firstFocusableElement = focusableElements[0];
-  const lastFocusableElement = focusableElements[focusableElements.length - 1];
-  const activeElement = document.activeElement as HTMLElement;
-
-  // Handle Tab key
-  if (event.key === 'Tab') {
-    if (event.shiftKey) {
-      // Backward tab
-      if (activeElement === firstFocusableElement) {
-        event.preventDefault();
-        lastFocusableElement.focus();
-      }
-    } else {
-      // Forward tab
-      if (activeElement === lastFocusableElement) {
-        event.preventDefault();
-        firstFocusableElement.focus();
-      }
-    }
+/** Escape closes the top-most dialog; Tab and Shift+Tab stay inside it, even when focus has fallen out (e.g. onto the body). */
+function handleDocumentKeydown(event: KeyboardEvent): void {
+  if (!isTopMost()) return;
+  if (event.key === 'Escape' && !event.isComposing) {
+    close();
+    return;
+  }
+  if (event.key !== 'Tab' || !modalRef.value) return;
+  const focusable = getFocusableElements();
+  if (focusable.length === 0) {
+    event.preventDefault();
+    modalRef.value.focus();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  if (!modalRef.value.contains(active)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  } else if (event.shiftKey && (active === first || active === modalRef.value)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (active === last || active === modalRef.value)) {
+    event.preventDefault();
+    first.focus();
   }
 }
 
-function setupFocusTrap() {
-  previousActiveElement.value = document.activeElement as HTMLElement;
-  
-  // Focus the first focusable element
-  const focusableElements = getFocusableElements();
-  if (focusableElements.length > 0) {
-    focusableElements[0].focus();
-  } else {
-    modalRef.value?.focus();
+function focusInitial(): void {
+  // Closed, unmounted or covered by another dialog while the focus was deferred: leave focus alone.
+  if (!props.isOpen || !modalRef.value || !isTopMost()) return;
+  if (props.initialFocus === 'dialog') {
+    modalRef.value.focus({ preventScroll: true });
+    modalRef.value.scrollTop = 0;
+    return;
   }
-
-  // Add keydown handler
-  modalRef.value?.addEventListener('keydown', handleModalKeydown);
+  // The close button is last in the DOM, so this is the dialog's own first field or action.
+  const [first] = getFocusableElements();
+  (first ?? modalRef.value)?.focus();
 }
 
-function removeFocusTrap() {
-  modalRef.value?.removeEventListener('keydown', handleModalKeydown);
-  previousActiveElement.value?.focus();
+function activate(): void {
+  // Closed again, or unmounted (the template ref is nulled), before the content rendered: nothing to do.
+  if (!props.isOpen || !modalRef.value) return;
+  openStack.push(id);
+  syncScrollLock();
+  document.addEventListener('keydown', handleDocumentKeydown);
+  // Safari builds a node's accessibility object after it is inserted: focus moved in the same frame
+  // makes VoiceOver read only the field, never "<name>, web dialog". Waiting a frame and a task lets
+  // WebKit register the dialog first. A Tab pressed in that gap is already caught by the keydown trap.
+  requestAnimationFrame(() => setTimeout(focusInitial, 0));
 }
 
-// Focus management
-onMounted(() => {
-  document.addEventListener('keydown', handleKeydown);
-  if (props.isOpen) {
-    nextTick(() => {
-      setupFocusTrap();
-    });
-  }
-});
+function deactivate(): void {
+  document.removeEventListener('keydown', handleDocumentKeydown);
+  const index = openStack.indexOf(id);
+  const wasActive = index !== -1;
+  if (wasActive) openStack.splice(index, 1);
+  syncScrollLock();
+  const opener = returnFocusTo;
+  returnFocusTo = null;
+  // Never opened, or already closed: focus is not ours to move.
+  if (!opener && !wasActive) return;
+  // After the update that closed the dialog: whatever else it removed (e.g. the What's New button,
+  // rendered after this dialog or not) is gone by then, whatever the render order.
+  void nextTick(() => {
+    // The opener left the page (or there was none): the stable place the parent named, if any.
+    const target = opener?.isConnected ? opener : props.returnFocus?.();
+    if (target?.isConnected) target.focus();
+  });
+}
 
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeydown);
-  removeFocusTrap();
-});
-
-// Watch for isOpen changes to manage focus
-watch(() => props.isOpen, (newValue) => {
-  if (newValue) {
-    nextTick(() => {
-      setupFocusTrap();
-    });
-  } else {
-    removeFocusTrap();
+watch(() => props.isOpen, (open) => {
+  if (open) {
+    // The real opener, captured before anything inside the dialog can take focus; in Safari, the clicked one.
+    const active = document.activeElement;
+    const clicked = takeRecentlyActivated();
+    returnFocusTo = active instanceof HTMLElement && active !== document.body ? active : clicked;
+    void nextTick(activate);
   }
-});
+  else deactivate();
+}, { immediate: true });
+
+// Unmounted while open (e.g. sign-out): give focus back. Already closed: returnFocusTo is null, nothing moves.
+onUnmounted(deactivate);
 </script>
 
 <template>
@@ -115,23 +192,26 @@ watch(() => props.isOpen, (newValue) => {
   >
     <div
       class="modal-overlay"
-      @click="handleClose"
+      @click="close"
     />
-    <div 
+    <div
       ref="modalRef"
       class="modal-content"
       tabindex="-1"
       role="dialog"
       aria-modal="true"
-      aria-label="Modal dialog"
+      :aria-labelledby="labelledBy"
     >
+      <slot />
+      <!-- Last in the DOM, shown top-right: keyboard focus starts on the dialog's content. -->
       <button
+        type="button"
         class="close-button"
-        @click="handleClose"
+        aria-label="Close"
+        @click="close"
       >
         &times;
       </button>
-      <slot @close-child-modal="handleClose" />
     </div>
   </div>
 </template>

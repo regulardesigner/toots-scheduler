@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useToast } from 'vue-toastification';
+import { useNotify } from '../composables/useNotify';
 import { useAuthStore } from '../stores/auth';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { readAuthorizationCode, takePendingLogin } from '../utils/oauthFlow';
@@ -9,7 +9,7 @@ import { readAuthorizationCode, takePendingLogin } from '../utils/oauthFlow';
 const router = useRouter();
 const auth = useAuthStore();
 const api = useMastodonApi();
-const toast = useToast();
+const notify = useNotify();
 
 onMounted(async () => {
   const search = window.location.search;
@@ -54,7 +54,7 @@ onMounted(async () => {
     // Only undo the session this callback created; never sign out an existing one.
     if (createdToken && auth.accessToken === createdToken) void auth.logout(); // local clear is immediate; don't wait for the revoke
     console.error('OAuth callback error:', err);
-    toast.error(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
+    notify.error(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
     router.replace({ name: 'home' });
   }
 });
@@ -63,7 +63,9 @@ onMounted(async () => {
 <template>
   <div class="oauth-callback">
     <div class="loading">
-      <p>Authenticating...</p>
+      <h1 class="loading-title">
+        Authenticating...
+      </h1>
     </div>
   </div>
 </template>
@@ -78,5 +80,10 @@ onMounted(async () => {
 
 .loading {
   text-align: center;
+}
+
+.loading-title {
+  font-size: 1rem;
+  font-weight: 400;
 }
 </style>

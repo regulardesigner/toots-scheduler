@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { format, addMinutes } from 'date-fns';
 import type { ScheduledToot } from '../types/mastodon';
+import { getTimeZone } from '../utils/timeZone';
 
 const props = withDefaults(defineProps<{
   scheduledDate: string;
@@ -26,6 +27,9 @@ const submitLabel = computed(() => {
   if (props.isSubmitting) return props.isEditing ? 'Updating…' : 'Scheduling…';
   return props.isEditing ? 'Update' : 'Schedule';
 });
+
+/** The date and time fields are read in the browser's time zone: say which one. */
+const timeZone = getTimeZone();
 
 const minDateTime = computed(() => {
   const now = new Date();
@@ -60,6 +64,7 @@ const languages = [
         type="date"
         :value="scheduledDate"
         :min="minDateTime.split('T')[0]"
+        aria-describedby="time-zone-hint"
         required
         @input="emit('update:scheduledDate', ($event.target as HTMLInputElement).value)"
       >
@@ -70,6 +75,7 @@ const languages = [
         id="scheduled-time"
         type="time"
         :value="scheduledTime"
+        aria-describedby="time-zone-hint"
         required
         @input="emit('update:scheduledTime', ($event.target as HTMLInputElement).value)"
       >
@@ -111,6 +117,12 @@ const languages = [
         </option>
       </select>
     </div>
+    <p
+      id="time-zone-hint"
+      class="time-zone-hint"
+    >
+      Time zone: {{ timeZone }}
+    </p>
   </div>
   <div class="form-actions">
     <button
@@ -168,6 +180,13 @@ input#scheduled-date, input#scheduled-time, input#visibility, input#language {
   height: 2.2rem;
 }
 
+.time-zone-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
 .form-actions {
   display: flex;
   flex-direction: column;
@@ -207,12 +226,13 @@ input#scheduled-date, input#scheduled-time, input#visibility, input#language {
 }
 
 button.edit-mode {
-  background-color: #2b90d9;
+  background-color: #2577b1;
   color: white;
 }
 
 button.edit-mode:hover:not(:disabled) {
   background-color: #2577b1;
+  filter: brightness(0.9);
 }
 
 @media (max-width: 768px) {

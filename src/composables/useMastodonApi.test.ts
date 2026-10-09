@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import axios from 'axios';
 import type { ScheduledToot } from '../types/mastodon';
 
 const http = vi.hoisted(() => ({
@@ -173,6 +174,94 @@ describe('useMastodonApi', () => {
       http.get.mockRejectedValue({ isAxiosError: true, response: { status: 500, data: { error: 'Boom' } } });
 
       await expect(useMastodonApi().scheduledTootExists('42')).rejects.toThrow('Boom');
+    });
+  });
+
+  describe('getInstanceConfiguration', () => {
+    it('reads the limits from the v2 instance endpoint', async () => {
+      http.get.mockResolvedValue({ data: { configuration: { statuses: { max_characters: 1000 } } } });
+
+      const configuration = await useMastodonApi().getInstanceConfiguration();
+
+      expect(http.get).toHaveBeenCalledWith('https://masto.example/api/v2/instance');
+      expect(configuration.maxCharacters).toBe(1000);
+      expect(configuration.supportedMimeTypes).toBeUndefined();
+    });
+
+    const httpError = (status: number) => new axios.AxiosError(
+      `Request failed with status code ${status}`, String(status), undefined, undefined,
+      { status } as never,
+    );
+
+    it('falls back to /api/v1/instance when v2 is not found (older Mastodon)', async () => {
+      http.get
+        .mockRejectedValueOnce(httpError(404))
+        .mockResolvedValueOnce({ data: { configuration: { statuses: { max_characters: 800, max_media_attachments: 2 }, media_attachments: { image_size_limit: 5000 } } } });
+
+      const configuration = await useMastodonApi().getInstanceConfiguration();
+
+      expect(http.get).toHaveBeenNthCalledWith(2, 'https://masto.example/api/v1/instance');
+      expect(configuration).toMatchObject({ maxCharacters: 800, maxMediaAttachments: 2, imageSizeLimit: 5000 });
+    });
+
+    it('reads max_toot_chars from a Pleroma or Akkoma instance', async () => {
+      http.get
+        .mockRejectedValueOnce(httpError(404))
+        .mockResolvedValueOnce({ data: { max_toot_chars: 5000 } });
+
+      const configuration = await useMastodonApi().getInstanceConfiguration();
+
+      expect(configuration.maxCharacters).toBe(5000);
+    });
+
+    it('asks /api/v1/instance for the text limit when v2 gives none, v2 values winning', async () => {
+      http.get
+        .mockResolvedValueOnce({ data: { configuration: { media_attachments: { image_size_limit: 5000 } } } })
+        .mockResolvedValueOnce({ data: { max_toot_chars: 5000, configuration: { media_attachments: { image_size_limit: 1 } } } });
+
+      const configuration = await useMastodonApi().getInstanceConfiguration();
+
+      expect(http.get).toHaveBeenNthCalledWith(2, 'https://masto.example/api/v1/instance');
+      expect(configuration).toMatchObject({ maxCharacters: 5000, imageSizeLimit: 5000 });
+    });
+
+    it('keeps the v2 answer when v2 gives no text limit and v1 fails', async () => {
+      http.get
+        .mockResolvedValueOnce({ data: { configuration: { media_attachments: { image_size_limit: 5000 } } } })
+        .mockRejectedValueOnce(httpError(404));
+
+      const configuration = await useMastodonApi().getInstanceConfiguration();
+
+      expect(configuration.maxCharacters).toBeUndefined();
+      expect(configuration.imageSizeLimit).toBe(5000);
+    });
+
+    it('rejects when both instance endpoints fail', async () => {
+      http.get.mockRejectedValueOnce(httpError(404)).mockRejectedValueOnce(httpError(500));
+
+      await expect(useMastodonApi().getInstanceConfiguration()).rejects.toThrow('Request failed with status code 500');
+      expect(http.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not fall back on a 401', async () => {
+      http.get.mockRejectedValue(httpError(401));
+
+      await expect(useMastodonApi().getInstanceConfiguration()).rejects.toThrow('401');
+      expect(http.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('never calls v1 when v2 gives the text limit', async () => {
+      http.get.mockResolvedValue({ data: { configuration: { statuses: { max_characters: 1000 } } } });
+
+      await useMastodonApi().getInstanceConfiguration();
+
+      expect(http.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails when the instance cannot be read', async () => {
+      http.get.mockRejectedValue(new Error('Request failed with status code 404'));
+
+      await expect(useMastodonApi().getInstanceConfiguration()).rejects.toThrow('Request failed with status code 404');
     });
   });
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   AccountSchema,
   AppRegistrationSchema,
+  InstanceSchema,
   MediaAttachmentSchema,
   ScheduledStatusSchema,
   TokenResponseSchema,
@@ -93,5 +94,39 @@ describe('mastodon schemas', () => {
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, media_ids: 'm1' } }).success).toBe(false);
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, scheduled_at: 'Mon, 01 Jan 2031 12:00:00 GMT' }).success).toBe(false);
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, scheduled_at: '2031-01-01T12:00:00+00:00' }).success).toBe(true);
+  });
+
+  it('reads the instance limits the composer needs', () => {
+    const instance = {
+      domain: 'masto.example',
+      configuration: {
+        statuses: { max_characters: 1000, max_media_attachments: 6, characters_reserved_per_url: 23 },
+        media_attachments: { supported_mime_types: ['image/png', 'video/mp4'], image_size_limit: 16777216 },
+      },
+    };
+    expect(InstanceSchema.parse(instance)).toEqual({
+      maxCharacters: 1000,
+      maxMediaAttachments: 6,
+      imageSizeLimit: 16777216,
+      supportedMimeTypes: ['image/png', 'video/mp4'],
+    });
+  });
+
+  it('keeps the valid MIME types when the list has other entries', () => {
+    const parsed = InstanceSchema.parse({ configuration: { media_attachments: { supported_mime_types: ['image/png', null, 42, 'image/webp'] } } });
+    expect(parsed.supportedMimeTypes).toEqual(['image/png', 'image/webp']);
+  });
+
+  it('drops missing or invalid instance limits instead of refusing the response', () => {
+    const parsed = InstanceSchema.parse({
+      configuration: {
+        statuses: { max_characters: -1, max_media_attachments: 2.5 },
+        media_attachments: { supported_mime_types: 'image/png', image_size_limit: '8MB' },
+      },
+    });
+    expect(parsed).toEqual({ maxCharacters: undefined, maxMediaAttachments: undefined, imageSizeLimit: undefined, supportedMimeTypes: undefined });
+    expect(InstanceSchema.parse({ configuration: 'none' }).maxCharacters).toBeUndefined();
+    expect(InstanceSchema.parse({}).maxCharacters).toBeUndefined();
+    expect(InstanceSchema.safeParse('<html>').success).toBe(false);
   });
 });

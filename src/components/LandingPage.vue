@@ -16,7 +16,10 @@ function handleCloseLoginForm() {
 
 <template>
   <div class="landing-hero">
-    <h1 class="landing-title winky-sans-900">
+    <h1
+      class="landing-title winky-sans-900"
+      tabindex="-1"
+    >
       The first toot scheduling <br>service of all time!
     </h1>
 
@@ -31,7 +34,7 @@ function handleCloseLoginForm() {
     </p>
   </div>
 
-  <main>
+  <div class="landing-content">
     <div class="landing-how-it-works">  
       <h2 class="winky-sans-700">
         How to schedule a toot?
@@ -89,14 +92,22 @@ function handleCloseLoginForm() {
 
     <ModalView
       :is-open="showLoginForm"
-      @close-modal="handleCloseLoginForm"
+      labelled-by="login-title"
+      @close="handleCloseLoginForm"
     >
-      <LoginForm @close-modal="handleCloseLoginForm" />
+      <LoginForm @close="handleCloseLoginForm" />
     </ModalView>
-  </main>
+  </div>
 </template>
 
 <style>
+.landing-content {
+  padding: 2rem 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
 .landing-hero {
   display: flex;
   flex-direction: column;

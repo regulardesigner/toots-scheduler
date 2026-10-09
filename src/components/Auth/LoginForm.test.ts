@@ -39,6 +39,7 @@ describe('LoginForm', () => {
     expect(url.searchParams.get('state')).toBe(pending?.state);
     expect(url.searchParams.get('code_challenge_method')).toBe('S256');
     expect(url.searchParams.get('code_challenge')).toBe(await createCodeChallenge(pending!.codeVerifier));
+    expect(wrapper.emitted('close')).toHaveLength(1);
   });
 
   it('refuses a plain http instance without contacting it', async () => {
@@ -49,7 +50,41 @@ describe('LoginForm', () => {
     await flushPromises();
 
     expect(wrapper.find('.error').text()).toBe('The instance address must use https://');
+    expect(wrapper.find('.error').element.parentElement?.getAttribute('role')).toBe('alert');
     expect(api.registerApplication).not.toHaveBeenCalled();
     expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('keeps an empty alert container in place, then fills it and links the field to the error', async () => {
+    api.registerApplication.mockRejectedValue(new Error('Network Error'));
+    const wrapper = mount(LoginForm);
+    const alert = wrapper.find('[role="alert"]');
+    const field = wrapper.find('#instance');
+
+    expect(alert.exists()).toBe(true);
+    expect(alert.text()).toBe('');
+    expect(field.attributes('aria-invalid')).toBeUndefined();
+    expect(field.attributes('aria-describedby')).toBeUndefined();
+
+    await field.setValue('mastodon.social');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').element).toBe(alert.element);
+    expect(alert.text()).toBe('Network Error');
+    expect(field.attributes('aria-invalid')).toBe('true');
+    expect(field.attributes('aria-describedby')).toBe(alert.attributes('id'));
+  });
+
+  it('puts focus back on the instance field after a failed attempt', async () => {
+    api.registerApplication.mockRejectedValue(new Error('boom'));
+    const wrapper = mount(LoginForm, { attachTo: document.body });
+
+    await wrapper.find('#instance').setValue('mastodon.social');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(document.activeElement).toBe(wrapper.find('#instance').element);
+    wrapper.unmount();
   });
 });

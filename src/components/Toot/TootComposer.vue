@@ -3,15 +3,17 @@
 const MIN_SCHEDULE_AHEAD_MINUTES = 5;
 const DEFAULT_POLL_EXPIRATION_SECONDS = 86400; // 24 hours
 
-import { ref, onMounted, watch } from 'vue';
-import { useToast } from 'vue-toastification';
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
+import { useNotify } from '../../composables/useNotify';
 import { useMastodonApi } from '../../composables/useMastodonApi';
 import { useAuthStore } from '../../stores/auth';
+import { useInstanceStore } from '../../stores/instance';
+import { countGraphemes, countTootCharacters } from '../../utils/tootLength';
 import { format, addMinutes, isBefore, parseISO } from 'date-fns';
 import type { ScheduledToot, MastodonMediaAttachment, PollFormState } from '../../types/mastodon';
 import { buildScheduledToot } from '../../utils/buildScheduledToot';
 import ScheduledToots from './ScheduledToots.vue';
-import { useScheduledTootsStore } from '../../stores/scheduledToots';
+import { useScheduledTootsStore, BusyError } from '../../stores/scheduledToots';
 import MediaUpload from '../MediaUpload.vue';
 import ContentWarning from '../ContentWarning.vue';
 import ContentArea from '../ContentArea.vue';
@@ -28,7 +30,8 @@ function createEmptyPoll(): PollFormState {
 }
 
 const auth = useAuthStore();
-const toast = useToast();
+const instance = useInstanceStore();
+const notify = useNotify();
 const content = ref('');
 const scheduledDate = ref('');
 const scheduledTime = ref('');
@@ -40,6 +43,8 @@ const isSensitive = ref(false);
 const showMedia = ref(false);
 const showPoll = ref(false);
 const spoilerText = ref('');
+/** The content warning counts toward the limit only when it is enabled, trimmed (that is what is sent), in the counter and the submit check alike. */
+const spoilerLength = computed(() => (isSensitive.value ? countGraphemes(spoilerText.value.trim()) : 0));
 const mediaAttachments = ref<MastodonMediaAttachment[]>([]);
 const pollData = ref<PollFormState>(createEmptyPoll());
 
@@ -77,39 +82,42 @@ function handleShowPoll() {
 }
 
 // Watch for editing toot changes
-watch(() => store.editingToot, (newToot) => {
-  if (newToot) {
-    content.value = newToot.params?.text || '';
-    
-    // Parse the scheduled date and time
-    if (newToot.scheduled_at) {
-      const date = parseISO(newToot.scheduled_at);
-      scheduledDate.value = format(date, 'yyyy-MM-dd');
-      scheduledTime.value = format(date, 'HH:mm');
-    }
-    
-    visibility.value = newToot.params?.visibility as ScheduledToot['visibility'] || 'public';
-    language.value = newToot.params?.language || 'en';
-    isSensitive.value = newToot.params?.sensitive || false;
-    spoilerText.value = newToot.params?.spoiler_text || '';
-    mediaAttachments.value = newToot.media_attachments || [];
+watch(() => store.editingToot, (newToot, oldToot) => {
+  // Edit mode ended outside the form (the toot was deleted, or the session changed): drop its content.
+  if (!newToot) {
+    if (oldToot) resetForm();
+    return;
+  }
+  content.value = newToot.params?.text || '';
+  
+  // Parse the scheduled date and time
+  if (newToot.scheduled_at) {
+    const date = parseISO(newToot.scheduled_at);
+    scheduledDate.value = format(date, 'yyyy-MM-dd');
+    scheduledTime.value = format(date, 'HH:mm');
+  }
+  
+  visibility.value = newToot.params?.visibility as ScheduledToot['visibility'] || 'public';
+  language.value = newToot.params?.language || 'en';
+  isSensitive.value = newToot.params?.sensitive || false;
+  spoilerText.value = newToot.params?.spoiler_text || '';
+  mediaAttachments.value = newToot.media_attachments || [];
 
-    // Show media section if there are media attachments
-    showMedia.value = newToot.media_attachments?.length > 0;
+  // Show media section if there are media attachments
+  showMedia.value = newToot.media_attachments?.length > 0;
 
-    const poll = newToot.params?.poll;
-    if (poll) {
-      showPoll.value = true;
-      pollData.value = {
-        options: poll.options || [],
-        expiresIn: Number(poll.expires_in) || DEFAULT_POLL_EXPIRATION_SECONDS,
-        multiple: poll.multiple || false,
-        hideTotals: poll.hide_totals || false
-      };
-    } else {
-      showPoll.value = false;
-      pollData.value = createEmptyPoll();
-    }
+  const poll = newToot.params?.poll;
+  if (poll) {
+    showPoll.value = true;
+    pollData.value = {
+      options: poll.options || [],
+      expiresIn: Number(poll.expires_in) || DEFAULT_POLL_EXPIRATION_SECONDS,
+      multiple: poll.multiple || false,
+      hideTotals: poll.hide_totals || false
+    };
+  } else {
+    showPoll.value = false;
+    pollData.value = createEmptyPoll();
   }
 }, { immediate: true });
 
@@ -129,10 +137,20 @@ function resetForm() {
   lastAttemptFingerprint = null;
 }
 
+// Leaving edit mode empties the form through the watcher above.
 function handleCancelEdit() {
   store.setEditingToot(null);
-  resetForm();
 }
+
+// The toot being edited was deleted from the list: the form empties by itself, so say why.
+store.$onAction(({ name, args, after }) => {
+  if (name !== 'deleteToot') return;
+  const [id] = args;
+  if (store.editingToot?.id !== id) return;
+  after((deleted) => {
+    if (deleted && store.editingToot === null) notify.info('The toot you were editing was deleted.');
+  });
+});
 
 onMounted(async () => {
   console.log('Initial auth account:', auth.account);
@@ -152,9 +170,25 @@ async function handleSubmit() {
   // Ignore resubmissions (double click, Enter key) while a request is in flight.
   if (isSubmitting.value) return;
   isSubmitting.value = true;
+  // Clear and wait a tick so an identical message is inserted again and announced again.
   error.value = '';
+  await nextTick();
 
   try {
+    // The instance would refuse it: say why before sending (e.g. an edited toot longer than the limit).
+    // Only against limits the instance gave: the defaults are guesses and must not block anything.
+    if (instance.hasCharacterLimit) {
+      const length = countTootCharacters(content.value) + spoilerLength.value;
+      if (length > instance.maxCharacters) {
+        error.value = `Your toot is ${length} characters long, but your instance allows ${instance.maxCharacters}.`;
+        return;
+      }
+    }
+    if (instance.hasMediaLimit && mediaAttachments.value.length > instance.maxMediaAttachments) {
+      error.value = `This toot has ${mediaAttachments.value.length} images, but your instance allows ${instance.maxMediaAttachments}.`;
+      return;
+    }
+
     // Validate scheduled time
     const scheduledDateTime = new Date(`${scheduledDate.value}T${scheduledTime.value}`);
     const minTime = addMinutes(new Date(), MIN_SCHEDULE_AHEAD_MINUTES);
@@ -182,11 +216,11 @@ async function handleSubmit() {
       // updateToot refreshes the list and leaves edit mode itself.
       const result = await store.updateToot(store.editingToot, toot, key);
       if (!result.previousVersionRemoved) {
-        toast.warning('Your toot was updated, but the previous version could not be removed. Please delete it from the list.');
+        notify.warning('Your toot was updated, but the previous version could not be removed. Please delete it from the list.');
       }
     } else {
-      await api.scheduleToot(toot, key);
-      await store.fetchScheduledToots();
+      // createToot refreshes the list; Edit and Delete stay disabled until it is done.
+      await store.createToot(toot, key);
     }
 
     resetForm();
@@ -195,7 +229,8 @@ async function handleSubmit() {
     console.error('Error scheduling toot:', err);
     error.value = err instanceof Error ? err.message : 'Failed to schedule toot. Please try again.';
     // The request may have reached the instance despite the error: refresh so any created toot shows up.
-    void store.fetchScheduledToots();
+    // Unless it was refused before anything was sent: the change still running refreshes the list itself.
+    if (!(err instanceof BusyError)) void store.fetchScheduledToots();
   } finally {
     isSubmitting.value = false;
   }
@@ -204,6 +239,12 @@ async function handleSubmit() {
 
 <template>
   <div class="toot-composer">
+    <h1
+      class="visually-hidden"
+      tabindex="-1"
+    >
+      Schedule a toot
+    </h1>
     <form @submit.prevent="handleSubmit">
       <div
         v-if="auth.account"
@@ -239,6 +280,9 @@ async function handleSubmit() {
         v-model="content"
         :has-poll="showPoll && pollData.options.some(option => option.trim() !== '')"
         :has-media="mediaAttachments.length > 0"
+        :show-media="showMedia"
+        :show-poll="showPoll"
+        :extra-characters="spoilerLength"
         @add-media="handleShowMedia"
         @add-poll="handleShowPoll"
       />
@@ -263,12 +307,15 @@ async function handleSubmit() {
         @cancel="handleCancelEdit"
       />
 
-      <p
-        v-if="error"
-        class="error"
-      >
-        {{ error }}
-      </p>
+      <!-- Always in the DOM, only its content changes: Safari ignores an alert inserted already filled. -->
+      <div role="alert">
+        <p
+          v-if="error"
+          class="error"
+        >
+          {{ error }}
+        </p>
+      </div>
     </form>
 
     <ScheduledToots />
@@ -332,7 +379,7 @@ async function handleSubmit() {
 }
 
 .error {
-  color: #e74c3c;
+  color: #c0392b;
   margin: 1rem 0;
   padding: 0.5rem;
   border-radius: 4px;

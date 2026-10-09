@@ -3,41 +3,68 @@ import { RouterView } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import { useSessionTimeout } from './composables/useSessionTimeout';
 import { useFeaturesStore } from './stores/features';
+import { useInstanceStore } from './stores/instance';
 import { storeToRefs } from 'pinia';
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMastodonApi } from './composables/useMastodonApi';
-import { useToast } from 'vue-toastification';
+import { useNotify } from './composables/useNotify';
+import { useAnnouncer } from './composables/useAnnouncer';
 
 import WhatsNew from './components/Modals/WhatsNew.vue';
 import ThanksConfirmModal from './components/Modals/ThanksConfirmModal.vue';
 import { buildThanksMessage } from './utils/thanks';
 import ModalView from './components/Modals/ModalView.vue';
 import Send from './components/icons/Send.vue';
+import MobileNav from './components/MobileNav.vue';
 
 const auth = useAuthStore();
 const featuresStore = useFeaturesStore();
 const { newFeatures } = storeToRefs(featuresStore);
 const showWhatsNew = ref(false);
 const mastodonApi = useMastodonApi();
-const isMenuOpen = ref(false);
-const toast = useToast();
+const notify = useNotify();
+const { politeMessage, assertiveMessage, markReady } = useAnnouncer();
+
+// The live regions are in the page from now on: the announcer lets Safari register them before the first message.
+onMounted(markReady);
 
 // Initialize session timeout
 useSessionTimeout();
 
+// Reads the instance's limits after every sign-in or restored session.
+useInstanceStore();
+
 const route = useRoute();
 const router = useRouter();
 
+/**
+ * True while handleLogout navigates home itself: the session watcher below must not start a second
+ * navigation, which would cancel this one and leave focus on the heading of the page being left.
+ */
+let isLoggingOut = false;
+
 async function handleLogout(): Promise<void> {
-  isMenuOpen.value = false;
-  await auth.logout();
-  toast.success('You have been logged out successfully.');
+  // The session is cleared synchronously; the token revocation may take a while, so don't wait for it to move on.
+  isLoggingOut = true;
+  const loggingOut = auth.logout();
+  try {
+    if (route.name !== 'home') await router.push({ name: 'home' });
+    await nextTick();
+    // The button that was used has disappeared: land on the page's heading instead of <body>.
+    document.querySelector<HTMLElement>('.app-main h1')?.focus();
+  } finally {
+    isLoggingOut = false;
+    // The watcher stood aside: if this navigation failed, nothing else would leave the protected page.
+    if (!auth.accessToken && route.meta.requiresAuth) await router.replace({ name: 'home' });
+  }
+  await loggingOut;
+  notify.success('You have been logged out successfully.');
 }
 
 // Whatever ended the session (logout, inactivity, rejected token, another tab), leave protected pages.
 watch(() => auth.accessToken, (token) => {
-  if (!token && route.meta.requiresAuth) {
+  if (!token && route.meta.requiresAuth && !isLoggingOut) {
     router.push({ name: 'home' });
   }
 });
@@ -45,18 +72,37 @@ watch(() => auth.accessToken, (token) => {
 watch(() => auth.sessionEndReason, (reason) => {
   if (!reason) return;
   // The toast container mounts on the next tick after app.use(Toast): a toast emitted
-  // during startup (expired session) would otherwise be lost.
+  // during startup (expired session) would otherwise be lost. The announcement waits for the live regions too.
   void nextTick(() => {
     if (reason === 'inactivity') {
-      toast.info("You've been signed out after 30 minutes of inactivity.");
+      notify.info("You've been signed out after 30 minutes of inactivity.");
     } else {
-      toast.warning('Your session is no longer valid. Please sign in again.');
+      notify.warning('Your session is no longer valid. Please sign in again.');
     }
   });
   auth.acknowledgeSessionEnd();
 }, { immediate: true });
 
+/**
+ * Where focus goes once What's New closes: its desktop button is gone by then (the features are seen).
+ * "Say Thanks" took its place in the desktop nav; on mobile the menu button opened it and stays.
+ */
+function whatsNewReturnFocus(): HTMLElement | null {
+  const candidates = ['.desktop-nav .thanks-button', '.mobile-nav .burger-menu', '.app-main h1'];
+  for (const selector of candidates) {
+    const element = document.querySelector<HTMLElement>(selector);
+    if (element && isDisplayed(element)) return element;
+  }
+  return null;
+}
+
+function isDisplayed(element: HTMLElement): boolean {
+  return typeof element.checkVisibility === 'function' ? element.checkVisibility() : element.getClientRects().length > 0;
+}
+
 function handleWhatsNewClose() {
+  // Escape, the close button and the overlay count as having seen it (a no-op repeat after WhatsNew's own button).
+  featuresStore.markFeaturesAsSeen();
   showWhatsNew.value = false;
 }
 
@@ -64,7 +110,6 @@ function handleWhatsNewClose() {
 const thanksMessage = ref<string | null>(null);
 
 function openThanks(): void {
-  isMenuOpen.value = false;
   const sender = auth.account?.display_name || auth.account?.acct || 'Someone';
   thanksMessage.value = buildThanksMessage(sender, new Date());
 }
@@ -80,15 +125,11 @@ async function confirmThanks(): Promise<void> {
 
   try {
     await mastodonApi.sendThanks(message);
-    toast.success('Thanks sent successfully! 🤗');
+    notify.success('Thanks sent successfully! 🤗');
   } catch (error) {
     const reason = error instanceof Error && error.message ? error.message.replace(/\.+$/, '') : 'unknown error';
-    toast.error(`Failed to send thanks: ${reason}.`);
+    notify.error(`Failed to send thanks: ${reason}.`);
   }
-}
-
-function toggleMenu() {
-  isMenuOpen.value = !isMenuOpen.value;
 }
 
 const hasNewFeatures = computed(() => newFeatures.value.length > 0);
@@ -97,14 +138,16 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
 <template>
   <div class="app">
     <header class="header">
-      <h1 class="header-title winky-sans-900">
+      <!-- The app name, not a heading: each page has its own main heading. -->
+      <p class="header-title winky-sans-900">
         Toot Scheduler
-      </h1>
+      </p>
       
       <!-- Desktop Navigation -->
       <nav
         v-if="auth.accessToken"
         class="nav-buttons desktop-nav"
+        aria-label="Account"
       >
         <button 
           v-if="hasNewFeatures"
@@ -128,60 +171,18 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
       </nav>
 
       <!-- Mobile Burger Menu -->
-      <div
+      <MobileNav
         v-if="auth.accessToken"
-        class="mobile-nav"
-      >
-        <span
-          v-if="hasNewFeatures"
-          class="notification-dot"
-          :class="{ 'notification-dot--none': isMenuOpen }"
-        />
-        <span
-          v-if="hasNewFeatures"
-          class="whats-new-mobile-label"
-          :class="{ 'whats-new-mobile-label--none': isMenuOpen }"
-        >What's New</span>
-        <button
-          class="burger-menu"
-          :class="{ 'is-open': isMenuOpen }"
-          @click="toggleMenu"
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-        <div
-          class="mobile-menu"
-          :class="{ 'is-open': isMenuOpen }"
-        >
-          <span class="mobile-menu-spacer">
-            <button 
-              v-if="hasNewFeatures"
-              class="whats-new-button"
-              @click="showWhatsNew = true"
-            >
-              What's New
-            </button>
-            <button
-              class="thanks-button"
-              @click="openThanks"
-            >
-              <Send class="thanks-button-icon" />
-              Say Thanks
-            </button>
-          </span>
-          <button
-            class="logout-button"
-            @click="handleLogout"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
+        :has-new-features="hasNewFeatures"
+        @whats-new="showWhatsNew = true"
+        @thanks="openThanks"
+        @logout="handleLogout"
+      />
     </header>
 
-    <RouterView />
+    <main class="app-main">
+      <RouterView />
+    </main>
 
     <footer>
       <p>&copy; {{ new Date().getFullYear() }} Toot Scheduler</p>
@@ -189,14 +190,18 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
 
     <ModalView
       :is-open="showWhatsNew"
-      @close-modal="handleWhatsNewClose"
+      labelled-by="whats-new-title"
+      initial-focus="dialog"
+      :return-focus="whatsNewReturnFocus"
+      @close="handleWhatsNewClose"
     >
-      <WhatsNew @close-child-modal="handleWhatsNewClose" />
+      <WhatsNew @close="handleWhatsNewClose" />
     </ModalView>
 
     <ModalView
       :is-open="thanksMessage !== null"
-      @close-modal="cancelThanks"
+      labelled-by="thanks-title"
+      @close="cancelThanks"
     >
       <ThanksConfirmModal
         :message="thanksMessage ?? ''"
@@ -204,6 +209,27 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
         @cancel="cancelThanks"
       />
     </ModalView>
+
+    <!--
+      Every notification is spoken from here (useNotify → useAnnouncer), not by the toasts:
+      Safari with VoiceOver ignores live regions inserted already filled, so these two stay in place.
+    -->
+    <div
+      class="visually-hidden"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {{ politeMessage }}
+    </div>
+    <div
+      class="visually-hidden"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
+      {{ assertiveMessage }}
+    </div>
   </div>
 </template>
 
@@ -231,6 +257,19 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Hidden on screen, still read by screen readers (labels of icon-only controls, live regions). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .app {
   min-height: 100vh;
   display: flex;
@@ -254,116 +293,6 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   gap: 0.8rem;
 }
 
-/* Mobile Navigation Styles */
-.mobile-nav {
-  position: relative;
-  display: none;
-
-}
-
-.burger-menu {
-  position: relative;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.burger-menu span {
-  display: block;
-  width: 25px;
-  height: 3px;
-  border-radius: 5px;
-  background-color: #333;
-  transition: all 0.3s ease;
-}
-
-.notification-dot {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.2rem;
-  width: 0.65rem;
-  height: 0.65rem;
-  background-color: #FF9200;
-  border-radius: 50%;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.whats-new-mobile-label {
-  position: absolute;
-  top: 0.4rem;
-  right: 2.6rem;
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #fff;
-  background-color: #FF9200;
-  padding: 0.2rem 0.5rem;
-  border-radius: 0.5rem;
-  z-index: 10;
-  display: inline-block;
-  text-wrap: nowrap;
-  animation: enter-from-right-fade-in-and-out 3s ease forwards;
-}
-
-@keyframes enter-from-right-fade-in-and-out {
-  0% {
-    opacity: 0;
-    transform: translateX(20%);
-  }
-  10%, 80% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-.notification-dot--none {
-  display: none;
-}
-
-.burger-menu.is-open span:nth-child(1) {
-  transform: translateY(9px) rotate(45deg);
-}
-
-.burger-menu.is-open span:nth-child(2) {
-  opacity: 0;
-}
-
-.burger-menu.is-open span:nth-child(3) {
-  transform: translateY(-9px) rotate(-45deg);
-}
-
-.mobile-menu {
-  position: fixed;
-  top: 60px;
-  right: -100%;
-  width: 100%;
-  height: calc(100dvh - 60px);
-  background-color: #f5f5f5;
-  padding: 1rem;
-  transition: right 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.mobile-menu-spacer {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.mobile-menu.is-open {
-  right: 0;
-}
-
 /* Desktop Navigation Styles */
 .desktop-nav {
   display: flex;
@@ -374,18 +303,14 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   .desktop-nav {
     display: none;
   }
-
-  .mobile-nav {
-    display: block;
-  }
 }
 
-main {
+.app-main {
   flex: 1;
-  padding: 2rem 1rem;
-  max-width: 800px;
-  margin: 0 auto;
   width: 100%;
+  /* Pages stay flex items, as they were directly under .app: their top margins don't collapse into their children's. */
+  display: flex;
+  flex-direction: column;
 }
 
 footer {

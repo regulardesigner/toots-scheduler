@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { MastodonMediaAttachment } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import ModalView from './Modals/ModalView.vue';
-import { ACCEPTED_IMAGE_FILES, getImageRejection, MAX_IMAGE_BYTES, MAX_IMAGES_PER_TOOT } from '../utils/media';
+import { useInstanceStore } from '../stores/instance';
+import { acceptedImageFiles, describeImageTypes, formatMegabytes, getImageRejection, type ImageLimits } from '../utils/media';
 
 const props = defineProps<{
   modelValue: MastodonMediaAttachment[];
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>();
 
 const api = useMastodonApi();
+const instance = useInstanceStore();
 const isUploading = ref(false);
 const uploadError = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -22,6 +24,19 @@ const mediaDescription = ref('');
 const isDragging = ref(false);
 /** Upload progress per upload, keyed by a random id (two files can share a name). */
 const uploadProgress = ref<Record<string, { name: string; percent: number }>>({});
+
+/** The signed-in instance's image limits (Mastodon's defaults until it answers). */
+const imageLimits = computed<ImageLimits>(() => ({
+  imageTypes: instance.supportedMimeTypes,
+  maxImageBytes: instance.imageSizeLimit,
+}));
+
+/** "4 images" or "1 image". */
+const maxImagesLabel = computed(() => `${instance.maxMediaAttachments} ${instance.maxMediaAttachments === 1 ? 'image' : 'images'}`);
+
+const uploadHint = computed(() =>
+  `Up to ${maxImagesLabel.value}, max ${formatMegabytes(instance.imageSizeLimit)} MB each (${describeImageTypes(instance.supportedMimeTypes)})`,
+);
 
 async function handleFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;
@@ -49,13 +64,13 @@ async function uploadFiles(files: File[]) {
   uploadError.value = '';
 
   // Checked before uploading: drag and drop bypasses the file picker's `accept`.
-  const rejection = files.map(getImageRejection).find(message => message !== null);
+  const rejection = files.map(file => getImageRejection(file, imageLimits.value)).find(message => message !== null);
   if (rejection) {
     uploadError.value = rejection;
     return;
   }
-  if (props.modelValue.length + files.length > MAX_IMAGES_PER_TOOT) {
-    uploadError.value = `Maximum ${MAX_IMAGES_PER_TOOT} images allowed`;
+  if (props.modelValue.length + files.length > instance.maxMediaAttachments) {
+    uploadError.value = `Maximum ${maxImagesLabel.value} allowed`;
     return;
   }
 
@@ -138,7 +153,7 @@ async function saveMediaMetadata() {
       <input
         ref="fileInput"
         type="file"
-        :accept="ACCEPTED_IMAGE_FILES"
+        :accept="acceptedImageFiles(instance.supportedMimeTypes)"
         multiple
         class="hidden"
         @change="handleFileSelect"
@@ -146,7 +161,7 @@ async function saveMediaMetadata() {
       <div class="upload-content">
         <p>Drag & drop images here or click to select</p>
         <p class="upload-hint">
-          Up to {{ MAX_IMAGES_PER_TOOT }} images, max {{ MAX_IMAGE_BYTES / 1024 / 1024 }} MB each
+          {{ uploadHint }}
         </p>
       </div>
     </div>
@@ -220,9 +235,11 @@ async function saveMediaMetadata() {
 
         <ModalView
           :is-open="editingMediaIndex === index"
-          @close-modal="editingMediaIndex = null"
+          labelled-by="media-edit-title"
+          @close="editingMediaIndex = null"
         >
           <label
+            id="media-edit-title"
             class="winky-sans-700 media-edit-label"
             for="media-edit-input"
           >Add a description</label>
@@ -255,12 +272,15 @@ async function saveMediaMetadata() {
       </div>
     </div>
 
-    <p
-      v-if="uploadError"
-      class="error"
-    >
-      {{ uploadError }}
-    </p>
+    <!-- Always in the DOM, only its content changes: Safari ignores an alert inserted already filled. -->
+    <div role="alert">
+      <p
+        v-if="uploadError"
+        class="error"
+      >
+        {{ uploadError }}
+      </p>
+    </div>
   </div>
 </template>
 
@@ -413,7 +433,7 @@ async function saveMediaMetadata() {
 .edit-alt-button {
   bottom: 0.4rem;
   left: 0.4rem;
-  background-color: #cbcbcb;
+  background-color: #333;
   color: white;
   border-radius: 0.3rem;
   font-size: 1rem;
@@ -427,7 +447,7 @@ async function saveMediaMetadata() {
   right: 0.4rem;
   width: 1.2rem;
   height: 1.2rem;
-  background-color: #ff4136;
+  background-color: #c0392b;
   color: white;
   border-radius: 1.2rem;
 }

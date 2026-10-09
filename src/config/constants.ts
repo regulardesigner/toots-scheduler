@@ -20,3 +20,6 @@ export const ACTIVITY_WRITE_INTERVAL_MS = 30 * 1000;
 
 /** Who receives the "Say Thanks" direct message: the app's author. */
 export const THANKS_RECIPIENT = '@dams@disabled.social';
+
+/** Mastodon's default toot length, used until (or unless) the instance reports its own. */
+export const DEFAULT_MAX_CHARACTERS = 500;
