@@ -1,14 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
   acceptedImageFiles,
-  DEFAULT_IMAGE_LIMITS,
   describeImageTypes,
   formatMegabytes,
   getImageRejection,
-  MAX_IMAGE_BYTES,
-  SUPPORTED_IMAGE_TYPES,
+  type ImageLimits,
   usableImageTypes,
 } from './media';
+import { DEFAULT_MAX_IMAGE_BYTES, SUPPORTED_IMAGE_TYPES } from '../config/constants';
+
+/** The limits that apply until the instance gives its own. */
+const DEFAULT_IMAGE_LIMITS: ImageLimits = { imageTypes: SUPPORTED_IMAGE_TYPES, maxImageBytes: DEFAULT_MAX_IMAGE_BYTES };
 
 function file(name: string, type: string, size = 10): File {
   const created = new File(['x'], name, { type });
@@ -30,8 +32,8 @@ describe('getImageRejection', () => {
   });
 
   it('refuses an image over 8 MB', () => {
-    expect(getImageRejection(file('big.png', 'image/png', MAX_IMAGE_BYTES + 1), DEFAULT_IMAGE_LIMITS)).toBe('"big.png" is larger than 8 MB.');
-    expect(getImageRejection(file('max.png', 'image/png', MAX_IMAGE_BYTES), DEFAULT_IMAGE_LIMITS)).toBeNull();
+    expect(getImageRejection(file('big.png', 'image/png', DEFAULT_MAX_IMAGE_BYTES + 1), DEFAULT_IMAGE_LIMITS)).toBe('"big.png" is larger than 8 MB.');
+    expect(getImageRejection(file('max.png', 'image/png', DEFAULT_MAX_IMAGE_BYTES), DEFAULT_IMAGE_LIMITS)).toBeNull();
   });
 
   it('also guesses the type when the browser reports a generic binary type', () => {
@@ -55,8 +57,8 @@ describe('getImageRejection', () => {
 
 describe('HEIC and HEIF', () => {
   it('are interchangeable when checking against the accepted types', () => {
-    expect(getImageRejection(file('photo.heic', 'image/heic'), { imageTypes: ['image/heif'], maxImageBytes: MAX_IMAGE_BYTES })).toBeNull();
-    expect(getImageRejection(file('photo.heif', 'image/heif'), { imageTypes: ['image/heic'], maxImageBytes: MAX_IMAGE_BYTES })).toBeNull();
+    expect(getImageRejection(file('photo.heic', 'image/heic'), { imageTypes: ['image/heif'], maxImageBytes: DEFAULT_MAX_IMAGE_BYTES })).toBeNull();
+    expect(getImageRejection(file('photo.heif', 'image/heif'), { imageTypes: ['image/heic'], maxImageBytes: DEFAULT_MAX_IMAGE_BYTES })).toBeNull();
   });
 });
 

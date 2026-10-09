@@ -37,10 +37,6 @@ async function fillForm(wrapper: VueWrapper, text = 'Hello'): Promise<void> {
 function makeScheduledToot(overrides: Partial<MastodonStatus> = {}): MastodonStatus {
   return {
     id: '42',
-    content: '',
-    created_at: '',
-    visibility: 'public',
-    url: '',
     media_attachments: [],
     scheduled_at: '2030-01-01T12:00:00.000Z',
     params: { text: 'Bonjour', visibility: 'public', language: 'fr', poll: null },
@@ -63,6 +59,13 @@ describe('TootComposer', () => {
 
     expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Schedule a toot']);
     expect(wrapper.find('h2#scheduled-toots-title button').text()).toBe('Scheduled Toots (0)');
+  });
+
+  it('loads the scheduled list once when it opens', async () => {
+    mountComposer();
+    await flushPromises();
+
+    expect(api.getScheduledToots).toHaveBeenCalledTimes(1);
   });
 
   it('sends a single request when the form is submitted twice quickly', async () => {

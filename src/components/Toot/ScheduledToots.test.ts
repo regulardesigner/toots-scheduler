@@ -24,10 +24,6 @@ const toot = { id: '1', scheduled_at: '2030-01-01T10:00:00Z', params: { text: 'H
 function scheduledToot(id: string, day: number): MastodonStatus {
   return {
     id,
-    content: '',
-    created_at: '',
-    visibility: 'public',
-    url: '',
     media_attachments: [],
     scheduled_at: `2031-01-0${day}T12:00:00.000Z`,
     params: { text: `Toot ${id}`, visibility: 'public', language: 'en', poll: null },
@@ -88,7 +84,7 @@ describe('ScheduledToots', () => {
     // Outside the collapsible panel: a live region inside a hidden subtree is not in the accessibility tree.
     expect(alert.element.closest('#scheduled-toots-panel')).toBeNull();
 
-    useScheduledTootsStore().setError('Boom');
+    useScheduledTootsStore().error = 'Boom';
     await flushPromises();
 
     expect(wrapper.find('[role="alert"]').element).toBe(alert.element);
@@ -99,7 +95,7 @@ describe('ScheduledToots', () => {
     const wrapper = await mountList();
     expect(wrapper.find('.toots-toggle').attributes('aria-expanded')).toBe('false');
 
-    useScheduledTootsStore().setError('Boom');
+    useScheduledTootsStore().error = 'Boom';
     await flushPromises();
 
     expect(wrapper.find('[role="alert"]').text()).toBe('Boom');
@@ -112,7 +108,7 @@ describe('ScheduledToots', () => {
     await wrapper.find('.toots-toggle').trigger('click');
     expect(wrapper.find('.toots-toggle').attributes('aria-expanded')).toBe('false');
 
-    useScheduledTootsStore().setError('Boom');
+    useScheduledTootsStore().error = 'Boom';
     await flushPromises();
 
     expect(wrapper.find('.toots-toggle').attributes('aria-expanded')).toBe('false');
@@ -123,7 +119,7 @@ describe('ScheduledToots', () => {
     const wrapper = await mountList();
     expect(wrapper.find('.empty-state').exists()).toBe(true);
 
-    useScheduledTootsStore().setError('Boom');
+    useScheduledTootsStore().error = 'Boom';
     await flushPromises();
 
     expect(wrapper.find('.empty-state').exists()).toBe(false);
@@ -134,7 +130,7 @@ describe('ScheduledToots', () => {
     api.getScheduledToots.mockResolvedValue([toot]);
     const wrapper = await mountList();
 
-    useScheduledTootsStore().setError('Boom');
+    useScheduledTootsStore().error = 'Boom';
     await flushPromises();
 
     expect(wrapper.find('[role="alert"]').text()).toBe('Boom');
@@ -152,7 +148,7 @@ describe('ScheduledToots', () => {
       const store = useScheduledTootsStore();
       store.pendingId = 'a';
       store.pendingAction = 'delete';
-      store.setLoading(true);
+      store.isLoading = true;
       await flushPromises();
 
       expect(wrapper.find('.loading').exists()).toBe(false);

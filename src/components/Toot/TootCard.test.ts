@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils';
 import { format } from 'date-fns';
 import { defineComponent, h } from 'vue';
 import TootCard from './TootCard.vue';
+import { ScheduledStatusSchema } from '../../schemas/mastodon';
 import { getTimeZone } from '../../utils/timeZone';
 
 const base = { scheduledAt: '2031-01-01T12:00:00.000Z', text: 'Hello' };
@@ -15,8 +16,8 @@ describe('TootCard', () => {
   it('gives each sensitive card its own toggle, so a label only reveals its own toot', async () => {
     const TwoCards = defineComponent({
       render: () => [
-        h(TootCard, { id: 'a', ...base, sensitive: true, spoiler_text: 'Spoiler A' }),
-        h(TootCard, { id: 'b', ...base, sensitive: true, spoiler_text: 'Spoiler B' }),
+        h(TootCard, { id: 'a', ...base, sensitive: true, spoilerText: 'Spoiler A' }),
+        h(TootCard, { id: 'b', ...base, sensitive: true, spoilerText: 'Spoiler B' }),
       ],
     });
     const wrapper = mount(TwoCards);
@@ -34,7 +35,7 @@ describe('TootCard', () => {
   });
 
   it('names the toggle after what it does', () => {
-    const label = mountCard({ sensitive: true, spoiler_text: 'Spoiler' }).find('label');
+    const label = mountCard({ sensitive: true, spoilerText: 'Spoiler' }).find('label');
 
     expect(label.text()).toBe('Show the content behind this warning: Spoiler');
   });
@@ -83,5 +84,26 @@ describe('TootCard', () => {
     const localDate = format(new Date(base.scheduledAt), 'MMM d, yyyy HH:mm');
 
     expect(mountCard().find('.meta-label').text()).toBe(`Scheduled for: ${localDate} (${getTimeZone()})`);
+  });
+
+  it('shows a toot whose params came back null as a plain public toot', () => {
+    const card = mountCard({ visibility: null, language: null, sensitive: null, spoilerText: null, poll: null });
+
+    expect(card.find('.sensitive-warning').exists()).toBe(false);
+    expect(card.find('.toot-footer').text()).toBe('Public toot in Unknown');
+  });
+
+  it('shows no warning for a toot whose sensitive flag came back as "false"', () => {
+    const toot = ScheduledStatusSchema.parse({ id: '1', scheduled_at: base.scheduledAt, params: { text: 'Hello', sensitive: 'false' }, media_attachments: [] });
+    const card = mountCard({ sensitive: toot.params.sensitive });
+
+    expect(card.find('.sensitive-warning').exists()).toBe(false);
+    expect(card.find('.toot-content p').classes()).not.toContain('blurred');
+  });
+
+  it('names the language from the shared list, and shows a language it does not list by its code', () => {
+    expect(mountCard({ language: 'fr' }).find('.toot-footer').text()).toContain('toot in Français');
+    expect(mountCard({ language: 'eo' }).find('.toot-footer').text()).toContain('toot in eo');
+    expect(mountCard().find('.toot-footer').text()).toContain('toot in Unknown');
   });
 });

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValid, parseISO } from 'date-fns';
+import { logError } from '../utils/logError';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
@@ -55,10 +56,13 @@ export const MediaAttachmentSchema = z.object({
   description: media.description ?? undefined,
 }));
 
+/** The strings Rails (ActiveModel::Type::Boolean) casts to false. */
+const RAILS_FALSE = new Set(['0', 'f', 'F', 'false', 'FALSE', 'off', 'OFF']);
+
 /**
  * A scheduled status. What the app renders or compares is checked (date, text, visibility,
- * media ids, poll options); the other params are kept as sent, since their nullable and string
- * forms are already handled by isOnlyScheduleChange and the composer.
+ * media ids, sensitive flag, poll options); the other params are kept as sent, since their
+ * nullable and string forms are already handled by isOnlyScheduleChange and the composer.
  */
 export const ScheduledStatusSchema = z.object({
   id: z.string(),
@@ -68,6 +72,13 @@ export const ScheduledStatusSchema = z.object({
     text: z.string().nullish().transform(text => text ?? ''),
     visibility: z.string().nullish(),
     media_ids: z.array(z.string()).nullish(),
+    // Echoed as the client sent it ("1", "on", "false"...): refusing an odd value would hide the whole list.
+    // Mastodon casts it as Rails does at publish time: blank is unset, these are false, anything else is true.
+    sensitive: z.union([
+      z.boolean(),
+      z.number().transform(n => n !== 0),
+      z.string().transform(s => (s === '' ? null : !RAILS_FALSE.has(s))),
+    ]).nullish(),
     // Rendered by the composer when editing: options must be strings.
     poll: z.object({ options: z.array(z.string()) }).passthrough().nullish(),
   }).passthrough(),
@@ -145,7 +156,9 @@ export const TokenResponseSchema = z.object({
 export function parseApiResponse<T extends z.ZodTypeAny>(schema: T, data: unknown, what: string): z.output<T> {
   const result = schema.safeParse(data);
   if (!result.success) {
-    console.error(`Unexpected ${what} from the instance:`, result.error.issues);
+    // Path and issue code only: a ZodError's message can quote the value received (e.g. an enum).
+    const issues = result.error.issues.map(issue => `${issue.path.join('.') || '(root)'}: ${issue.code}`).join('; ');
+    logError(`Unexpected ${what} from the instance`, new Error(issues));
     throw new Error('Your instance sent an unexpected response. Please try again later.');
   }
   return result.data;

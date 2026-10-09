@@ -123,6 +123,7 @@ Note: meta-tag CSP does not support `frame-ancestors` — that requires a respon
 
 **Challenge:**
 - Are tokens, secrets, or authorization codes ever written to `console.log`? They will appear in browser DevTools and can be captured by browser extensions.
+- Log errors only with `src/utils/logError.ts` (DEV only, never the request config or token); `no-console` is an error.
 - Do error messages shown to the user expose internal details (stack traces, file paths, API responses)? Error messages must be user-friendly and opaque to internal structure.
 - Are environment variables (`.env`) containing secrets committed to the repository? `VITE_` prefixed variables are **bundled into the client** — they are not secret. No private API keys should use this prefix.
 - Are there any hardcoded credentials, instance URLs, or tokens in source files?
@@ -171,6 +172,7 @@ When implementing any new feature, verify these defaults are in place:
 | HTTP instance URL | ⚠️ Warn user — tokens sent in plaintext |
 | OAuth without `state` | ⚠️ CSRF risk — implement before production |
 | `console.log` with token/secret | ❌ Remove before shipping |
+| Logging an error | ✅ Only through `src/utils/logError.ts` (DEV only, never the request config or token); `no-console` is an error |
 | Unvalidated file upload | ❌ Always check type + size |
 | Raw user input in API URL | ❌ Always use `normalizeUrl()` or equivalent |
 | CSP header/meta | ✅ Should be defined |

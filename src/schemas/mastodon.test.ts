@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { z } from 'zod';
 import {
   AccountSchema,
   AppRegistrationSchema,
@@ -70,6 +71,28 @@ describe('mastodon schemas', () => {
     expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, poll: { options: [{ evil: 1 }] } } }).success).toBe(false);
   });
 
+  it('reads a sensitive flag as Mastodon does at publish time (Rails boolean cast)', () => {
+    const sensitive = (value: unknown) => ScheduledStatusSchema.parse({ ...scheduled, params: { ...scheduled.params, sensitive: value } }).params.sensitive;
+
+    for (const value of ['true', '1', 'yes', 'on', 1, true]) expect(sensitive(value)).toBe(true);
+    for (const value of ['false', '0', 'off', 'f', 0, false]) expect(sensitive(value)).toBe(false);
+    expect(sensitive('')).toBeNull();
+    expect(sensitive(null)).toBeNull();
+    expect(ScheduledStatusSchema.parse({ ...scheduled, params: { text: 'Hello' } }).params.sensitive).toBeUndefined();
+  });
+
+  it('refuses a sensitive flag that is not a boolean, number or string', () => {
+    for (const value of [{}, ['1']]) {
+      expect(ScheduledStatusSchema.safeParse({ ...scheduled, params: { ...scheduled.params, sensitive: value } }).success).toBe(false);
+    }
+  });
+
+  it('still reads a whole list when one toot has a form-posted sensitive flag', () => {
+    const list = [scheduled, { ...scheduled, id: 's2', params: { ...scheduled.params, sensitive: '1' } }];
+    const parsed = z.array(ScheduledStatusSchema).parse(list);
+    expect(parsed.map(status => status.params.sensitive)).toEqual([null, true]);
+  });
+
   it('does not let __proto__ in a response pollute objects', () => {
     const parsed = ScheduledStatusSchema.parse(JSON.parse('{"__proto__":{"polluted":true},"id":"s1","scheduled_at":"2031-01-01T12:00:00.000Z","params":{"text":"x","__proto__":{"polluted":true}},"media_attachments":[]}'));
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
@@ -128,5 +151,22 @@ describe('mastodon schemas', () => {
     expect(InstanceSchema.parse({ configuration: 'none' }).maxCharacters).toBeUndefined();
     expect(InstanceSchema.parse({}).maxCharacters).toBeUndefined();
     expect(InstanceSchema.safeParse('<html>').success).toBe(false);
+  });
+});
+
+describe('parseApiResponse logging', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('logs the path and code of each issue on one line, never a received value', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => parseApiResponse(AccountSchema, { ...account, id: 'Bearer abc', acct: 42 }, 'account')).toThrow();
+
+    expect(log).toHaveBeenCalledTimes(1);
+    const line = String(log.mock.calls[0][0]);
+    expect(line).toContain('Unexpected account from the instance');
+    expect(line).toContain('acct: invalid_type');
+    expect(line).not.toContain('\n');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('Bearer abc');
   });
 });

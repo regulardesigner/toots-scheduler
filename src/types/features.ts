@@ -14,5 +14,3 @@ export interface UserFeatureState {
   lastSeenVersion: string;
   seenFeatures: string[];
 }
-
-export const APP_VERSION = '1.0.0'; 

@@ -58,9 +58,9 @@ This project uses **Semantic Versioning** (`MAJOR.MINOR.PATCH`):
 | New user-visible feature | MINOR | `0.12.19 → 0.13.0` |
 | Bug fix, performance fix, small improvement | PATCH | `0.12.19 → 0.12.20` |
 
-> ⚠️ The `APP_VERSION` constant in `src/types/features.ts` is currently unused.
 > The authoritative version comes from `features[0].version` in the store.
-> Always keep `package.json` and the store's first entry in sync.
+> Always keep `package.json` and the store's first entry in sync: `src/stores/features.test.ts`
+> fails when they differ, or when a `Feature.id` or a version is used twice.
 
 ---
 
@@ -140,8 +140,9 @@ Update the `"version"` field to match the new `FeatureGroup.version`:
 
 ## How the modal decides what to show
 
-The store exposes `lastThreeNewFeatures` — the first 3 `FeatureGroup` entries whose
-`version` string is NOT in the user's `seenFeatures` localStorage array.
+The store exposes `newFeatures` (`recentNewFeatures` inside the store) — the first 3 `FeatureGroup`
+entries whose `version` string is NOT in the user's `seenFeatures` localStorage array. A missing or
+corrupt saved value counts as "nothing seen yet".
 
 This means:
 - A new release is automatically surfaced to all users on next app load

@@ -14,28 +14,27 @@ export interface PollFormState {
   hideTotals: boolean;
 }
 
+/**
+ * The params of a scheduled status, echoed by Mastodon as the client sent them: any of them may be
+ * null or missing. ScheduledStatusSchema checks text, visibility, media ids and poll options, and
+ * reads the sensitive flag as a boolean the way Mastodon does when it publishes.
+ */
+export interface ScheduledStatusParams {
+  text: string;
+  visibility?: string | null;
+  media_ids?: string[] | null;
+  sensitive?: boolean | null;
+  spoiler_text?: string | null;
+  language?: string | null;
+  poll?: PollParams | null;
+}
+
+/** A scheduled status (GET /api/v1/scheduled_statuses), as validated by ScheduledStatusSchema. */
 export interface MastodonStatus {
   id: string;
-  content: string;
-  created_at: string;
-  visibility: 'public' | 'unlisted' | 'private' | 'direct';
-  url: string;
-  media_attachments: any[];
-  scheduled_at?: string;
-  spoiler_text?: string;
-  language?: string;
-  poll?: PollParams;
-  params?: {
-    text: string;
-    media_ids?: string[];
-    scheduled_at?: string;
-    visibility?: 'public' | 'unlisted' | 'private' | 'direct';
-    sensitive?: boolean;
-    spoiler_text?: string;
-    language?: string;
-    poll?: PollParams | null;
-  };
-  status?: string;
+  scheduled_at: string;
+  params: ScheduledStatusParams;
+  media_attachments: MastodonMediaAttachment[];
 }
 
 export interface MastodonMediaAttachment {

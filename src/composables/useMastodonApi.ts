@@ -16,6 +16,7 @@ import {
 import { getRedirectUri, OAUTH_SCOPES } from '../config/constants';
 import { handleApiError } from '../utils/error';
 import { getNextPageUrl } from '../utils/linkHeader';
+import { logError } from '../utils/logError';
 
 /** Mastodon's maximum page size for scheduled statuses. */
 const SCHEDULED_PAGE_SIZE = 40;
@@ -314,15 +315,16 @@ export function useMastodonApi() {
         const response = await api.get(url);
         const page = parseApiResponse(z.array(ScheduledStatusSchema), response.data, 'scheduled toots');
         if (page.length === 0) break;
-        // Validated shape; MastodonStatus is the app's (looser) view of a scheduled status.
-        toots.push(...(page as unknown as MastodonStatus[]));
+        // The schema checks what the app renders or compares; the params it passes through
+        // (spoiler_text, language, the poll's duration and flags) are typed as Mastodon documents them.
+        toots.push(...(page as MastodonStatus[]));
         const link = response.headers['link'];
         url = getNextPageUrl(typeof link === 'string' ? link : null, instance);
       }
 
       return toots;
     } catch (error) {
-      console.error('Error fetching scheduled toots:', error);
+      logError('Error fetching scheduled toots', error);
       throw new Error(handleApiError(error), { cause: error });
     }
   }
@@ -339,100 +341,23 @@ export function useMastodonApi() {
     try {
       await api.delete(`${auth.instance}/api/v1/scheduled_statuses/${encodeURIComponent(id)}`);
     } catch (err) {
-      console.error('Error deleting scheduled toot:', err);
+      logError('Error deleting scheduled toot', err);
       throw new Error(handleApiError(err), { cause: err });
     }
   }
 
   return {
-    /**
-     * Registers a new application with the Mastodon instance.
-     * @param {string} instanceUrl - The origin of the Mastodon instance.
-     * @returns {Promise<{ client_id: string; client_secret: string }>} The app credentials.
-     */
     registerApplication,
-  
-    /**
-     * Exchanges the authorization code (and PKCE verifier) for an access token.
-     * @param {string} instanceUrl - The instance origin.
-     * @param {string} code - The authorization code.
-     * @param {string} clientId - The client ID.
-     * @param {string} clientSecret - The client secret.
-     * @param {string} codeVerifier - The PKCE verifier.
-     * @returns {Promise<{ access_token: string }>} The access token data.
-     */
     getAccessToken,
-  
-    /**
-     * Verifies the user's credentials with the Mastodon instance.
-     * @returns {Promise<Object>} The verified account data.
-     */
     verifyCredentials,
-
-    /**
-     * Reads the limits of the signed-in instance.
-     * @returns {Promise<InstanceConfiguration>} The limits it reported.
-     */
     getInstanceConfiguration,
-  
-    /**
-     * Schedules a toot to be posted at a later time.
-     * @param {ScheduledToot} toot - The toot data including content and scheduling information.
-     * @param {string} idempotencyKey - Unique key per draft, sent as the Idempotency-Key header.
-     * @returns {Promise<void>} Resolves once the instance accepted it.
-     */
     scheduleToot,
-
-    /**
-     * Moves a scheduled toot to a new date.
-     * @param {string} id - The ID of the scheduled toot.
-     * @param {string} scheduledAt - The new ISO 8601 date.
-     * @returns {Promise<void>} Resolves once the instance accepted it.
-     */
     rescheduleToot,
-
-    /**
-     * Tells whether a scheduled toot still exists.
-     * @param {string} id - The ID of the scheduled toot.
-     * @returns {Promise<boolean>} False when it was published or deleted.
-     */
     scheduledTootExists,
-  
-    /**
-     * Sends the previewed "thank you" direct message.
-     * @param {string} message - The message.
-     * @returns {Promise<void>} Resolves once sent.
-     */
     sendThanks,
-  
-    /**
-     * Uploads media to the Mastodon instance.
-     * @param {File} file - The file to upload.
-     * @param {(progress: number) => void} [onProgress] - Optional callback for progress updates.
-     * @returns {Promise<MastodonMediaAttachment>} The uploaded media attachment data.
-     */
     uploadMedia,
-  
-    /**
-     * Updates the metadata for a media attachment.
-     * @param {string} id - The ID of the media attachment.
-     * @param {string} [description] - Optional description for the media.
-     * @param {{ x: number; y: number }} [focus] - Optional focus coordinates for the media.
-     * @returns {Promise<Object>} The updated media metadata.
-     */
     updateMediaMetadata,
-  
-    /**
-     * Retrieves all scheduled toots from the Mastodon instance, across all pages.
-     * @returns {Promise<MastodonStatus[]>} The list of scheduled toots.
-     */
     getScheduledToots,
-  
-    /**
-     * Deletes a scheduled toot by its ID.
-     * @param {string} id - The ID of the scheduled toot to delete.
-     * @returns {Promise<void>} A promise that resolves when the toot is deleted.
-     */
     deleteScheduledToot,
   };
 }

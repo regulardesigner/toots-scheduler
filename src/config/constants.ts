@@ -23,3 +23,30 @@ export const THANKS_RECIPIENT = '@dams@disabled.social';
 
 /** Mastodon's default toot length, used until (or unless) the instance reports its own. */
 export const DEFAULT_MAX_CHARACTERS = 500;
+
+/** Image types Mastodon accepts that this app lets users attach (used when the instance gives no list). */
+export const SUPPORTED_IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif'];
+
+/** Mastodon's default image size limit, in bytes, used when the instance gives none. */
+export const DEFAULT_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+/** Mastodon's default number of media attachments per toot, used when the instance gives none. */
+export const DEFAULT_MAX_MEDIA_ATTACHMENTS = 4;
+
+/** Languages a toot can be written in: ISO 639-1 code and the language's own name (composer and cards). */
+export const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'fr', name: 'Français' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'es', name: 'Español' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'pt', name: 'Português' },
+  { code: 'ru', name: 'Русский' },
+  { code: 'ja', name: '日本語' },
+  { code: 'zh', name: '中文' },
+  { code: 'ko', name: '한국어' },
+  { code: 'nl', name: 'Nederlands' },
+  { code: 'pl', name: 'Polski' },
+  { code: 'ar', name: 'العربية' },
+  { code: 'hi', name: 'हिन्दी' },
+] as const;

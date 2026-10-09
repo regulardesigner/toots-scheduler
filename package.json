@@ -1,7 +1,7 @@
 {
   "name": "toots-scheduler",
   "private": true,
-  "version": "0.16.0",
+  "version": "0.16.1",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -17,8 +17,6 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@vueuse/components": "^13.0.0",
-    "@vueuse/core": "^13.0.0",
     "axios": "^1.20.0",
     "date-fns": "^4.1.0",
     "pinia": "^2.3.1",

@@ -52,5 +52,7 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: 'happy-dom',
     include: ['src/**/*.test.ts'],
+    // The global stylesheets are read as text by their tests (`?raw`); other CSS stays skipped.
+    css: { include: [/\/assets\/styles\/.+\.css/] },
   },
 }))

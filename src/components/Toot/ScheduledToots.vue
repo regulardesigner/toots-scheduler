@@ -98,7 +98,7 @@ async function handleEdit(id: string) {
 }
 
 onMounted(() => {
-  store.fetchScheduledToots();
+  void store.fetchScheduledToots();
 });
 </script>
 
@@ -163,11 +163,11 @@ onMounted(() => {
             :id="toot.id"
             :key="toot.id"
             :data-toot-id="toot.id"
-            :scheduled-at="toot.scheduled_at || ''"
+            :scheduled-at="toot.scheduled_at"
             :text="toot.params?.text"
             :visibility="toot.params?.visibility"
             :language="toot.params?.language"
-            :spoiler_text="toot.params?.spoiler_text"
+            :spoiler-text="toot.params?.spoiler_text"
             :sensitive="toot.params?.sensitive"
             :poll="toot.params?.poll"
             :medias="toot.media_attachments"

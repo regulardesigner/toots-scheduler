@@ -5,6 +5,7 @@ import { useNotify } from '../composables/useNotify';
 import { useAuthStore } from '../stores/auth';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { readAuthorizationCode, takePendingLogin } from '../utils/oauthFlow';
+import { logError } from '../utils/logError';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -53,7 +54,7 @@ onMounted(async () => {
     // A half-finished sign-in must not leave a stored session behind (the token is revoked).
     // Only undo the session this callback created; never sign out an existing one.
     if (createdToken && auth.accessToken === createdToken) void auth.logout(); // local clear is immediate; don't wait for the revoke
-    console.error('OAuth callback error:', err);
+    logError('OAuth callback error', err);
     notify.error(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
     router.replace({ name: 'home' });
   }

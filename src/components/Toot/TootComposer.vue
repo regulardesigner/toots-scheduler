@@ -12,6 +12,7 @@ import { countGraphemes, countTootCharacters } from '../../utils/tootLength';
 import { format, addMinutes, isBefore, parseISO } from 'date-fns';
 import type { ScheduledToot, MastodonMediaAttachment, PollFormState } from '../../types/mastodon';
 import { buildScheduledToot } from '../../utils/buildScheduledToot';
+import { logError } from '../../utils/logError';
 import ScheduledToots from './ScheduledToots.vue';
 import { useScheduledTootsStore, BusyError } from '../../stores/scheduledToots';
 import MediaUpload from '../MediaUpload.vue';
@@ -69,11 +70,7 @@ function idempotencyKeyFor(toot: ScheduledToot): string {
   return idempotencyKey.value;
 }
 
-function handleShowMedia() {
-  showMedia.value = !showMedia.value;
-}
-
-function handleShowPoll() {
+function togglePoll() {
   showPoll.value = !showPoll.value;
   // A closed poll section means no poll: drop what was typed so it can't be sent later.
   if (!showPoll.value) {
@@ -101,10 +98,10 @@ watch(() => store.editingToot, (newToot, oldToot) => {
   language.value = newToot.params?.language || 'en';
   isSensitive.value = newToot.params?.sensitive || false;
   spoilerText.value = newToot.params?.spoiler_text || '';
-  mediaAttachments.value = newToot.media_attachments || [];
+  mediaAttachments.value = newToot.media_attachments;
 
   // Show media section if there are media attachments
-  showMedia.value = newToot.media_attachments?.length > 0;
+  showMedia.value = newToot.media_attachments.length > 0;
 
   const poll = newToot.params?.poll;
   if (poll) {
@@ -153,17 +150,15 @@ store.$onAction(({ name, args, after }) => {
 });
 
 onMounted(async () => {
-  console.log('Initial auth account:', auth.account);
   if (!auth.account && auth.accessToken) {
     try {
       const accountData = await api.verifyCredentials();
       auth.setAccount(accountData);
-      console.log('Fetched account:', accountData);
     } catch (err) {
-      console.error('Error fetching user info:', err);
+      logError('Error fetching user info', err);
     }
   }
-  await store.fetchScheduledToots();
+  // The scheduled list loads itself (ScheduledToots): one request per visit.
 });
 
 async function handleSubmit() {
@@ -226,7 +221,7 @@ async function handleSubmit() {
     resetForm();
     
   } catch (err) {
-    console.error('Error scheduling toot:', err);
+    logError('Error scheduling toot', err);
     error.value = err instanceof Error ? err.message : 'Failed to schedule toot. Please try again.';
     // The request may have reached the instance despite the error: refresh so any created toot shows up.
     // Unless it was refused before anything was sent: the change still running refreshes the list itself.
@@ -283,8 +278,8 @@ async function handleSubmit() {
         :show-media="showMedia"
         :show-poll="showPoll"
         :extra-characters="spoilerLength"
-        @add-media="handleShowMedia"
-        @add-poll="handleShowPoll"
+        @add-media="showMedia = !showMedia"
+        @add-poll="togglePoll"
       />
 
       <MediaUpload

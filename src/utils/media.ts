@@ -1,22 +1,12 @@
-/** Image types Mastodon accepts that this app lets users attach (used when the instance gives no list). */
-export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif'];
+import { SUPPORTED_IMAGE_TYPES } from '../config/constants';
 
-/** Default Mastodon image size limit, used when the instance gives none. */
-export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-
-/** Mastodon's default number of media attachments per toot, used when the instance gives none. */
-export const MAX_IMAGES_PER_TOOT = 4;
-
-/** What an image is checked against before upload: the instance's limits, or the defaults above. */
+/** What an image is checked against before upload: the instance's limits, or the defaults (config/constants). */
 export interface ImageLimits {
   /** Accepted image MIME types. */
   imageTypes: readonly string[];
   /** Largest accepted image, in bytes. */
   maxImageBytes: number;
 }
-
-/** The limits used until the instance gives its own. */
-export const DEFAULT_IMAGE_LIMITS: ImageLimits = { imageTypes: SUPPORTED_IMAGE_TYPES, maxImageBytes: MAX_IMAGE_BYTES };
 
 const EXTENSION_TYPES: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',

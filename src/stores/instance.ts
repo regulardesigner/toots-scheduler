@@ -2,8 +2,14 @@ import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { useAuthStore } from './auth';
 import { useMastodonApi } from '../composables/useMastodonApi';
-import { DEFAULT_MAX_CHARACTERS } from '../config/constants';
-import { MAX_IMAGE_BYTES, MAX_IMAGES_PER_TOOT, SUPPORTED_IMAGE_TYPES, usableImageTypes } from '../utils/media';
+import {
+  DEFAULT_MAX_CHARACTERS,
+  DEFAULT_MAX_IMAGE_BYTES,
+  DEFAULT_MAX_MEDIA_ATTACHMENTS,
+  SUPPORTED_IMAGE_TYPES,
+} from '../config/constants';
+import { logError } from '../utils/logError';
+import { usableImageTypes } from '../utils/media';
 
 /**
  * Creates a Pinia store for the signed-in instance's limits (toot length, images per toot,
@@ -14,9 +20,13 @@ import { MAX_IMAGE_BYTES, MAX_IMAGES_PER_TOOT, SUPPORTED_IMAGE_TYPES, usableImag
 export const useInstanceStore = defineStore('instance', () => {
   const auth = useAuthStore();
 
+  /** Longest toot the instance accepts, in characters. */
   const maxCharacters = ref(DEFAULT_MAX_CHARACTERS);
-  const maxMediaAttachments = ref(MAX_IMAGES_PER_TOOT);
-  const imageSizeLimit = ref(MAX_IMAGE_BYTES);
+  /** Most images per toot. */
+  const maxMediaAttachments = ref(DEFAULT_MAX_MEDIA_ATTACHMENTS);
+  /** Largest image, in bytes. */
+  const imageSizeLimit = ref(DEFAULT_MAX_IMAGE_BYTES);
+  /** Image MIME types the app can attach on this instance (images only, never empty). */
   const supportedMimeTypes = ref<string[]>([...SUPPORTED_IMAGE_TYPES]);
   /** True once the instance gave its text limit; until then maxCharacters is a guess, not to be enforced. */
   const hasCharacterLimit = ref(false);
@@ -25,8 +35,8 @@ export const useInstanceStore = defineStore('instance', () => {
 
   function reset(): void {
     maxCharacters.value = DEFAULT_MAX_CHARACTERS;
-    maxMediaAttachments.value = MAX_IMAGES_PER_TOOT;
-    imageSizeLimit.value = MAX_IMAGE_BYTES;
+    maxMediaAttachments.value = DEFAULT_MAX_MEDIA_ATTACHMENTS;
+    imageSizeLimit.value = DEFAULT_MAX_IMAGE_BYTES;
     supportedMimeTypes.value = [...SUPPORTED_IMAGE_TYPES];
     hasCharacterLimit.value = false;
     hasMediaLimit.value = false;
@@ -44,13 +54,13 @@ export const useInstanceStore = defineStore('instance', () => {
       const configuration = await useMastodonApi().getInstanceConfiguration();
       if (auth.accessToken !== token) return;
       maxCharacters.value = configuration.maxCharacters ?? DEFAULT_MAX_CHARACTERS;
-      maxMediaAttachments.value = configuration.maxMediaAttachments ?? MAX_IMAGES_PER_TOOT;
-      imageSizeLimit.value = configuration.imageSizeLimit ?? MAX_IMAGE_BYTES;
+      maxMediaAttachments.value = configuration.maxMediaAttachments ?? DEFAULT_MAX_MEDIA_ATTACHMENTS;
+      imageSizeLimit.value = configuration.imageSizeLimit ?? DEFAULT_MAX_IMAGE_BYTES;
       supportedMimeTypes.value = usableImageTypes(configuration.supportedMimeTypes);
       hasCharacterLimit.value = configuration.maxCharacters !== undefined;
       hasMediaLimit.value = configuration.maxMediaAttachments !== undefined;
     } catch (error) {
-      console.error('Could not read the instance limits, using the defaults:', error);
+      logError('Could not read the instance limits, using the defaults', error);
     }
   }
 
@@ -62,19 +72,11 @@ export const useInstanceStore = defineStore('instance', () => {
   }, { immediate: true });
 
   return {
-    /** Longest toot the instance accepts, in characters. */
     maxCharacters,
-    /** Most images per toot. */
     maxMediaAttachments,
-    /** Largest image, in bytes. */
     imageSizeLimit,
-    /** Image MIME types the app can attach on this instance (images only, never empty). */
     supportedMimeTypes,
-    /** Whether maxCharacters comes from the instance (false: the default, not to be enforced). */
     hasCharacterLimit,
-    /** Whether maxMediaAttachments comes from the instance (false: the default, not to be enforced). */
     hasMediaLimit,
-    /** Reads the limits again for the current session. */
-    load,
   };
 });

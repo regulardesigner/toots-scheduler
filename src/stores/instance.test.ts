@@ -8,7 +8,7 @@ vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn().mockResolvedVal
 
 import { useInstanceStore } from './instance';
 import { useAuthStore } from './auth';
-import { SUPPORTED_IMAGE_TYPES } from '../utils/media';
+import { SUPPORTED_IMAGE_TYPES } from '../config/constants';
 
 const credentials = { instance: 'https://masto.example', clientId: 'id', clientSecret: 'secret', accessToken: 'token-a' };
 

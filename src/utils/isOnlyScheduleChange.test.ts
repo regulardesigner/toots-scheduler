@@ -1,14 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { isOnlyScheduleChange } from './isOnlyScheduleChange';
-import type { MastodonStatus, ScheduledToot } from '../types/mastodon';
+import { ScheduledStatusSchema } from '../schemas/mastodon';
+import type { MastodonStatus, ScheduledStatusParams, ScheduledToot } from '../types/mastodon';
 
-function makeOriginal(params: Partial<NonNullable<MastodonStatus['params']>> = {}): MastodonStatus {
+function makeOriginal(params: Partial<ScheduledStatusParams> = {}): MastodonStatus {
   return {
     id: '42',
-    content: '',
-    created_at: '',
-    visibility: 'public',
-    url: '',
     media_attachments: [],
     scheduled_at: '2030-01-01T12:00:00.000Z',
     params: {
@@ -67,12 +64,13 @@ describe('isOnlyScheduleChange', () => {
   });
 
   it('falls back to media_attachments when params.media_ids is missing', () => {
-    const original = { ...makeOriginal({ media_ids: undefined }), media_attachments: [{ id: 'm1' }] };
+    const original = { ...makeOriginal({ media_ids: undefined }), media_attachments: [{ id: 'm1', type: 'image' as const, url: null }] };
     expect(isOnlyScheduleChange(original, makeUpdated({ media_ids: ['m1'] }))).toBe(true);
   });
 
   it('is false when the original has no params', () => {
-    expect(isOnlyScheduleChange({ ...makeOriginal(), params: undefined }, makeUpdated())).toBe(false);
+    // A status without params (the schema refuses one) is never taken for a date-only change.
+    expect(isOnlyScheduleChange({ ...makeOriginal(), params: undefined } as unknown as MastodonStatus, makeUpdated())).toBe(false);
   });
 
   it('is false when the API returned a null visibility (account default)', () => {
@@ -97,6 +95,19 @@ describe('isOnlyScheduleChange', () => {
     const original = makeOriginal({ sensitive: 'true' as unknown as boolean, spoiler_text: 'CW' });
     expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false }))).toBe(false);
     expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(true);
+  });
+
+  it('treats a toot loaded with sensitive "false" and saved unchanged as a date-only change', () => {
+    const original = ScheduledStatusSchema.parse({ ...makeOriginal(), params: { ...makeOriginal().params, sensitive: 'false' } }) as MastodonStatus;
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false }))).toBe(true);
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(false);
+  });
+
+  it('treats a toot loaded with sensitive "1" and saved as sensitive unchanged as a date-only change', () => {
+    const base = makeOriginal({ spoiler_text: 'CW' });
+    const original = ScheduledStatusSchema.parse({ ...base, params: { ...base.params, sensitive: '1' } }) as MastodonStatus;
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: true, spoiler_text: 'CW' }))).toBe(true);
+    expect(isOnlyScheduleChange(original, makeUpdated({ sensitive: false, spoiler_text: 'CW' }))).toBe(false);
   });
 
   it('is false when a flag has a value it cannot interpret', () => {

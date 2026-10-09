@@ -247,14 +247,16 @@ const hasNewFeatures = computed(() => newFeatures.value.length > 0);
   line-height: 1.5;
   font-weight: 400;
   font-optical-sizing: auto;
-  font-variation-settings:
-    "wdth" 100,
-    "YTLC" 500;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Page scroll is locked while a dialog is open (class set by ModalView). */
+body.modal-open {
+  overflow: hidden;
 }
 
 /* Hidden on screen, still read by screen readers (labels of icon-only controls, live regions). */

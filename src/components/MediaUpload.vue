@@ -4,6 +4,7 @@ import type { MastodonMediaAttachment } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import ModalView from './Modals/ModalView.vue';
 import { useInstanceStore } from '../stores/instance';
+import { logError } from '../utils/logError';
 import { acceptedImageFiles, describeImageTypes, formatMegabytes, getImageRejection, type ImageLimits } from '../utils/media';
 
 const props = defineProps<{
@@ -96,7 +97,7 @@ async function uploadFiles(files: File[]) {
   } catch (err) {
     const reason = err instanceof Error && err.message ? err.message : 'Failed to upload images';
     uploadError.value = current ? `Could not upload "${current}": ${reason}` : reason;
-    console.error('Upload error:', err);
+    logError('Upload error', err);
   } finally {
     isUploading.value = false;
     uploadProgress.value = {};
@@ -132,7 +133,7 @@ async function saveMediaMetadata() {
     emit('update:modelValue', newMedia);
     editingMediaIndex.value = null;
   } catch (err) {
-    console.error('Error updating media metadata:', err);
+    logError('Error updating media metadata', err);
     const reason = err instanceof Error && err.message ? err.message : 'unknown error';
     uploadError.value = `Could not save the description: ${reason}`;
   }
@@ -218,7 +219,7 @@ async function saveMediaMetadata() {
               :disabled="isUploading"
               @click="startEditingMedia(index)"
             >
-              {{ editingMediaIndex === index ? 'Alt' : 'Alt' }}
+              Alt
             </button>
             
             <button 

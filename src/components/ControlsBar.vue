@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { format, addMinutes } from 'date-fns';
 import type { ScheduledToot } from '../types/mastodon';
 import { getTimeZone } from '../utils/timeZone';
+import { LANGUAGES } from '../config/constants';
 
 const props = withDefaults(defineProps<{
   scheduledDate: string;
@@ -36,23 +37,6 @@ const minDateTime = computed(() => {
   const minDate = addMinutes(now, 5); // Minimum 5 minutes in the future
   return format(minDate, "yyyy-MM-dd'T'HH:mm");
 });
-
-const languages = [
-  { code: 'en', name: 'English' },
-  { code: 'fr', name: 'Français' },
-  { code: 'de', name: 'Deutsch' },
-  { code: 'es', name: 'Español' },
-  { code: 'it', name: 'Italiano' },
-  { code: 'pt', name: 'Português' },
-  { code: 'ru', name: 'Русский' },
-  { code: 'ja', name: '日本語' },
-  { code: 'zh', name: '中文' },
-  { code: 'ko', name: '한국어' },
-  { code: 'nl', name: 'Nederlands' },
-  { code: 'pl', name: 'Polski' },
-  { code: 'ar', name: 'العربية' },
-  { code: 'hi', name: 'हिन्दी' },
-] as const;
 </script>
 
 <template>
@@ -109,7 +93,7 @@ const languages = [
         @change="emit('update:language', ($event.target as HTMLSelectElement).value)"
       >
         <option
-          v-for="lang in languages"
+          v-for="lang in LANGUAGES"
           :key="lang.code"
           :value="lang.code"
         >

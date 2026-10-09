@@ -17,11 +17,16 @@ export default tseslint.config(
     rules: {
       // Security: API data (toots, display names) must never be rendered as HTML.
       'vue/no-v-html': 'error',
-      // Tracked for Lot 2 (dev-only logger) and Lot 3 (typed API responses).
-      'no-console': ['warn', { allow: ['error'] }],
+      // Errors are logged with src/utils/logError.ts only: DEV only, and never a request's headers (the token).
+      'no-console': 'error',
       '@typescript-eslint/no-explicit-any': 'warn',
       // Single-word names (App, Send) are an existing convention in this project.
       'vue/multi-word-component-names': 'off',
     },
+  },
+  // Config files run in Node, not in the browser.
+  {
+    files: ['*.config.{js,ts,mjs,mts,cjs,cts}'],
+    languageOptions: { globals: globals.node },
   },
 )

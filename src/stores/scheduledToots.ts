@@ -4,6 +4,7 @@ import type { MastodonStatus, ScheduledToot } from '../types/mastodon';
 import { useMastodonApi } from '../composables/useMastodonApi';
 import { useAuthStore } from './auth';
 import { isOnlyScheduleChange } from '../utils/isOnlyScheduleChange';
+import { logError } from '../utils/logError';
 
 /** A change refused because another one is still being saved: nothing was sent. */
 export class BusyError extends Error {
@@ -58,10 +59,6 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     toots.value = value;
   }
 
-  function setLoading(value: boolean): void {
-    isLoading.value = value;
-  }
-
   function setError(value: string): void {
     error.value = value;
   }
@@ -92,19 +89,19 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     const seq = ++fetchSeq;
     const isStale = () => seq !== fetchSeq || auth.accessToken !== token;
     try {
-      setLoading(true);
+      isLoading.value = true;
       setError('');
       const api = useMastodonApi();
       const loaded = await api.getScheduledToots();
       if (isStale()) return;
       setToots(loaded);
     } catch (err) {
-      console.error('Error fetching scheduled toots:', err);
+      logError('Error fetching scheduled toots', err);
       if (isStale()) return;
       setError(err instanceof Error ? err.message : 'Failed to fetch scheduled toots');
     } finally {
       // The latest request owns the loading state.
-      if (seq === fetchSeq) setLoading(false);
+      if (seq === fetchSeq) isLoading.value = false;
     }
   }
 
@@ -197,7 +194,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
         try {
           await api.deleteScheduledToot(original.id);
         } catch (err) {
-          console.error('Error deleting the previous version of an edited toot:', err);
+          logError('Error deleting the previous version of an edited toot', err);
           // The delete may have succeeded with its response lost: only warn if it is really still there.
           previousVersionRemoved = !(await api.scheduledTootExists(original.id).catch(() => true));
         }
@@ -209,7 +206,7 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
       return { previousVersionRemoved };
     } catch (err) {
       // Not put in `error`: the composer shows it, and the reload it starts would clear it at once.
-      console.error('Error updating toot:', err);
+      logError('Error updating toot', err);
       throw err;
     } finally {
       finishPending(original.id);
@@ -237,8 +234,6 @@ export const useScheduledTootsStore = defineStore('scheduledToots', () => {
     count,
     sortedToots,
     setToots,
-    setLoading,
-    setError,
     setEditingToot,
     fetchScheduledToots,
     deleteToot,
