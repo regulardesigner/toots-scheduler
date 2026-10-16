@@ -202,11 +202,6 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-.testimonials-track:focus-visible {
-  outline: 2px solid #646cff;
-  outline-offset: 2px;
-}
-
 .testimonials-list {
   --card-width: min(18rem, 75vw);
   list-style: none;
@@ -295,11 +290,6 @@ onBeforeUnmount(() => {
   background-image: linear-gradient(antiquewhite, antiquewhite);
 }
 
-.testimonial-yours a:focus-visible {
-  outline: 2px solid #646cff;
-  outline-offset: 2px;
-}
-
 .testimonials-arrow {
   position: absolute;
   top: 50%;
@@ -337,7 +327,9 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
-.testimonials-arrow:focus-visible {
+.testimonials-track:focus-visible,
+.testimonials-arrow:focus-visible,
+.testimonial-yours a:focus-visible {
   outline: 2px solid #646cff;
   outline-offset: 2px;
 }
