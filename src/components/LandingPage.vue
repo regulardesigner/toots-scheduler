@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import LoginForm from './Auth/LoginForm.vue';
 import ModalView from './Modals/ModalView.vue';
+import ArrowIcon from './icons/ArrowIcon.vue';
 import { scrollBehavior } from '../utils/motion';
 
 const showLoginForm = ref(false);
@@ -150,21 +151,7 @@ function handleCloseLoginForm() {
           :disabled="!canScrollPrev"
           @click="scrollTestimonials(-1)"
         >
-          <svg
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            aria-hidden="true"
-          >
-            <path
-              d="M19 12H5M12 19l-7-7 7-7"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
+          <ArrowIcon direction="left" />
         </button>
         <div
           ref="testimonialsTrack"
@@ -224,21 +211,7 @@ function handleCloseLoginForm() {
           :disabled="!canScrollNext"
           @click="scrollTestimonials(1)"
         >
-          <svg
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            aria-hidden="true"
-          >
-            <path
-              d="M5 12h14M12 5l7 7-7 7"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
+          <ArrowIcon direction="right" />
         </button>
       </div>
     </section>
@@ -318,21 +291,10 @@ function handleCloseLoginForm() {
         aria-label="Scroll to the FAQ"
         @click="scrollToFaq"
       >
-        <svg
-          viewBox="0 0 24 24"
-          width="16"
-          height="16"
-          aria-hidden="true"
-        >
-          <path
-            d="M12 5v14M5 12l7 7 7-7"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
+        <ArrowIcon
+          direction="down"
+          :size="16"
+        />
         FAQ
       </button>
     </Transition>
