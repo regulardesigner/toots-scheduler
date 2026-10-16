@@ -12,10 +12,10 @@ const track = ref<HTMLElement | null>(null);
 /** The list of cards inside the track: its first card gives the distance to slide. */
 const list = ref<HTMLElement | null>(null);
 
-/** Whether the slider can still move backwards: "Previous" is disabled at the start. */
+/** Whether the slider can still move backwards: "Previous" is marked disabled at the start. */
 const canScrollPrev = ref(false);
 
-/** Whether the slider can still move forwards: "Next" is disabled at the end. */
+/** Whether the slider can still move forwards: "Next" is marked disabled at the end. */
 const canScrollNext = ref(false);
 
 let resizeObserver: ResizeObserver | null = null;
@@ -32,9 +32,11 @@ function updateArrows() {
 
 /**
  * Slides by about one card, backwards (-1) or forwards (1).
+ * Does nothing at that end: the arrows stay focusable there (aria-disabled), so keyboard focus is never lost.
  */
 function slide(direction: -1 | 1) {
   if (!track.value || !list.value) return;
+  if (direction === -1 ? !canScrollPrev.value : !canScrollNext.value) return;
   const card = list.value.firstElementChild as HTMLElement | null;
   const step = card?.offsetWidth ?? 0;
   track.value.scrollBy({ left: direction * step, behavior: scrollBehavior() });
@@ -71,7 +73,7 @@ onBeforeUnmount(() => {
         type="button"
         class="testimonials-arrow testimonials-arrow-prev"
         aria-label="Previous testimonial"
-        :disabled="!canScrollPrev"
+        :aria-disabled="!canScrollPrev"
         @click="slide(-1)"
       >
         <ArrowIcon direction="left" />
@@ -134,7 +136,7 @@ onBeforeUnmount(() => {
         type="button"
         class="testimonials-arrow testimonials-arrow-next"
         aria-label="Next testimonial"
-        :disabled="!canScrollNext"
+        :aria-disabled="!canScrollNext"
         @click="slide(1)"
       >
         <ArrowIcon direction="right" />
@@ -320,12 +322,12 @@ onBeforeUnmount(() => {
   right: 0.5rem;
 }
 
-.testimonials-arrow:hover:not(:disabled) {
+.testimonials-arrow:hover:not([aria-disabled="true"]) {
   background-color: #222;
 }
 
-/* Nothing more to see that way: greyed out, and the cards stay visible behind it. */
-.testimonials-arrow:disabled {
+/* Nothing more to see that way: greyed out, but still focusable so keyboard focus stays put. */
+.testimonials-arrow[aria-disabled="true"] {
   background-color: #ddd;
   color: #999;
   cursor: not-allowed;

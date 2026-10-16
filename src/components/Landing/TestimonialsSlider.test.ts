@@ -35,7 +35,7 @@ describe('TestimonialsSlider', () => {
     expect(scrollBy.mock.calls[0][0]).toMatchObject({ behavior: 'smooth' });
   });
 
-  it('disables each arrow when the slider cannot move that way', async () => {
+  it('marks each arrow disabled at its end, without taking it out of the tab order', async () => {
     const wrapper = mount(TestimonialsSlider);
     const track = wrapper.find('.testimonials-track');
     const prev = wrapper.find('[aria-label="Previous testimonial"]');
@@ -43,18 +43,36 @@ describe('TestimonialsSlider', () => {
 
     setTrackScroll(track.element, 0);
     await track.trigger('scroll');
-    expect(prev.attributes('disabled')).toBeDefined();
-    expect(next.attributes('disabled')).toBeUndefined();
+    expect(prev.attributes('aria-disabled')).toBe('true');
+    expect(next.attributes('aria-disabled')).toBe('false');
 
     setTrackScroll(track.element, 450);
     await track.trigger('scroll');
-    expect(prev.attributes('disabled')).toBeUndefined();
-    expect(next.attributes('disabled')).toBeUndefined();
+    expect(prev.attributes('aria-disabled')).toBe('false');
+    expect(next.attributes('aria-disabled')).toBe('false');
 
     setTrackScroll(track.element, 900);
     await track.trigger('scroll');
-    expect(prev.attributes('disabled')).toBeUndefined();
-    expect(next.attributes('disabled')).toBeDefined();
+    expect(prev.attributes('aria-disabled')).toBe('false');
+    expect(next.attributes('aria-disabled')).toBe('true');
+    expect(next.attributes('disabled')).toBeUndefined();
+  });
+
+  it('keeps focus on an arrow that reaches its end, and ignores further presses', async () => {
+    const scrollBy = vi.fn();
+    Element.prototype.scrollBy = scrollBy;
+    const wrapper = mount(TestimonialsSlider, { attachTo: document.body });
+    const track = wrapper.find('.testimonials-track');
+    const next = wrapper.find('[aria-label="Next testimonial"]');
+    (next.element as HTMLElement).focus();
+
+    setTrackScroll(track.element, 900);
+    await track.trigger('scroll');
+    await next.trigger('click');
+
+    expect(document.activeElement).toBe(next.element);
+    expect(scrollBy).not.toHaveBeenCalled();
+    wrapper.unmount();
   });
 
   it('makes the testimonials slider a labelled, keyboard-scrollable region', () => {
