@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import LoginForm from './Auth/LoginForm.vue';
 import ModalView from './Modals/ModalView.vue';
+import { scrollBehavior } from '../utils/motion';
 
 const showLoginForm = ref(false);
 
@@ -13,15 +14,11 @@ const showScrollHint = ref(false);
 
 let faqObserver: IntersectionObserver | null = null;
 
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
 /**
  * Scrolls the FAQ section into view.
  */
 function scrollToFaq() {
-  faqSection.value?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  faqSection.value?.scrollIntoView({ behavior: scrollBehavior() });
 }
 
 onMounted(() => {
@@ -82,7 +79,7 @@ function scrollTestimonials(direction: -1 | 1) {
   if (!track) return;
   const slide = track.querySelector<HTMLElement>('.testimonial-slide');
   const step = slide ? slide.offsetWidth : track.clientWidth * 0.8;
-  track.scrollBy({ left: direction * step, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  track.scrollBy({ left: direction * step, behavior: scrollBehavior() });
 }
 
 function handleGetStarted() {

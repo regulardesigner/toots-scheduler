@@ -4,6 +4,7 @@ import TootCard from './TootCard.vue';
 import ModalView from '../Modals/ModalView.vue';
 import DeleteConfirmModal from '../Modals/DeleteConfirmModal.vue';
 import { useScheduledTootsStore } from '../../stores/scheduledToots';
+import { scrollBehavior } from '../../utils/motion';
 import type { MastodonStatus } from '../../types/mastodon';
 
 const PREVIEW_MAX_LENGTH = 120;
@@ -26,10 +27,6 @@ const tootToDelete = ref<MastodonStatus | null>(null);
 
 /** Truncated preview text shown inside the confirmation modal. */
 const tootDeletePreview = ref('');
-
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 /**
  * Opens the delete confirmation modal for the given toot ID.
@@ -93,7 +90,7 @@ async function handleEdit(id: string) {
   // Once the composer has rendered the toot.
   await nextTick();
   const textarea = document.querySelector<HTMLTextAreaElement>('textarea[data-toot-text]');
-  textarea?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+  textarea?.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
   textarea?.focus({ preventScroll: true });
 }
 
