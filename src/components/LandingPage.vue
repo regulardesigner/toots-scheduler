@@ -14,7 +14,7 @@ const faqSection = ref<HTMLElement | null>(null);
 /** The FAQ heading: focus moves to it after the hint scrolls there, so keyboard users land in the FAQ. */
 const faqHeading = ref<HTMLElement | null>(null);
 
-/** Whether the scroll hint is shown: hidden for good once the FAQ comes into view. */
+/** Whether the scroll hint is shown: only while the FAQ is out of view, then hidden for good once it comes into view. */
 const showScrollHint = ref(false);
 
 let faqObserver: IntersectionObserver | null = null;
@@ -31,13 +31,14 @@ function scrollToFaq() {
 onMounted(() => {
   if (!faqSection.value || typeof IntersectionObserver === 'undefined') return;
 
-  showScrollHint.value = true;
-
+  // Shown only once the observer reports the FAQ out of view, so it never flashes when the FAQ is already visible.
   faqObserver = new IntersectionObserver((entries) => {
     if (entries.some(entry => entry.isIntersecting)) {
       showScrollHint.value = false;
       faqObserver?.disconnect();
       faqObserver = null;
+    } else {
+      showScrollHint.value = true;
     }
   });
 

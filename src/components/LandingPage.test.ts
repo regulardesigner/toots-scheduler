@@ -32,12 +32,10 @@ describe('LandingPage', () => {
     expect(wrapper.find('main').exists()).toBe(false);
   });
 
-  it('shows the scroll hint until the FAQ comes into view, then hides it for good', async () => {
+  it('shows the scroll hint while the FAQ is out of view, then hides it for good', async () => {
     const observer = stubIntersectionObserver();
     const wrapper = mount(LandingPage);
     await nextTick();
-
-    expect(wrapper.find('.scroll-hint').exists()).toBe(true);
 
     observer.trigger(false);
     await nextTick();
@@ -49,10 +47,23 @@ describe('LandingPage', () => {
     expect(observer.disconnect).toHaveBeenCalled();
   });
 
+  it('never shows the hint when the FAQ is already in view on load', async () => {
+    const observer = stubIntersectionObserver();
+    const wrapper = mount(LandingPage);
+    await nextTick();
+
+    expect(wrapper.find('.scroll-hint').exists()).toBe(false);
+
+    observer.trigger(true);
+    await nextTick();
+    expect(wrapper.find('.scroll-hint').exists()).toBe(false);
+  });
+
   it('scrolls to the FAQ section and moves focus to its heading when the hint is clicked', async () => {
-    stubIntersectionObserver();
+    const observer = stubIntersectionObserver();
     const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {});
     const wrapper = mount(LandingPage, { attachTo: document.body });
+    observer.trigger(false);
     await nextTick();
 
     await wrapper.find('.scroll-hint').trigger('click');
