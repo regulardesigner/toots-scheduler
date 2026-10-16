@@ -373,4 +373,23 @@ onBeforeUnmount(() => {
   }
 }
 
+/* Narrow phones: slimmer cards and smaller arrows, so the arrows stay clear of the card text. */
+@media (max-width: 480px) {
+  .testimonials-list {
+    --card-width: min(18rem, 70vw);
+  }
+
+  .testimonials-arrow {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .testimonials-arrow-prev {
+    left: 0.25rem;
+  }
+
+  .testimonials-arrow-next {
+    right: 0.25rem;
+  }
+}
 </style>
