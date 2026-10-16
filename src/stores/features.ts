@@ -40,6 +40,32 @@ export const useFeaturesStore = defineStore('features', () => {
   /** Every release, newest first: the changelog (append-only, see the changelog skill). */
   const features = ref<FeatureGroup[]>([
     {
+      version: '0.17.0',
+      date: '2026-10-16',
+      features: [
+        {
+          id: 'landing-testimonials',
+          title: '💬 Meet Our (Totally Real) Users',
+          description: 'The home page now has a slider of testimonials. They are jokes for now: tried it? Toot @damsdev@mastodon.social and your review could take their place.'
+        },
+        {
+          id: 'landing-call-to-action',
+          title: '🚀 Get Started From the Bottom of the Page',
+          description: 'Once you have read the FAQ, a "Get started" button is right there, so you can sign in without scrolling back up.'
+        },
+        {
+          id: 'landing-faq-shortcut',
+          title: '⬇️ Jump Straight to the FAQ',
+          description: 'A small FAQ button takes you to the questions in one click, and steps aside once you are there.'
+        },
+        {
+          id: 'landing-keyboard-access',
+          title: '♿ Easier Home Page With a Keyboard',
+          description: 'The slider arrows and the FAQ shortcut now keep your keyboard focus in the right place, screen readers announce the slider clearly, and the arrows stay clear of the text on small phones.'
+        },
+      ],
+    },
+    {
       version: '0.16.1',
       date: '2026-10-08',
       features: [
