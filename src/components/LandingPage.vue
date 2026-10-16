@@ -68,6 +68,7 @@ function handleCloseLoginForm() {
     </h1>
 
     <button
+      type="button"
       class="landing-button"
       @click="handleGetStarted"
     >
@@ -250,6 +251,11 @@ function handleCloseLoginForm() {
   background-color: #444;
 }
 
+.landing-button:focus-visible {
+  outline: 2px solid #646cff;
+  outline-offset: 2px;
+}
+
 .landing-how-it-works {
   margin-bottom:3rem;
   display: flex;
@@ -379,11 +385,6 @@ function handleCloseLoginForm() {
 
 .landing-cta-action .landing-button {
   margin-top: 0;
-}
-
-.landing-cta-action .landing-button:focus-visible {
-  outline: 2px solid #646cff;
-  outline-offset: 2px;
 }
 
 .scroll-hint {
