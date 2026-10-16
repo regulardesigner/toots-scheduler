@@ -66,7 +66,10 @@ onBeforeUnmount(() => {
     >
       What our (totally real) users say
     </h2>
-    <p class="testimonials-note">
+    <p
+      id="testimonials-note"
+      class="testimonials-note"
+    >
       Well maybe not, but real reviews welcome!
     </p>
     <div class="testimonials-viewport">
@@ -82,8 +85,9 @@ onBeforeUnmount(() => {
       <div
         ref="track"
         class="testimonials-track"
-        role="region"
-        aria-label="Testimonials"
+        role="group"
+        aria-label="Testimonials slider"
+        aria-describedby="testimonials-note"
         tabindex="0"
         @scroll.passive="updateArrows"
       >

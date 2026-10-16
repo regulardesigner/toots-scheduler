@@ -8,7 +8,7 @@ const SCROLL_WIDTH = 1200;
 
 const PREV = '[aria-label="Previous testimonial"]';
 const NEXT = '[aria-label="Next testimonial"]';
-const TRACK = '[aria-label="Testimonials"]';
+const TRACK = '[aria-label="Testimonials slider"]';
 
 /** Gives the track a size happy-dom does not lay out, scrolled to the given position, and fires a scroll. */
 async function scrollTrackTo(wrapper: VueWrapper, scrollLeft: number) {
@@ -30,13 +30,15 @@ describe('TestimonialsSlider', () => {
     vi.restoreAllMocks();
   });
 
-  it('is a labelled, keyboard-scrollable region', () => {
+  it('is a named, keyboard-scrollable group described by the "jokes" note', () => {
     const wrapper = mount(TestimonialsSlider);
 
     const track = wrapper.find(TRACK);
+    const note = wrapper.find(`#${track.attributes('aria-describedby')}`);
 
-    expect(track.attributes('role')).toBe('region');
+    expect(track.attributes('role')).toBe('group');
     expect(track.attributes('tabindex')).toBe('0');
+    expect(note.text()).toContain('real reviews welcome');
     expect(track.findAll('li')).toHaveLength(4);
   });
 
