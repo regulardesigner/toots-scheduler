@@ -11,15 +11,20 @@ const showLoginForm = ref(false);
 /** The FAQ section the scroll hint points to. */
 const faqSection = ref<HTMLElement | null>(null);
 
+/** The FAQ heading: focus moves to it after the hint scrolls there, so keyboard users land in the FAQ. */
+const faqHeading = ref<HTMLElement | null>(null);
+
 /** Whether the scroll hint is shown: hidden for good once the FAQ comes into view. */
 const showScrollHint = ref(false);
 
 let faqObserver: IntersectionObserver | null = null;
 
 /**
- * Scrolls the FAQ section into view.
+ * Scrolls the FAQ section into view and moves focus to its heading.
+ * Focus moves first: the hint removes itself once the FAQ is in view, which would otherwise drop focus to the page.
  */
 function scrollToFaq() {
+  faqHeading.value?.focus({ preventScroll: true });
   faqSection.value?.scrollIntoView({ behavior: scrollBehavior() });
 }
 
@@ -93,12 +98,17 @@ function handleCloseLoginForm() {
     <TestimonialsSlider />
 
     <section
+      ref="faqSection"
       class="frequently-asked-questions"
     >
-      <h2 class="winky-sans-700">
+      <h2
+        ref="faqHeading"
+        class="winky-sans-700"
+        tabindex="-1"
+      >
         Frequently Asked Questions
       </h2>
-      <div ref="faqSection">
+      <div>
         <details open>
           <summary class="winky-sans-700">
             Why use this service?
@@ -293,6 +303,8 @@ function handleCloseLoginForm() {
 
 .frequently-asked-questions {
   margin-top: 2rem;
+  /* Clears the fixed app header when the scroll hint brings the FAQ into view. */
+  scroll-margin-top: 5rem;
   display: flex;
   flex-direction: column;
   background-color: #f0f0f0;
@@ -303,6 +315,11 @@ function handleCloseLoginForm() {
 .frequently-asked-questions h2 {
   font-size: 1.8rem;
   margin-bottom: 1rem;
+}
+
+/* Focused by script only (tabindex="-1"), to move keyboard users here: not a control, so no focus ring. */
+.frequently-asked-questions h2:focus {
+  outline: none;
 }
 
 .frequently-asked-questions details {

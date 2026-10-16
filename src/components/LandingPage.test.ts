@@ -22,6 +22,7 @@ function stubIntersectionObserver() {
 describe('LandingPage', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('has one <h1> and no <main> of its own (App provides it)', () => {
@@ -48,16 +49,19 @@ describe('LandingPage', () => {
     expect(observer.disconnect).toHaveBeenCalled();
   });
 
-  it('scrolls to the FAQ when the hint is clicked', async () => {
+  it('scrolls to the FAQ section and moves focus to its heading when the hint is clicked', async () => {
     stubIntersectionObserver();
-    const scrollIntoView = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoView;
-    const wrapper = mount(LandingPage);
+    const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {});
+    const wrapper = mount(LandingPage, { attachTo: document.body });
     await nextTick();
 
     await wrapper.find('.scroll-hint').trigger('click');
 
+    const faq = wrapper.find('section.frequently-asked-questions');
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
+    expect(scrollIntoView.mock.contexts[0]).toBe(faq.element);
+    expect(document.activeElement).toBe(faq.find('h2').element);
+    wrapper.unmount();
   });
 
   it('opens the sign-in dialog from the call to action after the FAQ', async () => {
