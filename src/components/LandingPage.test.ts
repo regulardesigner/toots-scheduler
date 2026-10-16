@@ -7,6 +7,8 @@ import TestimonialsSlider from './Landing/TestimonialsSlider.vue';
 
 type ObserverCallback = (entries: Pick<IntersectionObserverEntry, 'isIntersecting'>[]) => void;
 
+const HINT = '[aria-label="Scroll to the FAQ"]';
+
 /** Stubs IntersectionObserver and returns a trigger for the last observer created. */
 function stubIntersectionObserver() {
   let callback: ObserverCallback = () => {};
@@ -39,11 +41,11 @@ describe('LandingPage', () => {
 
     observer.trigger(false);
     await nextTick();
-    expect(wrapper.find('.scroll-hint').exists()).toBe(true);
+    expect(wrapper.find(HINT).exists()).toBe(true);
 
     observer.trigger(true);
     await nextTick();
-    expect(wrapper.find('.scroll-hint').exists()).toBe(false);
+    expect(wrapper.find(HINT).exists()).toBe(false);
     expect(observer.disconnect).toHaveBeenCalled();
   });
 
@@ -52,11 +54,11 @@ describe('LandingPage', () => {
     const wrapper = mount(LandingPage);
     await nextTick();
 
-    expect(wrapper.find('.scroll-hint').exists()).toBe(false);
+    expect(wrapper.find(HINT).exists()).toBe(false);
 
     observer.trigger(true);
     await nextTick();
-    expect(wrapper.find('.scroll-hint').exists()).toBe(false);
+    expect(wrapper.find(HINT).exists()).toBe(false);
   });
 
   it('scrolls to the FAQ section and moves focus to its heading when the hint is clicked', async () => {
@@ -66,7 +68,7 @@ describe('LandingPage', () => {
     observer.trigger(false);
     await nextTick();
 
-    await wrapper.find('.scroll-hint').trigger('click');
+    await wrapper.find(HINT).trigger('click');
 
     const faq = wrapper.find('section.frequently-asked-questions');
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
@@ -75,12 +77,29 @@ describe('LandingPage', () => {
     wrapper.unmount();
   });
 
-  it('opens the sign-in dialog from the call to action after the FAQ', async () => {
+  it('disconnects the FAQ observer on unmount', async () => {
+    const observer = stubIntersectionObserver();
+    const wrapper = mount(LandingPage);
+    await nextTick();
+
+    wrapper.unmount();
+
+    expect(observer.disconnect).toHaveBeenCalled();
+  });
+
+  it('opens the sign-in dialog from both "Get started" buttons', async () => {
     const wrapper = mount(LandingPage, { global: { stubs: { LoginForm: true } } });
+    const buttons = wrapper.findAll('button').filter(button => button.text() === 'Get started');
+    const modal = wrapper.findComponent(ModalView);
 
-    await wrapper.find('.landing-cta button').trigger('click');
-
-    expect(wrapper.findComponent(ModalView).props('isOpen')).toBe(true);
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) {
+      await button.trigger('click');
+      expect(modal.props('isOpen')).toBe(true);
+      modal.vm.$emit('close');
+      await nextTick();
+      expect(modal.props('isOpen')).toBe(false);
+    }
   });
 
   it('shows the testimonials', () => {
@@ -94,6 +113,6 @@ describe('LandingPage', () => {
     const wrapper = mount(LandingPage);
     await nextTick();
 
-    expect(wrapper.find('.scroll-hint').exists()).toBe(false);
+    expect(wrapper.find(HINT).exists()).toBe(false);
   });
 });
