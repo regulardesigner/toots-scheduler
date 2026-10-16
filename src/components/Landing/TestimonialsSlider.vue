@@ -252,8 +252,11 @@ onBeforeUnmount(() => {
   --tilt: 3.5deg;
 }
 
-.testimonial:hover {
-  transform: rotate(0) scale(1.03);
+/* Mouse only: on touch screens a tap leaves :hover stuck while swiping on. */
+@media (hover: hover) and (pointer: fine) {
+  .testimonial:hover {
+    transform: rotate(0) scale(1.03);
+  }
 }
 
 .testimonial blockquote {
