@@ -9,7 +9,7 @@ import { scrollBehavior } from '../../utils/motion';
 /** The horizontal scroller the arrow buttons move. */
 const track = ref<HTMLElement | null>(null);
 
-/** The list of cards inside the track: its first card gives the distance to slide. */
+/** The list of cards inside the track: its first card and gap give the distance between two cards. */
 const list = ref<HTMLElement | null>(null);
 
 /** Whether the slider can still move backwards: "Previous" is marked disabled at the start. */
@@ -31,14 +31,15 @@ function updateArrows() {
 }
 
 /**
- * Slides by about one card, backwards (-1) or forwards (1).
+ * Slides by exactly one card (its width plus the gap), backwards (-1) or forwards (1).
  * Does nothing at that end: the arrows stay focusable there (aria-disabled), so keyboard focus is never lost.
  */
 function slide(direction: -1 | 1) {
   if (!track.value || !list.value) return;
   if (direction === -1 ? !canScrollPrev.value : !canScrollNext.value) return;
   const card = list.value.firstElementChild as HTMLElement | null;
-  const step = card?.offsetWidth ?? 0;
+  const gap = parseFloat(getComputedStyle(list.value).columnGap) || 0;
+  const step = (card?.offsetWidth ?? 0) + gap;
   track.value.scrollBy({ left: direction * step, behavior: scrollBehavior() });
 }
 
